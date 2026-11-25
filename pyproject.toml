@@ -1,0 +1,16 @@
+[project]
+name = "upowars"
+version = "0.1.0"
+description = "Mapa 3D de la UPO para un FPS tipo CS en Godot 4"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mapbox-earcut>=2.1.0",
+    "matplotlib>=3.11.2",
+    "networkx>=3.7",
+    "numpy>=2.5.5",
+    "pyproj>=3.8.0",
+    "rasterio>=1.5.2",
+    "requests>=2.34.2",
+    "shapely>=2.2.0",
+    "trimesh>=5.2.2",
+]

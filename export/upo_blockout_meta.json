@@ -1,0 +1,58 @@
+{
+  "origen": {
+    "lat": 37.35575214601319,
+    "lon": -5.937569463953512,
+    "E_utm25830": 239819.03323076307,
+    "N_utm25830": 4138387.2897714367
+  },
+  "ejes_gltf": "x=este, y=altura, z=-norte (metros)",
+  "bbox_campus_m": {
+    "x_min": -715.0030364995182,
+    "x_max": 486.2353169542039,
+    "norte_min": -585.4487086152658,
+    "norte_max": 541.4523156131618
+  },
+  "bbox_suelo_m": {
+    "x_min": -765.0030364995182,
+    "norte_min": -635.4487086152658,
+    "x_max": 536.2353169542039,
+    "norte_max": 591.4523156131618
+  },
+  "recuentos": {
+    "edificios": 73,
+    "caminos_tertiary": 30,
+    "caminos_trunk_link": 1,
+    "caminos_residential": 41,
+    "caminos_cycleway": 8,
+    "caminos_service": 76,
+    "caminos_pedestrian": 3,
+    "caminos_path": 7,
+    "caminos_footway": 14,
+    "caminos_track": 1,
+    "caminos_steps": 7,
+    "zonas_verde": 61,
+    "zonas_agua": 8,
+    "zonas_pista": 9,
+    "zonas_aparcamiento": 18,
+    "muros-col": 31,
+    "vallas-col": 1
+  },
+  "verificacion": {
+    "nodos": 91,
+    "triangulos": 9657,
+    "bounds": [
+      [
+        -765.0030517578125,
+        0.0,
+        -591.4523315429688
+      ],
+      [
+        536.2352905273438,
+        63.0,
+        635.44873046875
+      ]
+    ],
+    "edificios": 73,
+    "no_watertight": []
+  }
+}
