@@ -131,6 +131,44 @@ Después de regenerar el mapa conviene volver a ejecutar `generar_spawns.py` y r
 (abrir el editor o `--import`). Los spawns usan las mismas coordenadas que el glb
 (x = este, y = arriba, z = -norte, metros; origen = centroide del campus).
 
+### Texturas y bordes del campus
+
+**Texturas procedurales** (sin descargas): `scripts/generar_texturas.py` (numpy + Pillow, semilla fija `--semilla 7`) escribe
+PNG tileables de 512x512 en `game/assets/texturas/`: `albero`, `asfalto`, `baldosa` (losetas de 0,4 m), `cesped`, `hormigon`,
+`aparcamiento`, `pista`, `agua` y `campo` (exterior). Sin normal maps ni líneas de plaza (las plazas no tienen orientación fija
+en un triplanar). Cómo regenerarlas:
+
+```
+uv run python scripts/generar_texturas.py
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --import
+uv run python scripts/generar_texturas.py      # solo la 1.ª vez: parchea los .png.import con mipmaps/generate=true
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --import
+```
+
+(El import por defecto de un PNG no genera mipmaps y la textura centellea a distancia; el script los activa en los `.import`.
+`project.godot` fija el filtrado anisotrópico a 16x.)
+
+**Materiales** (`game/scripts/materiales.gd`, llamado desde `mapa.gd`): el .glb no tiene UVs, así que cada material del .glb
+(por nombre) se sustituye en runtime por un `StandardMaterial3D` con `uv1_triplanar` + `uv1_world_triplanar` y escala en metros por
+tesela: suelo->albero (4 m), camino_asfalto->asfalto (4), camino_peatonal->baldosa (3,2), verde->cesped (3), pista->pista (4),
+agua->agua (6, roughness 0,12), aparcamiento->aparcamiento (4), muros/pilar/cubierta->hormigon (3), campo (10). Edificios y torre usan
+`game/shaders/fachada.gdshader`: en caras verticales, plantas de 3,5 m y ventanas de 1,5x1,4 m cada 3 m en coordenadas de mundo
+(la coordenada horizontal es la proyección sobre la tangente de la normal, así que alinea en cualquier orientación); cristal azul
+oscuro reflectante y pared del color del edificio con ruido; en horizontales, grava gris. El shader calcula la normal plana de
+la cara por derivadas (el .glb no trae normales y Godot las suaviza entre cubierta y paredes). `cristal_padel`, `limite`, copas y
+corteza conservan su color/transparencia (copas y coches con roughness ajustado; los translúcidos no proyectan sombra). La malla
+`valla_malla` usa `game/shaders/valla.gdshader` (rombos de alambre en mundo). Ni la geometría ni la colisión dependen de los materiales.
+
+**Bordes** (en `generar_blockout.py`): `valla_perimetral` (postes de 10 cm cada 3 m, 2 m de alto, apoyados en el terreno) y
+`valla_perimetral_malla` (panel fino), ambas sin colisión, 0,8 m por dentro del muro `limite` (que está a 20 m del contorno): así
+el jugador ve la valla justo donde topa con la colisión; en el contorno real quedaría 20 m dentro del área jugable. `exterior`: faldón
+de terreno SIN colisión (anillo de malla de 2 km alrededor del borde de la malla del terreno; cota del borde del MDT, con caída
+suave de 0,004 m/m y ondulación creciente con la distancia; material `campo`). Niebla: `fog_density` 0,0009, color igual al
+horizonte del cielo (y el suelo del cielo del mismo color); `far` de la cámara 4500 m.
+
+**Capturas** (necesitan GPU, no `--headless`): `Godot_v4.7.2-stable_win64_console.exe --path game --script res://tests/captura.gd`
+guarda PNG en `export/capturas/` (spawns, aparcamiento, fachada, bordes con valla y vista aérea).
+
 ## Jugar (Godot 4.7.2)
 
 Abrir el proyecto `game/` con `D:\Juegos\godot\Godot_v4.7.2-stable_win64.exe` (importador de proyectos, o
@@ -139,7 +177,7 @@ Abrir el proyecto `game/` con `D:\Juegos\godot\Godot_v4.7.2-stable_win64.exe` (i
 Controles: WASD mover, ratón mirar, Espacio saltar, Shift caminar lento, Ctrl agacharse, Esc liberar/capturar
 el ratón, M reabrir el selector de spawn, F1 modo vuelo/noclip (20 m/s, x3 con Shift; Espacio/Ctrl suben/bajan).
 Las acciones están en el Input Map de `game/project.godot`. Colisión: los nodos `-col` del .glb se importan como
-StaticBody3D trimesh (automático en Godot); el muro `limite` se oculta en `game/scripts/mapa.gd`.
+StaticBody3D trimesh (automático en Godot); el muro `limite` se oculta y los materiales se aplican en `game/scripts/mapa.gd`.
 
 Test headless (debe terminar con PASS y código 0):
 

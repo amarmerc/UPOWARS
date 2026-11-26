@@ -17,6 +17,8 @@ cuadrados de esos pixeles; terreno = la losa sigue el terreno (drapeada). Vacio:
 central). Si `cota_abs` esta rellena manda (losa plana a esa cota). Los calculados se escriben en el CSV.
 data/pasos.csv: pasos peatonales (segmento + ancho + galibo) que parten los edificios volumen.
 Los nodos acabados en `-col` generan colision automatica al importar en Godot.
+Bordes: `valla_perimetral` (+ `valla_perimetral_malla`, sin colision) 0,8 m por dentro del limite y `exterior`
+(faldon de terreno sin colision, 2 km desde el borde de la malla, material `campo`).
 
 Relieve (scripts/terreno.py): el suelo es `terreno-col`, una rejilla regular sobre el MDT (campus + 50 m); y_juego =
 cota - cota_ref (mediana de las cotas dentro del contorno). Caminos y zonas se drapean sobre el terreno; los
@@ -71,6 +73,14 @@ ALTURA_DEFECTO = PLANTAS_DEFECTO * PLANTA_M
 MARGEN_SUELO = 50.0
 MARGEN_CAMINOS = 30.0
 MARGEN_LIMITE = 20.0
+VALLA_INTERIOR = 0.8         # la valla perimetral va 0,8 m por dentro del muro limite (visible, el jugador la ve como borde)
+VALLA_ALTURA = 2.0
+VALLA_POSTE_SEP = 3.0
+VALLA_POSTE_LADO = 0.1
+FALDON_EXTENSION = 2000.0    # el faldon exterior se extiende 2 km desde el borde de la malla de terreno
+FALDON_PASO = 4.0            # paso de los vertices a lo largo del borde (= bloque grueso del terreno)
+FALDON_ANILLOS = (0.0, 8.0, 24.0, 60.0, 120.0, 250.0, 500.0, 900.0, 1400.0, 2000.0)
+FALDON_CAIDA = 0.004         # m de descenso por m de distancia al borde (8 m a 2 km)
 CAMPOS_CSV = ["osm_id", "nombre", "building", "forma", "plantas", "altura_m", "base_m", "notas", "fuente", "pilares",
               "nivel", "cota_abs"]
 FORMAS = ("volumen", "techo", "tunel_z", "tunel_x", "excluir")   # excluir: el edificio se omite (sin malla ni colision)
@@ -120,6 +130,8 @@ COLORES = {
     "pilar": (120, 122, 128, 255), "muros": (160, 158, 150, 255), "vallas": (110, 90, 70, 255),
     "limite": (255, 60, 60, int(0.15 * 255)),
     "cristal_padel": (150, 205, 255, int(0.35 * 255)),
+    "valla_metal": (95, 100, 105, 255), "valla_malla": (140, 145, 150, int(0.30 * 255)),
+    "campo": (125, 105, 70, 255),
 }
 COLORES.update(veg.COLORES_MATERIAL)
 COLORES.update(coc.COLORES_MATERIAL)
@@ -1084,10 +1096,76 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
     ext = campus.buffer(MARGEN_LIMITE)
     anillo = ext.exterior.buffer(0.25, join_style="mitre")
     piezas.append(("limite-col", sobre_terreno(anillo, 6.0), "limite"))
+    piezas.extend(valla_perimetral(campus, T))
 
     return piezas, stats, {"campus": campus, "edificios": edif_info, "caminos": caminos_geom,
                            "zonas": zonas_geom, "suelo": caja_suelo, "pasos": list(pasos), "pistas": pistas_info,
                            "terreno": T}
+
+
+# ---------------------------------------------------------------- bordes del campus
+def valla_perimetral(campus, T):
+    """Valla metalica de 2 m: postes de 10 cm cada 3 m (`valla_perimetral`, material valla_metal) y un panel de malla
+    semitransparente (`valla_perimetral_malla`). Va VALLA_INTERIOR m por dentro del muro limite (a MARGEN_LIMITE del
+    contorno): el limite tiene la colision y la valla es solo visual, asi el jugador ve el borde justo donde topa.
+    Devuelve [(nombre, mesh_local, clave)]."""
+    zona = campus.buffer(MARGEN_LIMITE - VALLA_INTERIOR, join_style="round")
+    if zona.geom_type == "MultiPolygon":
+        zona = max(zona.geoms, key=lambda g: g.area)
+    linea = LineString(zona.exterior.coords)
+    n = int(math.ceil(linea.length / VALLA_POSTE_SEP))
+    pts = np.array([linea.interpolate(i * linea.length / n).coords[0] for i in range(n)])
+    h0 = T.h(pts[:, 0], pts[:, 1])
+    caja = trimesh.creation.box(extents=(VALLA_POSTE_LADO, VALLA_POSTE_LADO, 1.0))
+    alto = VALLA_ALTURA + ENTERRADO_LINEAL
+    v = np.asarray(caja.vertices)
+    verts, caras = [], []
+    for i in range(n):
+        w = v.copy()
+        w[:, 2] = (w[:, 2] + 0.5) * alto + h0[i] - ENTERRADO_LINEAL
+        w[:, 0] += pts[i, 0]
+        w[:, 1] += pts[i, 1]
+        verts.append(w)
+        caras.append(np.asarray(caja.faces) + i * len(v))
+    postes = trimesh.Trimesh(np.vstack(verts), np.vstack(caras), process=False)
+    banda = linea.buffer(0.03, cap_style="flat", join_style="mitre")
+    panel = prisma_drapeado(banda, lambda x, y: T.h(x, y) - ENTERRADO_LINEAL, lambda x, y: T.h(x, y) + VALLA_ALTURA - 0.1, T)
+    out = [("valla_perimetral", postes, "valla_metal")]
+    if panel is not None:
+        out.append(("valla_perimetral_malla", panel, "valla_malla"))
+    return out
+
+
+def faldon_exterior(T, caja):
+    """Anillo de terreno SIN colision alrededor de `caja` (x0, norte0, x1, norte1; el borde de la malla del terreno).
+    Se extiende FALDON_EXTENSION m; cada vertice toma la cota del punto mas cercano del borde (T.h) menos una caida suave
+    (FALDON_CAIDA * distancia) y una ondulacion de baja frecuencia que crece con la distancia. Mesh local (x, norte, z)."""
+    x0, y0, x1, y1 = caja
+    ds = np.array(FALDON_ANILLOS[1:])
+    dentro = lambda a, b: np.arange(a, b + 1e-6, FALDON_PASO)
+    xs = np.concatenate([x0 - ds[::-1], dentro(x0, x1), x1 + ds])
+    ys = np.concatenate([y0 - ds[::-1], dentro(y0, y1), y1 + ds])
+    X, Y = np.meshgrid(xs, ys)
+    dx = np.maximum(np.maximum(x0 - X, X - x1), 0)
+    dy = np.maximum(np.maximum(y0 - Y, Y - y1), 0)
+    d = np.hypot(dx, dy)
+    base = T.h(np.clip(X, x0, x1), np.clip(Y, y0, y1))
+    ondas = 0.5 * (np.sin(X / 170.0 + 0.7) + np.sin(Y / 230.0 + 2.0) + np.sin((X + Y) / 310.0))
+    amp = np.clip(d / 300.0, 0.0, 1.0)
+    Z = base - FALDON_CAIDA * d + 2.5 * ondas * amp - 0.05 * (d == 0)
+    ny, nx = X.shape
+    idx = np.arange(nx * ny).reshape(ny, nx)
+    a, b, c, e = idx[:-1, :-1], idx[:-1, 1:], idx[1:, 1:], idx[1:, :-1]
+    xc = (xs[:-1] + xs[1:]) / 2
+    yc = (ys[:-1] + ys[1:]) / 2
+    XC, YC = np.meshgrid(xc, yc)
+    fuera = ~((XC > x0) & (XC < x1) & (YC > y0) & (YC < y1))     # se descarta el interior (lo cubre el terreno)
+    a, b, c, e = a[fuera], b[fuera], c[fuera], e[fuera]
+    caras = np.vstack([np.column_stack([a, b, c]), np.column_stack([a, c, e])])
+    verts = np.column_stack([X.ravel(), Y.ravel(), Z.ravel()])
+    m = trimesh.Trimesh(verts, caras, process=False)
+    m.remove_unreferenced_vertices()
+    return m
 
 
 # ---------------------------------------------------------------- vegetacion y coches
@@ -1706,6 +1784,12 @@ def main():
     stats.update({k: v for k, v in props["stats"].items() if k != "por_parking"})
     piezas = piezas + props["piezas"]
 
+    sx0, sy0, sx1, sy1 = geo["suelo"].bounds
+    q = T.paso_bloque or 1.0   # la malla se redondea hacia fuera a multiplos del bloque
+    bbox_malla = list(geo["suelo"].bounds) if T.es_plano else [
+        math.floor(sx0 / q) * q, math.floor(sy0 / q) * q, math.ceil(sx1 / q) * q, math.ceil(sy1 / q) * q]
+    piezas.append(("exterior", faldon_exterior(T, bbox_malla), "campo"))   # sin -col: sin colision
+
     escena = trimesh.Scene()
     for nombre, mesh, clave in piezas:
         if mesh is None:
@@ -1725,10 +1809,6 @@ def main():
 
     campus = geo["campus"]
     minx, miny, maxx, maxy = campus.bounds
-    sx0, sy0, sx1, sy1 = geo["suelo"].bounds
-    q = T.paso_bloque or 1.0   # la malla se redondea hacia fuera a multiplos del bloque
-    bbox_malla = list(geo["suelo"].bounds) if T.es_plano else [
-        math.floor(sx0 / q) * q, math.floor(sy0 / q) * q, math.ceil(sx1 / q) * q, math.ceil(sy1 / q) * q]
     meta = {
         "origen": {"lat": mapa.origen[0], "lon": mapa.origen[1], "E_utm25830": mapa.E0, "N_utm25830": mapa.N0},
         "ejes_gltf": "x=este, y=altura, z=-norte (metros)",

@@ -306,6 +306,34 @@ func _ejecutar() -> void:
 		comprobar("k6) rayo horizontal por el centro de la copa (a 75 % de la altura) no choca con nada", rcp.is_empty(),
 				"choca en %s" % describir(rcp))
 
+	# m) materiales procedurales y bordes del campus
+	var mat_asfalto: Material = null
+	var mat_edif: Material = null
+	var mat_suelo: Material = null
+	for h: Node in mapa.find_children("*", "MeshInstance3D", true, false):
+		var mi := h as MeshInstance3D
+		if mi.mesh == null or mi.mesh.get_surface_count() == 0:
+			continue
+		var nm: String = String(mi.mesh.surface_get_material(0).resource_name) if mi.mesh.surface_get_material(0) != null else ""
+		if nm == "camino_asfalto" and mat_asfalto == null:
+			mat_asfalto = mi.get_surface_override_material(0)
+		elif nm == "edificio" and mat_edif == null:
+			mat_edif = mi.get_surface_override_material(0)
+		elif nm == "suelo" and mat_suelo == null:
+			mat_suelo = mi.get_surface_override_material(0)
+	var tri_ok: bool = mat_asfalto is StandardMaterial3D and (mat_asfalto as StandardMaterial3D).uv1_triplanar 			and (mat_asfalto as StandardMaterial3D).uv1_world_triplanar 			and (mat_asfalto as StandardMaterial3D).albedo_texture != null
+	comprobar("m1) camino_asfalto: StandardMaterial3D triplanar mundial con textura", tri_ok)
+	comprobar("m1b) suelo triplanar y edificio con ShaderMaterial de fachada",
+			mat_suelo is StandardMaterial3D and (mat_suelo as StandardMaterial3D).uv1_triplanar
+			and mat_edif is ShaderMaterial)
+	var valla: Node = mapa.find_child("valla_perimetral", true, false)
+	comprobar("m2) existe valla_perimetral (sin colision)",
+			valla is MeshInstance3D and valla.find_children("*", "StaticBody3D", true, false).is_empty())
+	var exterior: Node = mapa.find_child("exterior", true, false)
+	comprobar("m3) existe exterior (malla) sin colision",
+			exterior is MeshInstance3D and exterior.find_children("*", "StaticBody3D", true, false).is_empty()
+			and exterior.find_children("*", "CollisionShape3D", true, false).is_empty())
+
 	print("RESULTADO: %s (%d fallos)" % ["PASS" if fallos == 0 else "FAIL", fallos])
 	main.queue_free()
 	await process_frame
