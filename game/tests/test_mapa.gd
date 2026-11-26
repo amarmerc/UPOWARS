@@ -138,7 +138,7 @@ func _ejecutar() -> void:
 
 	# b) cada spawn: suelo a la altura del terreno (+-0,3 m) y cápsula libre
 	var spawns: Array = main.spawns
-	comprobar("b0) spawns cargados", spawns.size() == 6, "n=%d" % spawns.size())
+	comprobar("b0) spawns cargados (6 del campus + campo de práctica)", spawns.size() == 7, "n=%d" % spawns.size())
 	var caps := CapsuleShape3D.new()
 	caps.radius = 0.35
 	caps.height = 1.8

@@ -21,6 +21,9 @@ extends CharacterBody3D
 @export var gravedad: float = 20.0
 @export var altura_salto: float = 1.0
 
+@export_group("Combate")
+@export var tiempo_reaparicion: float = 2.0
+
 @export_group("Dimensiones (m)")
 @export var altura_pie: float = 1.8
 @export var altura_agachado: float = 1.2
@@ -30,29 +33,49 @@ extends CharacterBody3D
 
 ## Si es falso el jugador no se mueve ni procesa entrada (menú abierto).
 var activo: bool = false
+## Combate: el jugador muerto no se mueve y reaparece en `punto_reaparicion` tras `tiempo_reaparicion` s.
+var muerto: bool = false
+var punto_reaparicion: Vector3 = Vector3.ZERO
+var yaw_reaparicion: float = 0.0
+## Multiplicador de velocidad segun el arma en la mano (lo fija el gestor de armas).
+var mult_velocidad_arma: float = 1.0
 var vuelo: bool = false
 var agachado: bool = false
 var nombre_spawn: String = ""
 
+signal reaparecido
+
 var _pitch: float = 0.0
+var _ret_pitch: float = 0.0
+var _ret_yaw: float = 0.0
+var _t_muerte: float = 0.0
 var _capsula: CapsuleShape3D
 
 @onready var _cabeza: Node3D = $Cabeza
 @onready var _colision: CollisionShape3D = $Colision
+@onready var camara: Camera3D = $Cabeza/Camara
+@onready var salud: Salud = $Salud
+@onready var hitboxes: Hitboxes = $Hitboxes
+@onready var gestor: GestorArmas = $Armas
 
 
 func _ready() -> void:
 	_capsula = _colision.shape as CapsuleShape3D
 	_aplicar_postura(false)
 	_cabeza.position.y = ojos_pie
+	salud.muerto.connect(_on_muerto)
 
 
 ## Coloca al jugador (pos en coordenadas del juego, yaw en grados) y lo deja en pie.
 func teletransportar(pos: Vector3, yaw_deg: float) -> void:
 	global_position = pos
 	rotation = Vector3(0.0, deg_to_rad(yaw_deg), 0.0)
+	punto_reaparicion = pos
+	yaw_reaparicion = yaw_deg
 	_pitch = 0.0
-	_cabeza.rotation.x = 0.0
+	_ret_pitch = 0.0
+	_ret_yaw = 0.0
+	_aplicar_rotacion_cabeza()
 	velocity = Vector3.ZERO
 	_poner_vuelo(false)
 	_aplicar_postura(false)
@@ -64,13 +87,13 @@ func velocidad_horizontal() -> float:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not activo:
+	if not activo or muerto:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m := event as InputEventMouseMotion
 		rotate_y(-m.relative.x * sensibilidad)
 		_pitch = clampf(_pitch - m.relative.y * sensibilidad, -deg_to_rad(89.0), deg_to_rad(89.0))
-		_cabeza.rotation.x = _pitch
+		_aplicar_rotacion_cabeza()
 	elif event.is_action_pressed("alternar_raton"):
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -78,6 +101,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event.is_action_pressed("modo_vuelo"):
 		_poner_vuelo(not vuelo)
+	elif event.is_action_pressed("suicidio"):
+		salud.recibir_dano(9999.0, "torso", 1.0, null)
 	elif event is InputEventMouseButton and event.pressed \
 			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -86,6 +111,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	# La cámara se acerca suavemente a la altura de ojos de la postura actual.
 	var ojos: float = ojos_agachado if agachado else ojos_pie
+	if muerto:
+		_procesar_muerte(delta)
+		return
 	_cabeza.position.y = move_toward(_cabeza.position.y, ojos, vel_transicion_camara * delta)
 	if not activo:
 		return
@@ -93,6 +121,47 @@ func _physics_process(delta: float) -> void:
 		_mover_vuelo(delta)
 	else:
 		_mover_suelo(delta)
+
+
+## Pitch/yaw de retroceso (rad) que se suman a la mira; los fija el gestor de armas.
+func fijar_retroceso(pitch: float, yaw: float) -> void:
+	_ret_pitch = pitch
+	_ret_yaw = yaw
+	_aplicar_rotacion_cabeza()
+
+
+func _aplicar_rotacion_cabeza() -> void:
+	_cabeza.rotation = Vector3(_pitch + _ret_pitch, _ret_yaw, 0.0)
+
+
+func _on_muerto(_atacante: Node) -> void:
+	muerto = true
+	_t_muerte = 0.0
+	hitboxes.activar(false)
+	fijar_retroceso(0.0, 0.0)
+	_cabeza.rotation = Vector3(deg_to_rad(-20.0), 0.0, deg_to_rad(18.0))
+
+
+func _procesar_muerte(delta: float) -> void:
+	_t_muerte += delta
+	_cabeza.position.y = move_toward(_cabeza.position.y, 0.5, 3.0 * delta)
+	if not vuelo:
+		velocity.y -= gravedad * delta
+		velocity.x = move_toward(velocity.x, 0.0, friccion_suelo * delta)
+		velocity.z = move_toward(velocity.z, 0.0, friccion_suelo * delta)
+		move_and_slide()
+	if _t_muerte >= tiempo_reaparicion:
+		reaparecer()
+
+
+## Vuelve al punto de aparicion con vida 100, armadura 0 y municion llena.
+func reaparecer() -> void:
+	muerto = false
+	salud.reiniciar()
+	hitboxes.activar(true)
+	teletransportar(punto_reaparicion, yaw_reaparicion)
+	gestor.reiniciar()
+	reaparecido.emit()
 
 
 func _poner_vuelo(valor: bool) -> void:
@@ -125,7 +194,7 @@ func _mover_suelo(delta: float) -> void:
 	var entrada: Vector2 = Input.get_vector("mover_izquierda", "mover_derecha",
 			"mover_adelante", "mover_atras")
 	var dir: Vector3 = transform.basis * Vector3(entrada.x, 0.0, entrada.y)
-	var objetivo: Vector3 = dir.normalized() * _velocidad_objetivo()
+	var objetivo: Vector3 = dir.normalized() * _velocidad_objetivo() * mult_velocidad_arma
 
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var ritmo: float
@@ -165,3 +234,5 @@ func _aplicar_postura(abajo: bool) -> void:
 	var h: float = altura_agachado if abajo else altura_pie
 	_capsula.height = h
 	_colision.position.y = h * 0.5
+	if hitboxes != null:
+		hitboxes.ajustar_altura(h)

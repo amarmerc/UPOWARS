@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"fusil"
+nombre = "Fusil R-7"
+ranura = 1
+cuerpo_a_cuerpo = false
+cadencia = 10.0
+automatica = true
+tiempo_cambio = 0.75
+dano_base = 33.0
+mult_cabeza = 4.0
+mult_torso = 1.0
+mult_piernas = 0.75
+alcance = 150.0
+caida_inicio = 30.0
+caida_factor_min = 0.55
+penetracion_armadura = 0.7
+cargador = 30
+reserva = 90
+tiempo_recarga = 2.4
+dispersion_quieto = 0.15
+dispersion_agachado = 0.08
+dispersion_movimiento = 2.2
+dispersion_aire = 4.5
+retroceso_pitch = PackedFloat32Array(0.5, 0.6, 0.7, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.4, 0.35, 0.35, 0.35, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25)
+retroceso_yaw = PackedFloat32Array(0.0, 0.05, -0.1, 0.15, 0.2, 0.15, -0.1, -0.25, -0.3, -0.2, 0.1, 0.3, 0.35, 0.2, -0.1, -0.3, -0.4, -0.3, -0.1, 0.2, 0.35, 0.4, 0.3, 0.0, -0.3, -0.4, -0.3, -0.1, 0.2, 0.3)
+retroceso_recuperacion = 14.0
+retroceso_pausa = 0.12
+velocidad_mov = 0.9

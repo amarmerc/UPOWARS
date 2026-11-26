@@ -203,14 +203,77 @@ Abrir el proyecto `game/` con `D:\Juegos\godot\Godot_v4.7.2-stable_win64.exe` (i
 
 Controles: WASD mover, ratón mirar, Espacio saltar, Shift caminar lento, Ctrl agacharse, Esc liberar/capturar
 el ratón, M reabrir el selector de spawn, F1 modo vuelo/noclip (20 m/s, x3 con Shift; Espacio/Ctrl suben/bajan).
-Las acciones están en el Input Map de `game/project.godot`. Colisión: los nodos `-col` del .glb se importan como
-StaticBody3D trimesh (automático en Godot); el muro `limite` se oculta y los materiales se aplican en `game/scripts/mapa.gd`.
+Combate: clic izquierdo disparar (mantenido = ráfaga si el arma es automática), clic derecho ataque fuerte con la navaja,
+R recargar, 1 fusil, 2 pistola, 3 navaja, rueda del ratón siguiente/anterior arma, Q última arma, F3 mostrar/ocultar los
+datos de depuración, K suicidio (pruebas). Las acciones están en el Input Map de `game/project.godot`. Colisión: los nodos
+`-col` del .glb se importan como StaticBody3D trimesh (automático en Godot); el muro `limite` se oculta y los materiales se
+aplican en `game/scripts/mapa.gd`.
 
-Test headless (debe terminar con PASS y código 0):
+## Armas y combate (fase 4a)
+
+Capas de física (`project.godot`): 1 `mundo` (mapa), 2 `hitbox` (zonas de impacto), 3 `cuerpo` (cápsula de movimiento del
+jugador, que ya no la ven los disparos). Los disparos usan la máscara 1+2: el rayo se detiene en lo primero que choque, así
+que una pared delante de una hitbox bloquea el daño.
+
+```
+game/scripts/combate/
+  arma_datos.gd      Resource ArmaDatos: todos los números de un arma
+  salud.gd           nodo Salud: vida, armadura, señales herido(cantidad, zona, atacante) y muerto(atacante)
+  hitboxes.gd        nodo Hitboxes: cabeza, torso y piernas (Area3D ZonaImpacto, capa hitbox); reutilizable por jugador, dianas y bots
+  balistica.gd       Balistica (estática): resolver_disparo(origen, direccion, arma, tirador, rng, dispersion_deg) -> {impacto, punto,
+                     normal, collider, zona, daño, distancia, ...}; dispersion(); calcular_dano(); aplicar(). Sin entrada ni dibujo: RNG inyectable
+  gestor_armas.gd    GestorArmas (hijo del jugador): ranuras, disparo, cadencia, recarga, cambio, retroceso; avanzar(delta) + gatillo
+  viewmodel_capa.gd  arma en primera persona en un SubViewport con mundo propio (no atraviesa paredes) + animaciones
+  efectos.gd         trazadores, fogonazo, marcas de impacto (pool de 64), chispas y sonidos de impacto
+  diana.gd, campo_practica.gd
+game/data/armas/     fusil_r7.tres, pistola_p9.tres, navaja.tres
+```
+
+**Equilibrar**: editar los `.tres` de `game/data/armas/` (en el editor de Godot o a mano; no hace falta tocar código).
+Campos de `ArmaDatos`: `cadencia` (disparos/s), `automatica`, `tiempo_cambio`; `dano_base`, `mult_cabeza/torso/piernas`,
+`alcance`, `caida_inicio` y `caida_factor_min` (el daño cae linealmente desde `caida_inicio` hasta `alcance`, donde vale
+`dano_base x caida_factor_min`); `penetracion_armadura` (fracción del daño que llega a la vida si hay armadura; el resto lo
+absorbe la armadura a 2 puntos de daño por punto); `cargador`, `reserva`, `tiempo_recarga`; `dispersion_quieto/agachado/
+movimiento/aire` (semiángulo del cono en grados; en suelo se interpola con la velocidad entre quieto/agachado y movimiento
+hasta 5 m/s); `retroceso_pitch` y `retroceso_yaw` (grados por disparo de la ráfaga, el último valor se repite),
+`retroceso_recuperacion` (grados/s) y `retroceso_pausa`; `velocidad_mov` (multiplicador de velocidad del jugador). La navaja
+usa `cuerpo_a_cuerpo`, `alcance` 2 m, `dano_base` (ligero, 40) y `dano_fuerte` / `intervalo_fuerte` (clic derecho, 65).
+
+| Arma | Ranura | Disparo | Cadencia | Cargador / reserva | Daño | Recarga |
+|---|---|---|---|---|---|---|
+| Fusil R-7 | 1 | automático | 10/s | 30 / 90 | 33 (cabeza x4, piernas x0,75), pen. 0,7 | 2,4 s |
+| Pistola P-9 | 2 | semiautomática | 6/s máx. | 12 / 48 | 28, pen. 0,5 | 1,7 s |
+| Navaja | 3 | cuerpo a cuerpo, 2 m | 2/s (fuerte 1,1 s) | - | 40 / 65, pen. 0,85 | - |
+
+Retroceso: cada disparo suma a la mira (`Jugador.fijar_retroceso`) un offset de pitch/yaw según su posición en la ráfaga;
+si se deja de disparar (`retroceso_pausa`) la mira vuelve sola a `retroceso_recuperacion` grados/s (el ratón no se corrige).
+Armadura: se aplica a todas las zonas por igual.
+
+**Muerte**: al llegar a 0 de vida el jugador queda fijo (cámara baja y ladeada) `tiempo_reaparicion` = 2 s y reaparece en el
+spawn elegido con vida 100, armadura 0 y munición llena. K lo provoca en pruebas.
+
+**Campo de práctica**: spawn `campo_practica` ("Campo de práctica" en el selector de M) en (x 126, z -148), la explanada llana
+al sureste de la Biblioteca 25 (~90 m de ella), entre el cauce y el polideportivo; el punto de tiro mira al sur y los 22 x 60 m
+de delante no tienen troncos, coches ni edificios. 8 dianas a 10, 20, 35 y 50 m (a +-2,5 / 4 / 6 / 8 m del eje; 3 con armadura 100,
+con chaleco amarillo); al morir caen y reaparecen a los 3 s; muestran el daño en números flotantes; una línea amarilla marca el
+punto de tiro y carteles con la distancia a la derecha. El spawn se genera en `scripts/generar_spawns.py` (constante
+`CAMPO_PRACTICA`), así que sobrevive a regenerar `spawns.json`; las dianas las coloca `campo_practica.gd` en runtime sobre el
+terreno a partir de ese spawn (mismo yaw y posición).
+
+**Sonidos**: `uv run python scripts/generar_sonidos.py` (numpy + wave, semilla fija) regenera los WAV sintéticos de
+`game/assets/sonidos/`; después, reimportar en Godot.
+
+Tests headless (deben terminar con PASS y código 0):
 
 ```
 Godot_v4.7.2-stable_win64_console.exe --headless --path game --import
 Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://tests/test_mapa.gd
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://tests/test_combate.gd
 ```
+
+`test_combate.gd` cubre daño por zona y armadura, caída por distancia, cargador/recarga/cadencia, bloqueo por el mundo,
+dispersión, muerte y reaparición de dianas y jugador (usa las dianas reales del campo de práctica). Las capturas
+(`tests/captura.gd`, con GPU) incluyen `combate_campo_fusil`, `combate_hud`, `combate_campo_vista`, `combate_pistola` y
+`combate_navaja`.
 
 Diseño y plan del proyecto: [docs/PROYECTO.md](docs/PROYECTO.md).

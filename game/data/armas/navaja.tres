@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"navaja"
+nombre = "Navaja"
+ranura = 3
+cuerpo_a_cuerpo = true
+cadencia = 2.0
+automatica = false
+tiempo_cambio = 0.4
+dano_base = 40.0
+mult_cabeza = 1.0
+mult_torso = 1.0
+mult_piernas = 1.0
+alcance = 2.0
+caida_inicio = 2.0
+caida_factor_min = 1.0
+penetracion_armadura = 0.85
+dano_fuerte = 65.0
+intervalo_fuerte = 1.1
+cargador = 0
+reserva = 0
+tiempo_recarga = 0.0
+dispersion_quieto = 0.0
+dispersion_agachado = 0.0
+dispersion_movimiento = 0.0
+dispersion_aire = 0.0
+retroceso_pitch = PackedFloat32Array(0.0)
+retroceso_yaw = PackedFloat32Array(0.0)
+retroceso_recuperacion = 30.0
+retroceso_pausa = 0.1
+velocidad_mov = 1.05

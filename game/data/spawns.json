@@ -96,6 +96,20 @@
         "aparcamiento": "P11",
         "area_m2": 14582
       }
+    },
+    {
+      "id": "campo_practica",
+      "nombre": "Campo de práctica",
+      "pos": [
+        126.0,
+        -1.666,
+        -148.0
+      ],
+      "y_terreno": -1.766,
+      "yaw_deg": 180.0,
+      "info": {
+        "campo_practica": "dianas a 10, 20, 35 y 50 m hacia el sur"
+      }
     }
   ],
   "test_pasillo": {

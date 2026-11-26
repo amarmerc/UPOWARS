@@ -9,12 +9,16 @@ var spawn_actual: Dictionary = {}
 @onready var jugador: Jugador = $Jugador
 @onready var menu: CanvasLayer = $MenuSpawn
 @onready var hud: CanvasLayer = $Hud
+@onready var efectos: EfectosCombate = $Efectos
+@onready var campo: CampoPractica = $CampoPractica
 
 
 func _ready() -> void:
 	spawns = _leer_spawns()
 	menu.cargar(spawns)
 	menu.spawn_elegido.connect(_on_spawn_elegido)
+	hud.vincular(jugador)
+	efectos.vincular(jugador.gestor)
 	if not spawns.is_empty():
 		_colocar(spawns[0])  # el jugador espera inmóvil en el primer spawn hasta elegir
 	jugador.activo = false

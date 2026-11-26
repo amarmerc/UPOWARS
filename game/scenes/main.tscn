@@ -6,6 +6,8 @@
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/spawn_menu.tscn" id="6"]
+[ext_resource type="Script" path="res://scripts/combate/efectos.gd" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/campo_practica.tscn" id="8"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 sky_top_color = Color(0.25, 0.45, 0.8, 1)
@@ -50,3 +52,8 @@ environment = SubResource("Environment_1")
 [node name="Hud" parent="." unique_id=407287532 instance=ExtResource("5")]
 
 [node name="MenuSpawn" parent="." unique_id=1273269973 instance=ExtResource("6")]
+
+[node name="Efectos" type="Node3D" parent="."]
+script = ExtResource("7")
+
+[node name="CampoPractica" parent="." instance=ExtResource("8")]

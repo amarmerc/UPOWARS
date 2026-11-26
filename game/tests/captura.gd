@@ -177,4 +177,118 @@ func _ejecutar() -> void:
 		var ruta: String = salida.path_join(String(v[0]) + ".png")
 		img.save_png(ruta)
 		print("captura ", ruta, " ", img.get_size())
+	await _combate(main, cam, salida)
 	quit(0)
+
+
+## Guarda la ventana actual como PNG.
+func _guardar(salida: String, nombre: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img: Image = root.get_viewport().get_texture().get_image()
+	var ruta: String = salida.path_join(nombre + ".png")
+	img.save_png(ruta)
+	print("captura ", ruta, " ", img.get_size())
+
+
+## Un disparo del gestor sin teclado (gatillo pulsado un instante).
+func _disparar(gestor: GestorArmas, objetivo: Vector3, cam: Camera3D) -> void:
+	cam.look_at(objetivo, Vector3.UP)
+	gestor.gatillo = true
+	gestor.avanzar(1.0 / 60.0)
+	gestor.gatillo = false
+	gestor.avanzar(1.0 / 60.0)
+
+
+## Vistas del campo de practica con el fusil en mano, del HUD y de cada arma. Simula disparos antes de capturar.
+func _combate(main: Node, cam_libre: Camera3D, salida: String) -> void:
+	var jugador: Jugador = main.get_node("Jugador")
+	var campo: CampoPractica = main.campo
+	var gestor: GestorArmas = jugador.gestor
+	var vm: CanvasLayer = gestor.get_node("Viewmodel")
+	var n: int = 0
+	while not campo.listo and n < 120:
+		await physics_frame
+		n += 1
+	var sp: Dictionary = {}
+	for s: Dictionary in main.spawns:
+		if s["id"] == "campo_practica":
+			sp = s
+	if sp.is_empty():
+		push_error("no hay spawn campo_practica")
+		return
+	main._colocar(sp)
+	jugador.activo = true  # sin teclado: solo cae al suelo y fija is_on_floor
+	jugador.set_physics_process(true)
+	jugador.camara.make_current()
+	gestor.entrada_manual = true
+	gestor.rng.seed = 4242
+	for i in 12:
+		await physics_frame
+	for i in 70:  # fin del cambio de arma inicial
+		gestor.avanzar(1.0 / 60.0)
+	main.hud.visible = false
+	main.hud.get_node("Info").visible = false
+	var d: Array[Diana] = campo.dianas
+	var ojo: Vector3 = jugador.camara.global_position
+	var fwd: Vector3 = campo.adelante
+
+	# 1. campo de practica con el fusil: tres disparos al suelo (marcas, chispas) y uno a una diana (trazador, fogonazo)
+	for k in 3:
+		var p: Vector3 = campo.punto_tiro + fwd * (14.0 + 3.0 * k) + fwd.cross(Vector3.UP) * (1.0 - k * 1.2)
+		await _disparar(gestor, Vector3(p.x, d[2].global_position.y, p.z), jugador.camara)
+		for i in 10:
+			gestor.avanzar(1.0 / 60.0)
+			await process_frame
+	jugador.camara.look_at(d[3].centro("torso"), Vector3.UP)
+	for i in 30:
+		gestor.avanzar(1.0 / 60.0)
+	await _disparar(gestor, d[3].centro("torso"), jugador.camara)
+	await process_frame
+	await _guardar(salida, "combate_campo_fusil")
+
+	# 2. HUD completo: disparo a la cabeza de la diana a 20 m (hit marker rojo, numero de dano), vineta de dano recibido
+	for i in 40:
+		gestor.avanzar(1.0 / 60.0)
+		await process_frame
+	main.hud.visible = true
+	jugador.salud.recibir_dano(35.0, "torso", 1.0, null)
+	jugador.salud.armadura = 60.0
+	await _disparar(gestor, d[2].centro("cabeza"), jugador.camara)
+	for i in 2:
+		await process_frame
+	await _guardar(salida, "combate_hud")
+
+	# 3. vista del campo desde atras y arriba (dianas, carteles, armaduras)
+	vm.visible = false
+	main.hud.visible = false
+	cam_libre.make_current()
+	cam_libre.fov = 70.0
+	var base: Vector3 = campo.punto_tiro - fwd * 6.0 + Vector3(0, 5.0, 0)
+	cam_libre.global_position = base
+	cam_libre.look_at(campo.punto_tiro + fwd * 30.0 + Vector3(0, 1.0, 0), Vector3.UP)
+	for i in 6:
+		await process_frame
+	await _guardar(salida, "combate_campo_vista")
+	vm.visible = true
+	jugador.camara.make_current()
+
+	# 4. las tres armas en mano (HUD visible), tras unos disparos / un tajo
+	main.hud.visible = true
+	jugador.salud.reiniciar()
+	for idx in [1, 2]:
+		gestor.cambiar_arma(idx)
+		for i in 70:
+			gestor.avanzar(1.0 / 60.0)
+			await process_frame
+		if idx == 1:
+			await _disparar(gestor, d[1].centro("torso"), jugador.camara)
+		else:
+			gestor.gatillo_alt = true
+			gestor.avanzar(1.0 / 60.0)
+			gestor.gatillo_alt = false
+			gestor.avanzar(1.0 / 60.0)
+			for i in 12:
+				await process_frame
+		for i in 2:
+			await process_frame
+		await _guardar(salida, "combate_" + ("pistola" if idx == 1 else "navaja"))

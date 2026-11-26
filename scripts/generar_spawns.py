@@ -300,6 +300,21 @@ def spawn_aparcamiento(ctx):
     return p, yaw_hacia(p.x, p.y, centro.x, centro.y), {"aparcamiento": nombre, "area_m2": round(poly.area)}
 
 
+# Campo de practica (fase 4a): explanada llana y libre al sureste de la Biblioteca (edificio 25), ~90 m de ella, entre el
+# cauce y el polideportivo. Punto de tiro en el plano local (este, norte); mira al sur (yaw 180 de Godot). Las dianas
+# (game/scripts/combate/campo_practica.gd) salen a 10, 20, 35 y 50 m en esa direccion. Lo eligio un barrido de la colision
+# del mapa: 22 x 60 m sin troncos, coches ni edificios (margen 6 m) y desnivel < 0,7 m.
+CAMPO_PRACTICA = (126.0, 148.0, 180.0)
+
+
+def spawn_campo_practica(ctx):
+    x, y, yaw = CAMPO_PRACTICA
+    p = Point(x, y)
+    if not ctx.libre(p):
+        raise SystemExit("El punto de tiro del campo de practica no esta libre")
+    return p, yaw, {"campo_practica": "dianas a 10, 20, 35 y 50 m hacia el sur"}
+
+
 def test_pasillo(ctx, T):
     """Cruza el pasillo central (techo) de lado a lado, perpendicular a su eje, en un punto
     libre de edificios, vallas y pilares cercano al punto medio entre los edificios de PAREJA_TEST."""
@@ -848,6 +863,7 @@ def main():
     for sid, nombre, num in EDIFICIOS:
         cand.append((sid, nombre, *spawn_edificio(ctx, buscar_edificio(ctx, num))))
     cand.append(("aparcamiento", "Aparcamiento", *spawn_aparcamiento(ctx)))
+    cand.append(("campo_practica", "Campo de práctica", *spawn_campo_practica(ctx)))
 
     spawns = []
     for sid, nombre, p, yaw, info in cand:
