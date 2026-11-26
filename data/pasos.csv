@@ -1,0 +1,5 @@
+﻿id,descripcion,x1,z1,x2,z2,ancho_m,galibo_m,notas
+22-24a,Franja abierta entre 22 y 24 (plano del usuario),76.61,-309.35,77.07,-304.1,3,,"Tramo oeste: N-S por el contacto bloque 1373674172 / Edificio 22, desde el final del path 555489166 (76.61, norte 309.35)"
+22-24b,Franja abierta entre 22 y 24 (plano del usuario),77.07,-304.1,94.02,-305.39,3,,"Tramo E-O sobre el contacto 22 (norte) / 24 (sur); prolongado 1 m en el extremo este para cubrir la esquina exterior del giro hacia el tramo c"
+22-24c,Franja abierta entre 22 y 24 (plano del usuario),93.02,-305.31,92.62,-309.56,3,,Tramo N-S sobre el contacto 22 (oeste) / 24 (este): la fachada norte del 24 salta 4 m al norte
+22-24d,Franja abierta entre 22 y 24 (plano del usuario),92.62,-309.56,116.5,-311.58,3,,"Tramo E-O sobre la fachada norte del 24 hasta el salto de fachada de x=117 (norte 311.7 -> 320.6). Coordenadas del juego (x=este, z=-norte)"

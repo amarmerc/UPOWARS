@@ -1,0 +1,187 @@
+{
+  "ejes": "x=este, y=altura, z=-norte (metros)",
+  "origen": {
+    "lat": 37.35575214601319,
+    "lon": -5.937569463953512,
+    "E_utm25830": 239819.03323076307,
+    "N_utm25830": 4138387.2897714367
+  },
+  "spawns": [
+    {
+      "id": "entrada",
+      "nombre": "Entrada principal",
+      "pos": [
+        -486.58,
+        0.1,
+        142.56
+      ],
+      "yaw_deg": -73.7,
+      "info": {
+        "distancia_parada_m": 1.0,
+        "sobre_camino": true
+      }
+    },
+    {
+      "id": "biblioteca",
+      "nombre": "Biblioteca (Edificio 25)",
+      "pos": [
+        62.17,
+        0.1,
+        -213.04
+      ],
+      "yaw_deg": -84.7,
+      "info": {
+        "distancia_fachada_m": 8.0,
+        "sobre_camino": true
+      }
+    },
+    {
+      "id": "pabellon",
+      "nombre": "Pabellón / Gimnasio (Edificio 26)",
+      "pos": [
+        128.58,
+        0.1,
+        -39.64
+      ],
+      "yaw_deg": -85.7,
+      "info": {
+        "distancia_fachada_m": 8.0,
+        "sobre_camino": true
+      }
+    },
+    {
+      "id": "rectorado",
+      "nombre": "Rectorado (Edificio 32)",
+      "pos": [
+        33.29,
+        0.1,
+        176.03
+      ],
+      "yaw_deg": 166.5,
+      "info": {
+        "distancia_fachada_m": 8.0,
+        "sobre_camino": true
+      }
+    },
+    {
+      "id": "eje_central",
+      "nombre": "Eje central (Edificio 8)",
+      "pos": [
+        36.32,
+        0.1,
+        19.02
+      ],
+      "yaw_deg": 120.0,
+      "info": {
+        "distancia_fachada_m": 12.0,
+        "sobre_camino": true
+      }
+    },
+    {
+      "id": "aparcamiento",
+      "nombre": "Aparcamiento",
+      "pos": [
+        292.88,
+        0.1,
+        -352.44
+      ],
+      "yaw_deg": 140.3,
+      "info": {
+        "aparcamiento": "P11",
+        "area_m2": 14582
+      }
+    }
+  ],
+  "test_pasillo": {
+    "descripcion": "pasillo central (techo 1373541639) entre los edificios 8 y 9",
+    "rayo_horizontal": {
+      "desde": [
+        -41.33,
+        1.5,
+        8.14
+      ],
+      "hasta": [
+        -53.81,
+        1.5,
+        15.0
+      ]
+    },
+    "rayo_vertical": {
+      "desde": [
+        -47.57,
+        1.5,
+        11.57
+      ],
+      "hasta": [
+        -47.57,
+        30.0,
+        11.57
+      ],
+      "techo_y_min": 6.6,
+      "techo_y_max": 7.0
+    },
+    "ancho_pasillo_m": 11.2
+  },
+  "test_paso_22_24": {
+    "descripcion": "franja abierta entre los edificios 22 y 24: un rayo a 1,5 m por tramo del eje, de oeste a este",
+    "rayos_horizontales": [
+      {
+        "id": "22-24a",
+        "desde": [
+          76.61,
+          1.5,
+          -309.35
+        ],
+        "hasta": [
+          77.07,
+          1.5,
+          -304.1
+        ]
+      },
+      {
+        "id": "22-24b",
+        "desde": [
+          77.07,
+          1.5,
+          -304.1
+        ],
+        "hasta": [
+          94.02,
+          1.5,
+          -305.39
+        ]
+      },
+      {
+        "id": "22-24c",
+        "desde": [
+          93.02,
+          1.5,
+          -305.31
+        ],
+        "hasta": [
+          92.62,
+          1.5,
+          -309.56
+        ]
+      },
+      {
+        "id": "22-24d",
+        "desde": [
+          92.62,
+          1.5,
+          -309.56
+        ],
+        "hasta": [
+          116.5,
+          1.5,
+          -311.58
+        ]
+      }
+    ],
+    "extremo_este": [
+      116.5,
+      1.5,
+      -311.58
+    ]
+  }
+}

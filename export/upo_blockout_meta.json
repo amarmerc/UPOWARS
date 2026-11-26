@@ -20,6 +20,9 @@
   },
   "recuentos": {
     "edificios": 73,
+    "edificios_partidos": 3,
+    "pilares": 499,
+    "techos": 21,
     "caminos_tertiary": 30,
     "caminos_trunk_link": 1,
     "caminos_residential": 41,
@@ -35,11 +38,12 @@
     "zonas_pista": 9,
     "zonas_aparcamiento": 18,
     "muros-col": 31,
-    "vallas-col": 1
+    "vallas-col": 1,
+    "pistas_padel": 2
   },
   "verificacion": {
-    "nodos": 91,
-    "triangulos": 9657,
+    "nodos": 113,
+    "triangulos": 15797,
     "bounds": [
       [
         -765.0030517578125,
@@ -52,7 +56,7 @@
         635.44873046875
       ]
     ],
-    "edificios": 73,
+    "edificios": 94,
     "no_watertight": []
   }
 }

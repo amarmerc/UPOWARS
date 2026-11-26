@@ -6,16 +6,21 @@ Proyeccion: EPSG:25830 (UTM 30N) con origen en el centroide del contorno del
 campus. Ejes glTF (Y arriba): x = este, y = altura, z = -norte.
 
 Salidas: export/upo_blockout.glb, export/upo_blockout_meta.json,
-export/preview.png y data/alturas.csv (editable; solo se anaden filas nuevas;
-columna `fuente`: defecto|osm|lidar|manual).
+export/preview.png, export/zoom_22_24.png y data/alturas.csv (editable; solo se anaden
+filas nuevas; columna `fuente`: defecto|osm|lidar|manual; columna `forma`: volumen|techo).
+forma=techo: losa de 0,4 m (cara superior a la altura de cubierta) sobre pilares de 0,4x0,4 m.
+data/pasos.csv: pasos peatonales (segmento + ancho + galibo) que parten los edificios volumen.
 Los nodos acabados en `-col` generan colision automatica al importar en Godot.
 
 Uso: uv run python scripts/generar_blockout.py [--entrada data/raw/osm_upo.json]
-     [--alturas data/alturas.csv] [--salida export/upo_blockout.glb] [--sin-preview]
+     [--alturas data/alturas.csv] [--pasos data/pasos.csv] [--salida export/upo_blockout.glb] [--sin-preview]
+     [--no-copiar-godot]   (por defecto copia el .glb a game/assets/mapa/)
 """
 import argparse
 import csv
 import json
+import math
+import shutil
 import re
 import sys
 import unicodedata
@@ -25,18 +30,26 @@ from pathlib import Path
 import numpy as np
 import trimesh
 from pyproj import Transformer
-from shapely.geometry import LineString, MultiPolygon, Polygon, box
+from shapely.affinity import rotate
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 from shapely.ops import linemerge, polygonize, unary_union
 from shapely.validation import make_valid
 
 CAMPUS_ID = 39935092
+DESTINO_GODOT = "game/assets/mapa/upo_blockout.glb"
 PLANTA_M = 3.5
 PLANTAS_DEFECTO = 3
 ALTURA_DEFECTO = PLANTAS_DEFECTO * PLANTA_M
 MARGEN_SUELO = 50.0
 MARGEN_CAMINOS = 30.0
 MARGEN_LIMITE = 20.0
-CAMPOS_CSV = ["osm_id", "nombre", "building", "plantas", "altura_m", "base_m", "notas", "fuente"]
+CAMPOS_CSV = ["osm_id", "nombre", "building", "forma", "plantas", "altura_m", "base_m", "notas", "fuente"]
+FORMAS = ("volumen", "techo")
+GROSOR_TECHO = 0.4
+PILAR_LADO = 0.4
+PILAR_SEP = 8.0
+PILAR_INTERIOR_MIN = 15.0   # huella > 15 m en ambas direcciones -> pilares interiores
+CAMPOS_PASOS = ["id", "descripcion", "x1", "z1", "x2", "z2", "ancho_m", "galibo_m", "notas"]
 # fuente: defecto | osm | lidar | manual (ver scripts/alturas_lidar.py; solo se pisan defecto y lidar)
 
 ANCHO_CAMINO = {
@@ -62,8 +75,9 @@ COLORES = {
     "camino_asfalto": (60, 62, 66, 255), "camino_peatonal": (170, 170, 172, 255),
     "verde": (110, 160, 90, 255), "pista": (176, 90, 70, 255),
     "agua": (70, 130, 190, 255), "aparcamiento": (130, 132, 136, 255),
-    "muros": (160, 158, 150, 255), "vallas": (110, 90, 70, 255),
+    "pilar": (120, 122, 128, 255), "muros": (160, 158, 150, 255), "vallas": (110, 90, 70, 255),
     "limite": (255, 60, 60, int(0.15 * 255)),
+    "cristal_padel": (150, 205, 255, int(0.35 * 255)),
 }
 
 
@@ -72,6 +86,9 @@ def slug(texto):
     t = unicodedata.normalize("NFKD", texto or "").encode("ascii", "ignore").decode()
     t = re.sub(r"[^a-zA-Z0-9]+", "-", t).strip("-").lower()
     return t[:40] or "sin-nombre"
+
+
+RX_NUM_EDIF = re.compile(r"^Edi\w*\s+([^\s.]+)", re.I)  # tolera typos: Edifiicio, Edificico...
 
 
 def num(v):
@@ -230,6 +247,15 @@ def default_edificio(tags):
     return PLANTAS_DEFECTO, "", 0.0, "por defecto 3 plantas"
 
 
+def forma_defecto(building):
+    return "techo" if building == "roof" else "volumen"
+
+
+def forma_de(fila):
+    f = (fila.get("forma") or "").strip().lower()
+    return f if f in FORMAS else forma_defecto((fila.get("building") or "").strip())
+
+
 def cargar_alturas(ruta, edificios):
     """Lee el CSV (si existe), anade filas nuevas y lo reescribe. Devuelve dict id->fila."""
     ruta = Path(ruta)
@@ -239,6 +265,7 @@ def cargar_alturas(ruta, edificios):
             for r in csv.DictReader(f):
                 if not (r.get("fuente") or "").strip():  # CSV antiguo sin columna fuente
                     r["fuente"] = "osm" if "de OSM" in (r.get("notas") or "") else "defecto"
+                r["forma"] = forma_de(r)
                 filas[str(r["osm_id"]).strip()] = r
     nuevas = 0
     for wid, tags in edificios:
@@ -248,6 +275,7 @@ def cargar_alturas(ruta, edificios):
         pl, alt, base, nota = default_edificio(tags)
         filas[k] = {"osm_id": k, "nombre": tags.get("name", ""),
                     "building": tags.get("building", tags.get("man_made", "")),
+                    "forma": forma_defecto(tags.get("building")),
                     "plantas": pl, "altura_m": alt, "base_m": base, "notas": nota,
                     "fuente": "osm" if "de OSM" in nota else "defecto"}
         nuevas += 1
@@ -270,8 +298,152 @@ def resolver(fila):
     return max(alt, 0.05), base
 
 
+# ---------------------------------------------------------------- pistas de padel
+GROSOR_CERRAMIENTO = 0.15
+ABERTURA_PADEL = 1.2
+
+
+def cargar_pistas(ruta):
+    """Lee data/pistas.csv (osm_id, nombre, altura_cerramiento_m): pistas con cerramiento perimetral."""
+    ruta = Path(ruta)
+    if not ruta.exists():
+        return []
+    pistas = []
+    with open(ruta, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            try:
+                wid = int(r["osm_id"])
+            except (KeyError, ValueError, TypeError):
+                print(f"AVISO: fila de pistas sin osm_id valido: {r}", file=sys.stderr)
+                continue
+            pistas.append({"id": wid, "nombre": (r.get("nombre") or "").strip(),
+                           "altura": num(r.get("altura_cerramiento_m")) or 3.0})
+    return pistas
+
+
+def cerramiento_pista(poly, grosor=GROSOR_CERRAMIENTO, abertura=ABERTURA_PADEL):
+    """Contorno de la pista (poligono 2D) con una abertura de `abertura` m en el centro de cada lado largo."""
+    cs = list(poly.minimum_rotated_rectangle.exterior.coords)[:4]
+    lados = [(np.array(cs[i]), np.array(cs[(i + 1) % 4])) for i in range(4)]
+    largo = max(np.linalg.norm(b - a) for a, b in lados)
+    muro = poly.exterior.buffer(grosor / 2, join_style="mitre")
+    huecos = []
+    for a, b in lados:
+        if np.linalg.norm(b - a) < largo - 0.5:
+            continue
+        u = (b - a) / np.linalg.norm(b - a)
+        mid = (a + b) / 2
+        huecos.append(LineString([tuple(mid - u * abertura / 2), tuple(mid + u * abertura / 2)])
+                      .buffer(grosor, cap_style="flat"))
+    return muro.difference(unary_union(huecos))
+
+
+# ---------------------------------------------------------------- pasos y pilares
+def cargar_pasos(ruta):
+    """Lee data/pasos.csv. Coordenadas del juego (x = este, z = -norte); el poligono se
+    devuelve en el plano local (este, norte) = buffer(ancho/2) del segmento (extremos planos)."""
+    ruta = Path(ruta)
+    if not ruta.exists():
+        return []
+    pasos = []
+    with open(ruta, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            x1, z1, x2, z2, ancho = (num(r.get(k)) for k in ("x1", "z1", "x2", "z2", "ancho_m"))
+            if None in (x1, z1, x2, z2, ancho):
+                print(f"AVISO: paso {r.get('id')} con coordenadas incompletas", file=sys.stderr)
+                continue
+            seg = LineString([(x1, -z1), (x2, -z2)])
+            pasos.append({"id": r["id"], "descripcion": r.get("descripcion", ""), "seg": seg,
+                          "ancho": ancho, "galibo": num(r.get("galibo_m")),
+                          "poly": seg.buffer(ancho / 2, cap_style="flat")})
+    return pasos
+
+
+def partir_por_pasos(huella, base, top, pasos):
+    """Divide la huella de un edificio volumen con los pasos. Devuelve (mesh|None, n_pasos_aplicados).
+    (huella - paso) se extruye entera; (huella ∩ paso) solo de galibo a top (soportal); sin
+    galibo (o galibo >= top) el paso queda abierto al cielo."""
+    resto, ms, n = huella, [], 0
+    for p in pasos:
+        inter = resto.intersection(p["poly"])
+        if not validos(inter):
+            continue
+        n += 1
+        resto = resto.difference(p["poly"])
+        g = p["galibo"]
+        if g is not None and g > 0 and g < top - 0.05:
+            z0 = max(g, base)
+            m = extruir(inter, top - z0, z0)
+            if m is not None:
+                ms.append(m)
+    m = extruir(resto, top - base, base)
+    if m is not None:
+        ms.append(m)
+    return (trimesh.util.concatenate(ms) if ms else None), n
+
+
+def _perimetro(poly, sep):
+    pts = []
+    for q in validos(poly.buffer(-PILAR_LADO / 2 - 0.05)) or [poly]:
+        c = list(q.simplify(0.5).exterior.coords)[:-1]
+        for i in range(len(c)):
+            a, b = np.array(c[i]), np.array(c[(i + 1) % len(c)])
+            n = max(1, math.ceil(np.linalg.norm(b - a) / sep))
+            pts.extend(tuple(a + (b - a) * k / n) for k in range(n))
+    return pts
+
+
+def _rejilla_interior(poly, sep):
+    mrr = poly.minimum_rotated_rectangle
+    cs = list(mrr.exterior.coords)
+    lados = [math.dist(cs[0], cs[1]), math.dist(cs[1], cs[2])]
+    if min(lados) <= PILAR_INTERIOR_MIN:
+        return []
+    ang = math.degrees(math.atan2(cs[1][1] - cs[0][1], cs[1][0] - cs[0][0]))
+    c = mrr.centroid
+    inner = rotate(poly.buffer(-3.0), -ang, origin=c)
+    if inner.is_empty:
+        return []
+    x0, y0, x1, y1 = inner.bounds
+    nx, ny = int((x1 - x0) // sep) + 1, int((y1 - y0) // sep) + 1
+    pts = []
+    for i in range(nx):
+        for j in range(ny):
+            p = Point((x0 + x1) / 2 + (i - (nx - 1) / 2) * sep, (y0 + y1) / 2 + (j - (ny - 1) / 2) * sep)
+            if inner.contains(p):
+                q = rotate(p, ang, origin=c)
+                pts.append((q.x, q.y))
+    return pts
+
+
+def pilares_techo(huella, h, volumenes):
+    """Centros (x, y) de pilares: perimetro cada ~8 m + esquinas (+ rejilla interior si la
+    huella es grande). Se omiten los que caen dentro de un edificio volumen."""
+    pts = []
+    for p in validos(huella):
+        pts.extend(_perimetro(p, PILAR_SEP))
+        pts.extend(_rejilla_interior(p, PILAR_SEP))
+    out = []
+    for x, y in pts:
+        if volumenes is not None and volumenes.contains(Point(x, y)):
+            continue
+        if any(math.hypot(x - a, y - b) < 1.0 for a, b in out):
+            continue
+        out.append((x, y))
+    return out
+
+
+def malla_pilares(centros, h):
+    ms = []
+    for x, y in centros:
+        m = trimesh.creation.box(extents=[PILAR_LADO, PILAR_LADO, h])
+        m.apply_translation([x, y, h / 2])
+        ms.append(m)
+    return trimesh.util.concatenate(ms) if ms else None
+
+
 # ---------------------------------------------------------------- construccion
-def construir(mapa, filas):
+def construir(mapa, filas, pasos=(), pistas=()):
     campus = mapa.poligono(mapa.ways[CAMPUS_ID])
     campus = validos(campus)[0]
     minx, miny, maxx, maxy = campus.bounds
@@ -286,29 +458,68 @@ def construir(mapa, filas):
     piezas.append(("suelo-col", plano(caja_suelo, 0.0), "suelo"))
 
     # Edificios
+    techos = []  # (wid, nombre, huella, z_losa_inferior, grosor, es_roof)
     for wid, w in sorted(mapa.ways.items()):
         t = w.get("tags", {})
         if not (("building" in t or t.get("man_made") == "tower") and mapa.cerrado(w)):
             continue
         fila = filas[str(wid)]
+        forma = forma_de(fila)
         alt, base = resolver(fila)
         polys = validos(mapa.poligono(w))
-        m = extruir(unary_union(polys) if polys else None, alt, base)
+        huella = unary_union(polys) if polys else None
+        es_roof = t.get("building") == "roof"
+        nombre = fila.get("nombre") or t.get("name", "")
+        if forma == "techo":
+            if es_roof:      # base_m + grosor altura_m
+                z0, grosor = base, alt
+            else:            # altura_m = cota de la cara superior de la cubierta
+                grosor = min(GROSOR_TECHO, alt)
+                z0 = alt - grosor
+            top = z0 + grosor
+            m = extruir(huella, grosor, z0)
+        else:
+            top = alt + base
+            if pasos and huella is not None:
+                m, n = partir_por_pasos(huella, base, top, pasos)
+                if n:
+                    stats["edificios_partidos"] += 1
+            else:
+                m = extruir(huella, alt, base)
         if m is None:
             stats["edificios_descartados"] += 1
             print(f"AVISO: edificio {wid} sin geometria valida", file=sys.stderr)
             continue
-        nombre = fila.get("nombre") or t.get("name", "")
         if t.get("man_made") == "tower":
             clave = "torre"
-        elif t.get("building") == "roof":
+        elif forma == "techo":
             clave = "cubierta"
         else:
             clave = "edificio"
         piezas.append((f"edif_{wid}_{slug(nombre)}-col", m, clave))
         stats["edificios"] += 1
-        edif_info.append({"id": wid, "nombre": nombre, "poly": unary_union(polys),
-                          "altura": alt + base, "clave": clave, "tags": t})
+        info = {"id": wid, "nombre": nombre, "poly": unary_union(polys), "altura": top,
+                "clave": clave, "forma": forma, "tags": t, "pilares": []}
+        edif_info.append(info)
+        if forma == "techo":
+            techos.append((info, z0, es_roof))
+
+    # Pilares de los techos
+    volumenes = unary_union([e["poly"] for e in edif_info if e["forma"] == "volumen"])
+    for info, z0, es_roof in techos:
+        poly = info["poly"]
+        if z0 < 0.05:
+            continue
+        if es_roof and poly.area > 0 and poly.intersection(volumenes).area / poly.area > 0.5:
+            stats["techos_sin_pilares_sobre_edificio"] += 1
+            continue
+        centros = pilares_techo(poly, z0, volumenes)
+        m = malla_pilares(centros, z0)
+        if m is not None:
+            piezas.append((f"pilares_{info['id']}_{slug(info['nombre'])}-col", m, "pilar"))
+            info["pilares"] = centros
+            stats["pilares"] += len(centros)
+        stats["techos"] += 1
 
     # Caminos
     por_tipo = {}
@@ -371,17 +582,34 @@ def construir(mapa, filas):
             piezas.append((nombre, m, clave))
             stats[nombre] = len(bufs)
 
+    # Cerramientos de pistas de padel
+    pistas_info, mallas_padel = [], []
+    for pi in pistas:
+        w = mapa.ways.get(pi["id"])
+        polys = validos(mapa.poligono(w)) if w is not None and mapa.cerrado(w) else []
+        if not polys:
+            print(f"AVISO: pista {pi['id']} no encontrada o no cerrada en el OSM", file=sys.stderr)
+            continue
+        poly = polys[0]
+        m = extruir(cerramiento_pista(poly, GROSOR_CERRAMIENTO), pi["altura"])
+        if m is not None:
+            mallas_padel.append(m)
+        pistas_info.append({"id": pi["id"], "nombre": pi["nombre"], "poly": poly})
+    if mallas_padel:
+        piezas.append(("padel-col", trimesh.util.concatenate(mallas_padel), "cristal_padel"))
+        stats["pistas_padel"] = len(mallas_padel)
+
     # Limite del mapa
     ext = campus.buffer(MARGEN_LIMITE)
     anillo = ext.exterior.buffer(0.25, join_style="mitre")
     piezas.append(("limite-col", extruir(anillo, 6.0), "limite"))
 
     return piezas, stats, {"campus": campus, "edificios": edif_info, "caminos": caminos_geom,
-                           "zonas": zonas_geom, "suelo": caja_suelo}
+                           "zonas": zonas_geom, "suelo": caja_suelo, "pasos": list(pasos), "pistas": pistas_info}
 
 
 # ---------------------------------------------------------------- preview
-def preview(ruta, geo):
+def preview(ruta, geo, extra=None):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -422,12 +650,20 @@ def preview(ruta, geo):
             kw.update(alpha=0.6, hatch="//")
         for p in parche(e["poly"], **kw):
             ax.add_patch(p)
-        m = re.match(r"^Edificio\s+([^\s.]+)", e["nombre"] or "")
+        m = RX_NUM_EDIF.match(e["nombre"] or "")
         if m:
             c = e["poly"].representative_point()
             ax.text(c.x, c.y, m.group(1), fontsize=7, ha="center", va="center", zorder=5,
                     color="white", fontweight="bold",
                     bbox=dict(boxstyle="round,pad=0.1", fc="black", ec="none", alpha=0.5))
+    grupos = {}
+    for pi in geo.get("pistas", []):  # una etiqueta por nombre (varias pistas pueden compartirlo)
+        grupos.setdefault(pi["nombre"], []).append(pi["poly"])
+    for nombre, polys in grupos.items():
+        c = unary_union(polys).centroid
+        ax.text(c.x, c.y, nombre, fontsize=7, ha="center", va="center", zorder=5,
+                color="white", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.1", fc="#1f6fb2", ec="none", alpha=0.7))
     cx, cy = geo["campus"].exterior.xy
     ax.plot(cx, cy, color="red", lw=1.5, ls="--", zorder=4, label="contorno campus")
     ax.set_xlim(suelo.bounds[0], suelo.bounds[2])
@@ -438,10 +674,100 @@ def preview(ruta, geo):
     ax.set_title("UPO blockout - vista cenital (norte arriba); color = altura de cubierta (m)")
     fig.colorbar(ScalarMappable(norm=norm, cmap=cmap), ax=ax, shrink=0.7, label="altura (m)")
     ax.grid(alpha=0.25)
+    if extra is not None:  # extra(ax): dibuja encima antes de guardar
+        extra(ax)
     fig.tight_layout()
     fig.savefig(ruta)
     plt.close(fig)
     print(f"Preview: {ruta}")
+
+
+def zoom_paso(ruta, geo, mapa, paso_id, radio=45.0):
+    """Vista cenital ampliada (2*radio m) de un paso (o grupo de pasos con ese prefijo de id): antes (sin partir) y despues."""
+    grupo = [p for p in geo["pasos"] if p["id"] == paso_id or p["id"].startswith(paso_id)]
+    if not grupo:
+        print(f"AVISO: no hay paso '{paso_id}' en pasos.csv; no se genera {ruta}", file=sys.stderr)
+        return
+    paso = {"id": paso_id, "descripcion": grupo[0]["descripcion"], "galibo": grupo[0]["galibo"],
+            "seg": unary_union([p["seg"] for p in grupo]), "poly": unary_union([p["poly"] for p in grupo])}
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import PathPatch
+    from matplotlib.path import Path as MPath
+
+    def parche(g, **kw):
+        ps = []
+        for p in validos(g):
+            vs, cs = [], []
+            for anillo in [p.exterior, *p.interiors]:
+                c = np.asarray(anillo.coords)
+                vs.extend(c)
+                cs.extend([MPath.MOVETO] + [MPath.LINETO] * (len(c) - 2) + [MPath.CLOSEPOLY])
+            ps.append(PathPatch(MPath(vs, cs), **kw))
+        return ps
+
+    c = paso["seg"].centroid
+    ventana = box(c.x - radio, c.y - radio, c.x + radio, c.y + radio)
+    todos = unary_union([q["poly"] for q in geo["pasos"]])
+    col_z = {"verde": "#a8d08d", "agua": "#7fb2e0", "pista": "#d98a73", "aparcamiento": "#bdbdbd"}
+    fig, axs = plt.subplots(1, 2, figsize=(20, 10.4), dpi=100)
+    for ax, despues in zip(axs, (False, True)):
+        ax.add_patch(plt.Rectangle((c.x - radio, c.y - radio), 2 * radio, 2 * radio, fc="#e9e1cf", ec="none"))
+        for cat, g in geo["zonas"].items():
+            for p in parche(g.intersection(ventana), fc=col_z[cat], ec="none", zorder=1):
+                ax.add_patch(p)
+        for hw, g in geo["caminos"].items():
+            for p in parche(g.intersection(ventana), fc="#555555" if hw in ASFALTO else "#b5b5b5", ec="none", zorder=2):
+                ax.add_patch(p)
+        for w in mapa.ways.values():  # ejes de footway/path/steps con sus nodos finales
+            hw = w.get("tags", {}).get("highway")
+            if hw in ("footway", "path", "steps", "pedestrian", "cycleway"):
+                l = mapa.linea(w)
+                if l is not None and l.intersects(ventana):
+                    xs, ys = l.xy
+                    ax.plot(xs, ys, color="#1a5fb4", lw=1.2, ls=":", zorder=6)
+                    ax.plot([xs[0], xs[-1]], [ys[0], ys[-1]], "o", color="#1a5fb4", ms=5, zorder=6)
+        for e in geo["edificios"]:
+            if not e["poly"].intersects(ventana):
+                continue
+            kw = dict(fc="#c8c8cd", ec="black", lw=0.8, zorder=3)
+            if e["forma"] == "techo":
+                kw.update(fc="#555860", alpha=0.6, hatch="//")
+            g = e["poly"]
+            if despues and e["forma"] == "volumen":
+                for p in parche(g.intersection(todos), fc="#f4d35e", ec="black", lw=0.8, hatch="xx", zorder=4):
+                    ax.add_patch(p)
+                g = g.difference(todos)
+            for p in parche(g, **kw):
+                ax.add_patch(p)
+            m = RX_NUM_EDIF.match(e["nombre"] or "")
+            if m:
+                rp = e["poly"].intersection(ventana.buffer(-12)).representative_point()
+                if not rp.is_empty:
+                    ax.text(rp.x, rp.y, m.group(1), fontsize=18, ha="center", va="center", zorder=8,
+                            color="white", fontweight="bold",
+                            bbox=dict(boxstyle="round,pad=0.15", fc="black", ec="none", alpha=0.6))
+        for p in parche(paso["poly"], fc="none", ec="red", lw=2, ls="--", zorder=7):
+            ax.add_patch(p)
+        for q in grupo:
+            xs, ys = q["seg"].xy
+            ax.plot(xs, ys, color="red", lw=1.5, zorder=7)
+        ax.set_xlim(c.x - radio, c.x + radio)
+        ax.set_ylim(c.y - radio, c.y + radio)
+        ax.set_aspect("equal")
+        ax.grid(alpha=0.25)
+        ax.set_xlabel("Este (m)")
+        ax.set_ylabel("Norte (m)")
+        ax.set_title("DESPUES: huella - paso (gris) y %s" % (
+            "soportal (amarillo, desde galibo %g m)" % paso["galibo"] if paso["galibo"] is not None
+            else "hueco abierto al cielo (amarillo = zona recortada)") if despues
+            else "ANTES: huellas enteras; rojo = paso %s; azul = footway/path" % paso_id)
+    fig.suptitle(f"Paso {paso_id}: {paso['descripcion']} (norte arriba)")
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Zoom: {ruta}")
 
 
 # ---------------------------------------------------------------- verificacion
@@ -453,7 +779,7 @@ def verificar(ruta):
     print(f"[verificacion] nodos con geometria: {len(nombres)} | triangulos: {tris}")
     print(f"[verificacion] bounds (m) min={np.round(b[0], 1).tolist()} max={np.round(b[1], 1).tolist()} "
           f"-> {b[1][0] - b[0][0]:.0f} x {b[1][2] - b[0][2]:.0f} m (E-O x N-S), alto {b[1][1]:.1f} m")
-    edif = [n for n in nombres if n.startswith("edif_")]
+    edif = [n for n in nombres if n.startswith(("edif_", "pilares_"))]
     malos = []
     for n in edif:
         g = sc.geometry[sc.graph[n][1]]
@@ -472,8 +798,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--entrada", default="data/raw/osm_upo.json")
     ap.add_argument("--alturas", default="data/alturas.csv")
+    ap.add_argument("--pasos", default="data/pasos.csv")
+    ap.add_argument("--pistas", default="data/pistas.csv")
     ap.add_argument("--salida", default="export/upo_blockout.glb")
     ap.add_argument("--sin-preview", action="store_true")
+    ap.add_argument("--copiar-godot", action=argparse.BooleanOptionalAction, default=True,
+                    help="copia el .glb a game/assets/mapa/ (--no-copiar-godot lo desactiva)")
     a = ap.parse_args()
 
     mapa = Mapa(a.entrada)
@@ -481,7 +811,8 @@ def main():
                  if "tags" in w and mapa.cerrado(w)
                  and ("building" in w["tags"] or w["tags"].get("man_made") == "tower")]
     filas = cargar_alturas(a.alturas, edificios)
-    piezas, stats, geo = construir(mapa, filas)
+    pasos = cargar_pasos(a.pasos)
+    piezas, stats, geo = construir(mapa, filas, pasos, cargar_pistas(a.pistas))
 
     escena = trimesh.Scene()
     for nombre, mesh, clave in piezas:
@@ -494,6 +825,11 @@ def main():
     salida.parent.mkdir(parents=True, exist_ok=True)
     escena.export(salida)
     print(f"Exportado {salida} ({salida.stat().st_size / 1e6:.2f} MB)")
+    if a.copiar_godot:
+        destino = Path(DESTINO_GODOT)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(salida, destino)
+        print(f"Copiado a {destino}")
 
     campus = geo["campus"]
     minx, miny, maxx, maxy = campus.bounds
@@ -515,6 +851,7 @@ def main():
 
     if not a.sin_preview:
         preview(salida.with_name("preview.png"), geo)
+        zoom_paso(salida.with_name("zoom_22_24.png"), geo, mapa, "22-24")
 
 
 if __name__ == "__main__":

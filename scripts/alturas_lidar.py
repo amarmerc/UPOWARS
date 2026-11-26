@@ -11,6 +11,7 @@ valores < 1 m; altura propuesta = percentil 75 redondeado a 0,5 m. Menos de 4
 pixeles validos o cobertura valida < 30 % -> "sin dato LiDAR" (edificio posiblemente
 posterior a ~2010). building=roof: base_m = mediana - 0,4 (minimo 2,5).
 
+Columna `forma` (volumen|techo): se conserva; en techo, altura_m = cota de la cubierta.
 Columna `fuente` del CSV: defecto | osm | lidar | manual. Este script SOLO toca
 filas con fuente `defecto` o `lidar`. SI EDITAS UNA FILA A MANO, PON fuente=manual
 (o se pisara al re-ejecutar).
@@ -31,7 +32,7 @@ from shapely.affinity import translate
 from shapely.ops import unary_union
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from generar_blockout import CAMPOS_CSV, CAMPUS_ID, PLANTA_M, Mapa, num, validos  # noqa: E402
+from generar_blockout import CAMPOS_CSV, CAMPUS_ID, PLANTA_M, Mapa, forma_de, num, validos  # noqa: E402
 
 WCS_URL = "https://wcs-mds.idee.es/mds"
 COVERAGE = "mdsn_e025"
@@ -100,6 +101,7 @@ def main():
     for r in filas:
         if not (r.get("fuente") or "").strip():
             r["fuente"] = "osm" if "de OSM" in (r.get("notas") or "") else "defecto"
+        r["forma"] = forma_de(r)  # conserva la columna forma (volumen|techo)
 
     resumen, alturas_nuevas, sin_dato, saltadas = [], [], [], []
     with rasterio.open(ruta_r) as src:
