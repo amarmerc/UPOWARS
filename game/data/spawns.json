@@ -137,5 +137,48 @@
         -310.5
       ]
     }
+  },
+  "test_pasillo_pilares": {
+    "descripcion": "tramo recto de 30 m por el centro del pasillo central (1373541639), sin pilares interiores",
+    "rayo_horizontal": {
+      "desde": [
+        1.93,
+        1.5,
+        92.29
+      ],
+      "hasta": [
+        17.72,
+        1.5,
+        117.8
+      ]
+    },
+    "dist_min_pilar_m": 5.5
+  },
+  "test_tunel_37": {
+    "descripcion": "Edificio 37 (tunel_z): rayo N-S por el centro (libre) y rayo O-E (choca con pared)",
+    "rayo_norte_sur": {
+      "desde": [
+        -179.42,
+        1.5,
+        129.6
+      ],
+      "hasta": [
+        -179.42,
+        1.5,
+        173.02
+      ]
+    },
+    "rayo_oeste_este": {
+      "desde": [
+        -203.46,
+        1.5,
+        151.36
+      ],
+      "hasta": [
+        -155.43,
+        1.5,
+        151.36
+      ]
+    }
   }
 }

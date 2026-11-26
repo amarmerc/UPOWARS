@@ -129,6 +129,26 @@ func _ejecutar() -> void:
 	comprobar("g) existe padel-col (nodo 'padel') con colisión",
 			padel is MeshInstance3D and padel.find_children("*", "StaticBody3D", true, false).size() > 0)
 
+	# h) tunel del 37 y pasillo central sin pilares interiores
+	var casos: Array = [
+		["h1", "test_tunel_37", "rayo_norte_sur", true, "rayo a 1,5 m N-S por el centro del 37 no choca"],
+		["h2", "test_tunel_37", "rayo_oeste_este", false, "rayo a 1,5 m O-E por el centro del 37 choca con la pared"],
+		["h3", "test_pasillo_pilares", "rayo_horizontal", true, "rayo a 1,5 m por el eje del pasillo (30 m) no choca"],
+	]
+	for caso: Array in casos:
+		var dd: Dictionary = (datos as Dictionary).get(caso[1], {})
+		if dd.is_empty():
+			comprobar("%s) datos %s presentes" % [caso[0], caso[1]], false)
+			continue
+		var rr: Dictionary = dd[caso[2]]
+		var ra: Array = rr["desde"]
+		var rb: Array = rr["hasta"]
+		var qr := PhysicsRayQueryParameters3D.create(Vector3(ra[0], ra[1], ra[2]), Vector3(rb[0], rb[1], rb[2]))
+		qr.exclude = [jugador.get_rid()]
+		var hr: Dictionary = espacio.intersect_ray(qr)
+		comprobar("%s) %s" % [caso[0], caso[4]], hr.is_empty() == caso[3],
+				"choca en %s" % str(hr.get("position", "nada")))
+
 	print("RESULTADO: %s (%d fallos)" % ["PASS" if fallos == 0 else "FAIL", fallos])
 	main.queue_free()
 	await process_frame

@@ -21,8 +21,8 @@
   "recuentos": {
     "edificios": 73,
     "edificios_partidos": 3,
-    "pilares": 499,
-    "techos": 21,
+    "pilares": 407,
+    "techos": 20,
     "caminos_tertiary": 30,
     "caminos_trunk_link": 1,
     "caminos_residential": 41,
@@ -42,8 +42,8 @@
     "pistas_padel": 2
   },
   "verificacion": {
-    "nodos": 113,
-    "triangulos": 15777,
+    "nodos": 112,
+    "triangulos": 14693,
     "bounds": [
       [
         -765.0030517578125,
@@ -56,7 +56,7 @@
         635.44873046875
       ]
     ],
-    "edificios": 94,
+    "edificios": 93,
     "no_watertight": []
   }
 }

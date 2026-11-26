@@ -8,6 +8,7 @@ campus. Ejes glTF (Y arriba): x = este, y = altura, z = -norte.
 Salidas: export/upo_blockout.glb, export/upo_blockout_meta.json,
 export/preview.png, export/zoom_22_24.png y data/alturas.csv (editable; solo se anaden
 filas nuevas; columna `fuente`: defecto|osm|lidar|manual; columna `forma`: volumen|techo).
+forma=tunel_z|tunel_x: losa + paredes de 0,3 m en los lados paralelos al eje; columna `pilares`: perimetro|todos|ninguno.
 forma=techo: losa de 0,4 m (cara superior a la altura de cubierta) sobre pilares de 0,4x0,4 m.
 data/pasos.csv: pasos peatonales (segmento + ancho + galibo) que parten los edificios volumen.
 Los nodos acabados en `-col` generan colision automatica al importar en Godot.
@@ -43,12 +44,17 @@ ALTURA_DEFECTO = PLANTAS_DEFECTO * PLANTA_M
 MARGEN_SUELO = 50.0
 MARGEN_CAMINOS = 30.0
 MARGEN_LIMITE = 20.0
-CAMPOS_CSV = ["osm_id", "nombre", "building", "forma", "plantas", "altura_m", "base_m", "notas", "fuente"]
-FORMAS = ("volumen", "techo")
+CAMPOS_CSV = ["osm_id", "nombre", "building", "forma", "plantas", "altura_m", "base_m", "notas", "fuente", "pilares"]
+FORMAS = ("volumen", "techo", "tunel_z", "tunel_x")
+MODOS_PILARES = ("perimetro", "todos", "ninguno")   # columna opcional `pilares`; vacio = automatico
 GROSOR_TECHO = 0.4
 PILAR_LADO = 0.4
 PILAR_SEP = 8.0
-PILAR_INTERIOR_MIN = 15.0   # huella > 15 m en ambas direcciones -> pilares interiores
+PILAR_INTERIOR_BUFFER = 7.5  # pilares interiores solo en los puntos de la rejilla dentro de huella.buffer(-7.5)
+PILAR_TODOS_BUFFER = 3.0     # pilares=todos: rejilla dentro de huella.buffer(-3)
+GROSOR_PARED_TUNEL = 0.3
+FRAG_AREA_MIN = 0.25         # fragmentos de un edificio partido por pasos: < 25 % del mayor -> descartar
+FRAG_ANCHO_MIN = 1.5         # ... y los de menos de 1,5 m de ancho (desaparecen con buffer(-0.75))
 CAMPOS_PASOS = ["id", "descripcion", "x1", "z1", "x2", "z2", "ancho_m", "galibo_m", "notas"]
 # fuente: defecto | osm | lidar | manual (ver scripts/alturas_lidar.py; solo se pisan defecto y lidar)
 
@@ -247,6 +253,11 @@ def default_edificio(tags):
     return PLANTAS_DEFECTO, "", 0.0, "por defecto 3 plantas"
 
 
+def modo_pilares(fila):
+    m = (fila.get("pilares") or "").strip().lower()
+    return m if m in MODOS_PILARES else ""
+
+
 def forma_defecto(building):
     return "techo" if building == "roof" else "volumen"
 
@@ -338,6 +349,9 @@ def cerramiento_pista(poly, grosor=GROSOR_CERRAMIENTO, abertura=ABERTURA_PADEL):
     return muro.difference(unary_union(huecos))
 
 
+DESCARTADOS = []   # fragmentos descartados al partir edificios (informe)
+
+
 # ---------------------------------------------------------------- pasos y pilares
 def cargar_pasos(ruta):
     """Lee data/pasos.csv. Coordenadas del juego (x = este, z = -norte); el poligono se
@@ -359,11 +373,36 @@ def cargar_pasos(ruta):
     return pasos
 
 
-def partir_por_pasos(huella, base, top, pasos):
+def filtrar_fragmentos(geom):
+    """Separa los poligonos de geom en (conservados, descartados): se descarta lo que tenga area
+    < 25 % de la del fragmento mayor o menos de 1,5 m de ancho (buffer(-0.75) vacio)."""
+    polys = validos(geom)
+    if len(polys) <= 1:
+        return polys, []
+    mayor = max(p.area for p in polys)
+    ok, malos = [], []
+    for p in polys:
+        (malos if p.area < FRAG_AREA_MIN * mayor or p.buffer(-FRAG_ANCHO_MIN / 2).is_empty else ok).append(p)
+    return ok, malos
+
+
+def partir_por_pasos(huella, base, top, pasos, etiqueta=""):
     """Divide la huella de un edificio volumen con los pasos. Devuelve (mesh|None, n_pasos_aplicados).
     (huella - paso) se extruye entera; (huella ∩ paso) solo de galibo a top (soportal); sin
-    galibo (o galibo >= top) el paso queda abierto al cielo."""
+    galibo (o galibo >= top) el paso queda abierto al cielo. Si queda partida en varios
+    poligonos se descartan los fragmentos sueltos (ver filtrar_fragmentos) y se informa."""
     resto, ms, n = huella, [], 0
+
+    def limpiar(g, que):
+        ok, malos = filtrar_fragmentos(g)
+        for q in malos:
+            c = q.representative_point()
+            print(f"AVISO: edificio {etiqueta}: fragmento descartado ({que}) area={q.area:.1f} m2 "
+                  f"en ({c.x:.1f}, {c.y:.1f})", file=sys.stderr)
+            DESCARTADOS.append({"edificio": etiqueta, "parte": que, "area_m2": round(q.area, 1),
+                                "centro": [round(c.x, 1), round(c.y, 1)]})
+        return unary_union(ok) if ok else None
+
     for p in pasos:
         inter = resto.intersection(p["poly"])
         if not validos(inter):
@@ -373,13 +412,37 @@ def partir_por_pasos(huella, base, top, pasos):
         g = p["galibo"]
         if g is not None and g > 0 and g < top - 0.05:
             z0 = max(g, base)
-            m = extruir(inter, top - z0, z0)
+            inter = limpiar(inter, f"soportal {p['id']}")
+            m = extruir(inter, top - z0, z0) if inter is not None else None
             if m is not None:
                 ms.append(m)
-    m = extruir(resto, top - base, base)
+    if n:
+        resto = limpiar(resto, "resto")
+    m = extruir(resto, top - base, base) if resto is not None else None
     if m is not None:
         ms.append(m)
     return (trimesh.util.concatenate(ms) if ms else None), n
+
+
+# ---------------------------------------------------------------- tuneles
+def malla_tunel(huella, forma, base, z_losa, top):
+    """Edificio-tunel: losa (z_losa..top) sobre toda la huella + paredes de 0,3 m hacia dentro, del
+    suelo a la losa, solo en los lados paralelos al eje (tunel_z: |dnorte| > |deste|, o sea caras
+    este/oeste; tunel_x: al reves). Devuelve (mesh, poligono_paredes)."""
+    ms = [extruir(huella, top - z_losa, z_losa)]
+    paredes = []
+    for p in validos(huella):
+        c = list(p.exterior.coords)
+        for a, b in zip(c[:-1], c[1:]):
+            dx, dy = abs(b[0] - a[0]), abs(b[1] - a[1])
+            if (dy > dx) if forma == "tunel_z" else (dx > dy):
+                paredes.append(LineString([a, b]).buffer(GROSOR_PARED_TUNEL, cap_style="flat").intersection(p))
+    muros = unary_union(paredes) if paredes else None
+    if muros is not None and z_losa - base > 0.05:
+        m = extruir(muros, z_losa - base, base)
+        if m is not None:
+            ms.append(m)
+    return trimesh.util.concatenate([m for m in ms if m is not None]), muros
 
 
 def _perimetro(poly, sep):
@@ -393,36 +456,38 @@ def _perimetro(poly, sep):
     return pts
 
 
-def _rejilla_interior(poly, sep):
+def _rejilla_interior(poly, sep, margen=PILAR_INTERIOR_BUFFER):
+    """Rejilla (alineada con el rectangulo minimo) restringida a los puntos que caen dentro de
+    poly.buffer(-margen): solo hay pilares interiores donde el poligono es realmente ancho."""
+    interior = poly.buffer(-margen)
+    if interior.is_empty:
+        return []
     mrr = poly.minimum_rotated_rectangle
     cs = list(mrr.exterior.coords)
-    lados = [math.dist(cs[0], cs[1]), math.dist(cs[1], cs[2])]
-    if min(lados) <= PILAR_INTERIOR_MIN:
-        return []
     ang = math.degrees(math.atan2(cs[1][1] - cs[0][1], cs[1][0] - cs[0][0]))
     c = mrr.centroid
-    inner = rotate(poly.buffer(-3.0), -ang, origin=c)
-    if inner.is_empty:
-        return []
-    x0, y0, x1, y1 = inner.bounds
+    x0, y0, x1, y1 = rotate(poly, -ang, origin=c).bounds
     nx, ny = int((x1 - x0) // sep) + 1, int((y1 - y0) // sep) + 1
     pts = []
     for i in range(nx):
         for j in range(ny):
             p = Point((x0 + x1) / 2 + (i - (nx - 1) / 2) * sep, (y0 + y1) / 2 + (j - (ny - 1) / 2) * sep)
-            if inner.contains(p):
-                q = rotate(p, ang, origin=c)
+            q = rotate(p, ang, origin=c)
+            if interior.contains(q):
                 pts.append((q.x, q.y))
     return pts
 
 
-def pilares_techo(huella, h, volumenes):
+def pilares_techo(huella, h, volumenes, modo=""):
     """Centros (x, y) de pilares: perimetro cada ~8 m + esquinas (+ rejilla interior si la
     huella es grande). Se omiten los que caen dentro de un edificio volumen."""
     pts = []
     for p in validos(huella):
         pts.extend(_perimetro(p, PILAR_SEP))
-        pts.extend(_rejilla_interior(p, PILAR_SEP))
+        if modo == "todos":
+            pts.extend(_rejilla_interior(p, PILAR_SEP, PILAR_TODOS_BUFFER))
+        elif modo != "perimetro":
+            pts.extend(_rejilla_interior(p, PILAR_SEP))
     out = []
     for x, y in pts:
         if volumenes is not None and volumenes.contains(Point(x, y)):
@@ -478,10 +543,13 @@ def construir(mapa, filas, pasos=(), pistas=()):
                 z0 = alt - grosor
             top = z0 + grosor
             m = extruir(huella, grosor, z0)
+        elif forma in ("tunel_z", "tunel_x"):
+            top = alt + base
+            m, muros_tunel = malla_tunel(huella, forma, base, top - min(GROSOR_TECHO, alt), top)
         else:
             top = alt + base
             if pasos and huella is not None:
-                m, n = partir_por_pasos(huella, base, top, pasos)
+                m, n = partir_por_pasos(huella, base, top, pasos, f"{wid} {nombre}"[:40])
                 if n:
                     stats["edificios_partidos"] += 1
             else:
@@ -499,7 +567,8 @@ def construir(mapa, filas, pasos=(), pistas=()):
         piezas.append((f"edif_{wid}_{slug(nombre)}-col", m, clave))
         stats["edificios"] += 1
         info = {"id": wid, "nombre": nombre, "poly": unary_union(polys), "altura": top,
-                "clave": clave, "forma": forma, "tags": t, "pilares": []}
+                "clave": clave, "forma": forma, "tags": t, "pilares": [],
+                "muros": muros_tunel if forma in ("tunel_z", "tunel_x") else None}
         edif_info.append(info)
         if forma == "techo":
             techos.append((info, z0, es_roof))
@@ -513,7 +582,10 @@ def construir(mapa, filas, pasos=(), pistas=()):
         if es_roof and poly.area > 0 and poly.intersection(volumenes).area / poly.area > 0.5:
             stats["techos_sin_pilares_sobre_edificio"] += 1
             continue
-        centros = pilares_techo(poly, z0, volumenes)
+        modo = modo_pilares(filas[str(info["id"])])
+        if modo == "ninguno":
+            continue
+        centros = pilares_techo(poly, z0, volumenes, modo)
         m = malla_pilares(centros, z0)
         if m is not None:
             piezas.append((f"pilares_{info['id']}_{slug(info['nombre'])}-col", m, "pilar"))
@@ -770,6 +842,61 @@ def zoom_paso(ruta, geo, mapa, paso_id, radio=45.0):
     print(f"Zoom: {ruta}")
 
 
+def zoom_tunel(ruta, geo, edif_id, radio=40.0):
+    """Vista cenital ampliada de un edificio-tunel: antes (huella entera) y despues (losa + paredes + pilares)."""
+    e = next((q for q in geo["edificios"] if q["id"] == edif_id), None)
+    if e is None:
+        return
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import PathPatch
+    from matplotlib.path import Path as MPath
+
+    def parche(g, **kw):
+        ps = []
+        for p in validos(g):
+            vs, cs = [], []
+            for anillo in [p.exterior, *p.interiors]:
+                c = np.asarray(anillo.coords)
+                vs.extend(c)
+                cs.extend([MPath.MOVETO] + [MPath.LINETO] * (len(c) - 2) + [MPath.CLOSEPOLY])
+            ps.append(PathPatch(MPath(vs, cs), **kw))
+        return ps
+
+    c = e["poly"].centroid
+    fig, axs = plt.subplots(1, 2, figsize=(20, 10.4), dpi=100)
+    for ax, despues in zip(axs, (False, True)):
+        ax.add_patch(plt.Rectangle((c.x - radio, c.y - radio), 2 * radio, 2 * radio, fc="#e9e1cf", ec="none"))
+        for q in geo["edificios"]:
+            if q is e or not q["poly"].buffer(radio).contains(c) and not q["poly"].intersects(e["poly"].buffer(radio)):
+                continue
+            for p in parche(q["poly"], fc="#c8c8cd", ec="black", lw=0.8, zorder=2):
+                ax.add_patch(p)
+        kw = dict(fc="#555860", alpha=0.5, ec="black", lw=1.0, hatch="//", zorder=3) if despues             else dict(fc="#c8c8cd", ec="black", lw=1.0, zorder=3)
+        for p in parche(e["poly"], **kw):
+            ax.add_patch(p)
+        if despues:
+            if e["muros"] is not None:
+                for p in parche(e["muros"], fc="#222222", ec="red", lw=1.0, zorder=4):
+                    ax.add_patch(p)
+            for x, y in e["pilares"]:
+                ax.plot(x, y, "s", color="#333333", ms=4, zorder=5)
+        ax.set_xlim(c.x - radio, c.x + radio)
+        ax.set_ylim(c.y - radio, c.y + radio)
+        ax.set_aspect("equal")
+        ax.grid(alpha=0.25)
+        ax.set_xlabel("Este (m)")
+        ax.set_ylabel("Norte (m)")
+        ax.set_title("DESPUES: losa (trama) + paredes de 0,3 m (negro); lados N y S abiertos" if despues
+                     else "ANTES: huella entera")
+    fig.suptitle(f"Edificio {edif_id} ({e['forma']}): {e['nombre']} (norte arriba)")
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Zoom: {ruta}")
+
+
 # ---------------------------------------------------------------- verificacion
 def verificar(ruta):
     sc = trimesh.load(ruta, force="scene")
@@ -852,6 +979,7 @@ def main():
     if not a.sin_preview:
         preview(salida.with_name("preview.png"), geo)
         zoom_paso(salida.with_name("zoom_22_24.png"), geo, mapa, "22-24")
+        zoom_tunel(salida.with_name("zoom_37.png"), geo, 142276198)
 
 
 if __name__ == "__main__":

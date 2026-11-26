@@ -1,8 +1,8 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene format=3 uid="uid://dtpmy87lo3xjh"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/mapa.gd" id="2"]
-[ext_resource type="PackedScene" path="res://assets/mapa/upo_blockout.glb" id="3"]
+[ext_resource type="Script" uid="uid://cefknw3hs1q7a" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://c4arg1umk7rls" path="res://scripts/mapa.gd" id="2"]
+[ext_resource type="PackedScene" uid="uid://cybaxmjykksbg" path="res://assets/mapa/upo_blockout.glb" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="5"]
 [ext_resource type="PackedScene" path="res://scenes/spawn_menu.tscn" id="6"]
@@ -25,26 +25,27 @@ fog_light_color = Color(0.74, 0.79, 0.86, 1)
 fog_density = 0.0007
 fog_sky_affect = 0.4
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=199221126]
 script = ExtResource("1")
 
-[node name="Mapa" type="Node3D" parent="."]
+[node name="Mapa" type="Node3D" parent="." unique_id=811786991]
 script = ExtResource("2")
 
-[node name="UpoBlockout" parent="Mapa" instance=ExtResource("3")]
+[node name="UpoBlockout" parent="Mapa" unique_id=482904661 instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.002093792, -0.007994771, 0.003832817)
 
-[node name="Sol" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.342, 0.4415, -0.8302, 0, 0.8830, 0.4695, 0.9397, -0.1606, 0.3020, 0, 100, 0)
+[node name="Sol" type="DirectionalLight3D" parent="." unique_id=1252538363]
+transform = Transform3D(0.342, 0.4415, -0.8302, 0, 0.883, 0.4695, 0.9397, -0.1606, 0.302, 0, 100, 0)
 light_color = Color(1, 0.93, 0.8, 1)
 light_energy = 1.2
 shadow_enabled = true
 directional_shadow_max_distance = 300.0
 
-[node name="Entorno" type="WorldEnvironment" parent="."]
+[node name="Entorno" type="WorldEnvironment" parent="." unique_id=1611725713]
 environment = SubResource("Environment_1")
 
-[node name="Jugador" parent="." instance=ExtResource("4")]
+[node name="Jugador" parent="." unique_id=773239890 instance=ExtResource("4")]
 
-[node name="Hud" parent="." instance=ExtResource("5")]
+[node name="Hud" parent="." unique_id=407287532 instance=ExtResource("5")]
 
-[node name="MenuSpawn" parent="." instance=ExtResource("6")]
+[node name="MenuSpawn" parent="." unique_id=1273269973 instance=ExtResource("6")]

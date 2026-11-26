@@ -41,6 +41,7 @@ DIST_FACHADA_IDEAL = 8.0
 DIST_PILAR_MIN = 1.0
 ID_PASILLO_CENTRAL = 1373541639   # techo del eje central (edificios 1 a 18)
 PAREJA_TEST = (8, 9)
+ID_TUNEL_37 = 142276198
 
 EDIFICIOS = [  # id, nombre visible, numero de edificio
     ("biblioteca", "Biblioteca (Edificio 25)", 25),
@@ -63,7 +64,7 @@ class Contexto:
         self.edificios = geo["edificios"]
         # los techos (forma=techo) no son huella, salvo los building=roof (conservador)
         self.opacos = [e for e in self.edificios
-                       if e["forma"] == "volumen" or e["tags"].get("building") == "roof"]
+                       if e["forma"] != "techo" or e["tags"].get("building") == "roof"]
         self.huellas = unary_union([e["poly"] for e in self.opacos])
         self.pilares = unary_union([Point(x, y) for e in self.edificios for x, y in e["pilares"]])             if any(e["pilares"] for e in self.edificios) else None
         self.zona_valida = self.campus.buffer(gb.MARGEN_LIMITE - DIST_LIMITE_MIN)
@@ -257,6 +258,56 @@ def test_paso_22_24(geo):
                                 "hasta": [round(x2, 2), 1.5, round(-y2, 2)]}}
 
 
+def test_pasillo_pilares(ctx):
+    """Tramo recto de ~30 m por el centro del pasillo central (paralelo a uno de sus bordes largos,
+    a 4-6 m de el): un rayo a 1,5 m por ahi no debe chocar (sin pilares interiores)."""
+    techo = next(e for e in ctx.edificios if e["id"] == ID_PASILLO_CENTRAL)
+    poly = techo["poly"]
+    sin_orilla = poly.buffer(-3.0)
+    obst = unary_union([e["poly"] for e in ctx.edificios if e is not techo and e["forma"] != "techo"])
+    mejor = None
+    for pg in gb.validos(poly):
+        c = list(pg.exterior.coords)
+        for a, b in zip(c[:-1], c[1:]):
+            L = math.dist(a, b)
+            if L < 32:
+                continue
+            ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+            for sgn in (1, -1):
+                nx, ny = -uy * sgn, ux * sgn
+                for off in (4.0, 5.0, 6.0):
+                    for t0 in np.arange(0.0, L - 30.0, 1.0):
+                        p0 = (a[0] + ux * t0 + nx * off, a[1] + uy * t0 + ny * off)
+                        p1 = (p0[0] + 30 * ux, p0[1] + 30 * uy)
+                        ln = LineString([p0, p1])
+                        if not sin_orilla.contains(ln) or ln.distance(obst) < 1.0:
+                            continue
+                        d = ln.distance(ctx.pilares) if ctx.pilares is not None else 99.0
+                        if d < 1.5:
+                            continue
+                        if mejor is None or d > mejor[0]:
+                            mejor = (d, p0, p1)
+    if mejor is None:
+        raise SystemExit("No hay tramo recto de 30 m libre en el pasillo central para test_pasillo_pilares")
+    g = lambda q, y: [round(q[0], 2), y, round(-q[1], 2)]
+    return {"descripcion": f"tramo recto de 30 m por el centro del pasillo central ({ID_PASILLO_CENTRAL}), sin pilares interiores",
+            "rayo_horizontal": {"desde": g(mejor[1], 1.5), "hasta": g(mejor[2], 1.5)},
+            "dist_min_pilar_m": round(mejor[0], 1)}
+
+
+def test_tunel_37(ctx):
+    """Edificio 37 (tunel_z): rayo a 1,5 m de norte a sur por su centro (debe pasar) y de oeste a
+    este (debe chocar con la pared)."""
+    e = next(e for e in ctx.edificios if e["id"] == ID_TUNEL_37)
+    poly = e["poly"]
+    c = poly.centroid
+    x0, y0, x1, y1 = poly.bounds
+    g = lambda x, y: [round(x, 2), 1.5, round(-y, 2)]
+    return {"descripcion": "Edificio 37 (tunel_z): rayo N-S por el centro (libre) y rayo O-E (choca con pared)",
+            "rayo_norte_sur": {"desde": g(c.x, y1 + 2.0), "hasta": g(c.x, y0 - 2.0)},
+            "rayo_oeste_este": {"desde": g(x0 - 2.0, c.y), "hasta": g(x1 + 2.0, c.y)}}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--entrada", default="data/raw/osm_upo.json")
@@ -297,10 +348,15 @@ def main():
     salida.parent.mkdir(parents=True, exist_ok=True)
     tp = test_pasillo(ctx)
     print("test_pasillo:", json.dumps(tp, ensure_ascii=False))
+    tp3 = test_pasillo_pilares(ctx)
+    print("test_pasillo_pilares:", json.dumps(tp3, ensure_ascii=False))
+    tp4 = test_tunel_37(ctx)
+    print("test_tunel_37:", json.dumps(tp4, ensure_ascii=False))
     tp2 = test_paso_22_24(geo)
     print("test_paso_22_24:", json.dumps(tp2, ensure_ascii=False))
     salida.write_text(json.dumps({"ejes": meta["ejes_gltf"], "origen": meta["origen"], "spawns": spawns,
-                                  "test_pasillo": tp, "test_paso_22_24": tp2},
+                                  "test_pasillo": tp, "test_paso_22_24": tp2,
+                                  "test_pasillo_pilares": tp3, "test_tunel_37": tp4},
                                  indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Escrito {salida}")
     gb.preview(Path(a.preview), geo, extra=lambda ax: dibujar(ax, spawns))

@@ -1,74 +1,74 @@
-﻿osm_id,nombre,building,forma,plantas,altura_m,base_m,notas,fuente
-142258873,"Edificio 45. ""Alexander Von Humboldt"" (Centro de Estudios de Postgrado""",university,volumen,3,,0.0,building:levels de OSM,osm
-142258882,"Edificio 38. Edificio Multiusos Cubierto ""Rabat""",yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-142258883,Edificio 48. Vestuarios,yes,volumen,1,3,0.0,"lidar p75=3.0, mediana=3.0, n=76",lidar
-142258884,Edificico 39. Pabellón Cubierto de Gimnasia,yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-142258887,Edificio 43,yes,volumen,1,3,0.0,"lidar p75=3.0, mediana=3.0, n=46; nombre manual (guarderia junto a P4, plano oficial)",manual
-142259594,Edificio 19. Central térmica,yes,volumen,4,14,0.0,"lidar p75=14.0, mediana=14.0, n=131",lidar
-142262877,"Edificio 25. ""Juan Bautista Muñoz"" (Biblioteca / C.R.A.I.)",university,volumen,1,12.5,0.0,Dato del usuario: misma altura que edificios 23 y 24 (LiDAR daba 2 m),manual
-142262878,"Edificio 22. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",yes,volumen,6,21,0.0,"lidar p75=21.0, mediana=21.0, n=120",lidar
-142262879,Edificio 46. Instituto de la Grasa (CSIC),yes,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=627",lidar
-142262880,"Edifiicio 24. ""Fausto Elhuyar y de Suvisa"" (aulas)",university,volumen,4,13,0.0,"lidar p75=13.0, mediana=12.0, n=413",lidar
-142262881,Edificio 20. Centro Andaluz de Biologia del Desarrollo,yes,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=123",lidar
-142262882,Edificio 40. Nave Almacén,university,volumen,2,7,0.0,"lidar p75=7.0, mediana=7.0, n=192",lidar
-142262883,"Edificio 26. ""Pabellón de las trabajadoras del campo andaluz"" (Gimnasio)",yes,volumen,2,7,0.0,"lidar p75=7.0, mediana=6.0, n=202",lidar
-142262884,Edificio 33. Teatr,yes,volumen,3,11,0.0,"lidar p75=11.0, mediana=11.0, n=145",lidar
-142262885,"Edificio 2. ""Antonio de Ulloa""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=83",lidar
-142262886,"Edificio 44. ""Josefa Amar y Borbón"" (Centro de investigación)",yes,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=68",lidar
-142262890,,yes,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=42",lidar
-142263535,"Edificio 27. ""Pabellón Juan José González Badillo"" (Centro de Investigación de Rendimiento Físico y Deportivo)",university,volumen,2,7,0.0,"lidar p75=7.0, mediana=5.0, n=210",lidar
-142263536,Edificio 47. Servicios Centrales de Investigación II,university,volumen,4,13,0.0,"lidar p75=13.0, mediana=13.0, n=64",lidar
-142263537,Edificio 21. Servicios Centrales de Investigación I,university,volumen,3,9,0.0,"lidar p75=9.0, mediana=5.0, n=215",lidar
-142276198,Edificio 37. Pabellón Multiusos Semidescubierto,university,techo,2,7,0.0,Pistas de voley cubiertas (solo techo): losa con cubierta a 7 m sobre pilares,manual
-191918052,Escuela Técnica Superior de Ingeniería Agronómica,university,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=278",lidar
-191918053,,roof,techo,,0.4,3.6,"lidar p75=5.0, mediana=4.0, n=184",lidar
-191918054,Edificio 35 Torre (mirador),yes,volumen,15,63,0.0,"Dato del usuario: 63 m hasta plataforma de la veleta (prensa cita ~68 m); suelo del mirador a 48,5 m",manual
-321893434,,roof,techo,,0.4,3.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-553042591,,roof,techo,,0.4,2.6,"lidar p75=3.0, mediana=3.0, n=84",lidar
-555489157,,roof,techo,,0.4,3.1,"lidar p75=4.0, mediana=3.5, n=6",lidar
-555489158,,roof,techo,,0.4,2.5,"lidar p75=3.0, mediana=2.5, n=6",lidar
-555489167,,yes,volumen,1,4,0.0,"lidar p75=4.0, mediana=3.5, n=12",lidar
-555538609,,greenhouse,volumen,1,5,0.0,"lidar p75=5.0, mediana=5.0, n=31",lidar
-555538618,,roof,techo,,0.4,5.6,"lidar p75=7.0, mediana=6.0, n=5",lidar
-1372454314,,university,volumen,1,4,0.0,"lidar p75=4.0, mediana=4.0, n=22",lidar
-1373541633,Edificio 52. Servicios Centrales de Investigación III,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-1373541634,Edificio 51. Nave dotacional de investigación,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-1373541635,"Edificio 23. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",university,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=139",lidar
-1373541636,Edificio 34. Biblioteca E.T.S.I.A.,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-1373541637,"Edificio 32. ""Rosario Valpuesta"" (Rectorado)",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=132",lidar
-1373541638,"Edificio 31. ""Leandro Fernández de Moratín"" (Paraninfo)",university,volumen,3,9,0.0,"lidar p75=9.0, mediana=8.0, n=84",lidar
-1373541639,,university,techo,2,7,0.0,Pasillo cubierto del eje central (solo techo): losa con cubierta a 7 m sobre pilares,manual
-1373541640,Edificio 1. Cafetería,university,volumen,2,6,0.0,"lidar p75=6.0, mediana=6.0, n=77",lidar
-1373541641,"Edificio 4. ""Zenón de Somodevilla, Marqués de la Ensenada""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=102",lidar
-1373541642,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=23",lidar
-1373541643,"Edificio 3. ""José Moñino, Conde de Floridablanca""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=134",lidar
-1373541644,"Edificio 6. ""Manuel José de Ayala""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=12.0, n=163",lidar
-1373541645,,roof,techo,,0.4,6.6,"lidar p75=8.0, mediana=7.0, n=11",lidar
-1373541646,,roof,techo,,0.4,7.6,"lidar p75=8.0, mediana=8.0, n=5",lidar
-1373541647,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=24",lidar
-1373541648,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=21",lidar
-1373541649,"Edificio 5. José María Blanco White""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=97",lidar
-1373541650,"Edificio 8. ""Félix de Azara""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=97",lidar
-1373541651,"Edificio 7. ""Pedro Rodríguez Campomanes""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=153",lidar
-1373541652,"Edificio 10. ""Francisco de Goya y Lucientes""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=16.0, n=160",lidar
-1373541653,,roof,techo,,0.4,6.6,"lidar p75=8.0, mediana=7.0, n=11",lidar
-1373541654,,roof,techo,,0.4,7.6,"lidar p75=8.0, mediana=8.0, n=8",lidar
-1373541655,"Edificio 9. ""Francisco de Miranda""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=99",lidar
-1373541656,"Edificio 12. ""Alejandro Malaspina""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=98",lidar
-1373541657,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=20",lidar
-1373541658,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=18",lidar
-1373541659,"Edificio 11. ""Pedro Pablo Abarca de Bolea, Conde de Aranda""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=149",lidar
-1373541660,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=26",lidar
-1373541661,"Edificio 14. ""Gaspar Melchor de Jovellanos y Ramírez""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=15.0, n=163",lidar
-1373541662,,roof,techo,,0.4,3.6,"lidar p75=5.0, mediana=4.0, n=23",lidar
-1373541663,"Edificio 13. ""Francisco José de Caldas""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=100",lidar
-1373541664,"Edificio 16. ""José Cadalso y Vázquez""",university,volumen,3,9,0.0,"lidar p75=9.0, mediana=8.0, n=98",lidar
-1373541665,Edificio 15. Residencia de estudiantes,dormitory,volumen,5,17,0.0,"lidar p75=17.0, mediana=17.0, n=89",lidar
-1373541666,"Edificio 18. ""José Celestino Mutis""",university,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=139",lidar
-1373541667,"Edificio 17. ""José Celestino Mutis""",university,volumen,3,11,0.0,"lidar p75=11.0, mediana=11.0, n=91",lidar
-1373541668,,roof,techo,,0.4,6.6,"lidar p75=7.0, mediana=7.0, n=12",lidar
-1373541669,,roof,techo,,0.4,6.6,"lidar p75=7.0, mediana=7.0, n=5",lidar
-1373541670,Edificio 53. Centro de Excelencia en Genómica y Análisis de la Biodiversidad (C.E.G.A.B.),university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-1373674172,,yes,volumen,3,11,0.0,"lidar p75=11.0, mediana=6.5, n=4",lidar
-1373674189,,yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
-1373674192,"Edificio 36B. ""Jorge Juan Santacilica"" (E.T.S.I.A.)",university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto
+﻿osm_id,nombre,building,forma,plantas,altura_m,base_m,notas,fuente,pilares
+142258873,"Edificio 45. ""Alexander Von Humboldt"" (Centro de Estudios de Postgrado""",university,volumen,3,,0.0,building:levels de OSM,osm,
+142258882,"Edificio 38. Edificio Multiusos Cubierto ""Rabat""",yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+142258883,Edificio 48. Vestuarios,yes,volumen,1,3,0.0,"lidar p75=3.0, mediana=3.0, n=76",lidar,
+142258884,Edificico 39. Pabellón Cubierto de Gimnasia,yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+142258887,Edificio 43,yes,volumen,1,3,0.0,"lidar p75=3.0, mediana=3.0, n=46; nombre manual (guarderia junto a P4, plano oficial)",manual,
+142259594,Edificio 19. Central térmica,yes,volumen,4,14,0.0,"lidar p75=14.0, mediana=14.0, n=131",lidar,
+142262877,"Edificio 25. ""Juan Bautista Muñoz"" (Biblioteca / C.R.A.I.)",university,volumen,1,12.5,0.0,Dato del usuario: misma altura que edificios 23 y 24 (LiDAR daba 2 m),manual,
+142262878,"Edificio 22. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",yes,volumen,6,21,0.0,"lidar p75=21.0, mediana=21.0, n=120",lidar,
+142262879,Edificio 46. Instituto de la Grasa (CSIC),yes,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=627",lidar,
+142262880,"Edifiicio 24. ""Fausto Elhuyar y de Suvisa"" (aulas)",university,volumen,4,13,0.0,"lidar p75=13.0, mediana=12.0, n=413",lidar,
+142262881,Edificio 20. Centro Andaluz de Biologia del Desarrollo,yes,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=123",lidar,
+142262882,Edificio 40. Nave Almacén,university,volumen,2,7,0.0,"lidar p75=7.0, mediana=7.0, n=192",lidar,
+142262883,"Edificio 26. ""Pabellón de las trabajadoras del campo andaluz"" (Gimnasio)",yes,volumen,2,7,0.0,"lidar p75=7.0, mediana=6.0, n=202",lidar,
+142262884,Edificio 33. Teatr,yes,volumen,3,11,0.0,"lidar p75=11.0, mediana=11.0, n=145",lidar,
+142262885,"Edificio 2. ""Antonio de Ulloa""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=83",lidar,
+142262886,"Edificio 44. ""Josefa Amar y Borbón"" (Centro de investigación)",yes,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=68",lidar,
+142262890,,yes,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=42",lidar,
+142263535,"Edificio 27. ""Pabellón Juan José González Badillo"" (Centro de Investigación de Rendimiento Físico y Deportivo)",university,volumen,2,7,0.0,"lidar p75=7.0, mediana=5.0, n=210",lidar,
+142263536,Edificio 47. Servicios Centrales de Investigación II,university,volumen,4,13,0.0,"lidar p75=13.0, mediana=13.0, n=64",lidar,
+142263537,Edificio 21. Servicios Centrales de Investigación I,university,volumen,3,9,0.0,"lidar p75=9.0, mediana=5.0, n=215",lidar,
+142276198,Edificio 37. Pabellón Multiusos Semidescubierto,university,tunel_z,2,7,0.0,"Pistas de voley: tunel en el eje Z (losa de cubierta a 7 m + paredes este/oeste de 0,3 m, norte/sur abiertos; sin pilares)",manual,
+191918052,Escuela Técnica Superior de Ingeniería Agronómica,university,volumen,4,15,0.0,"lidar p75=15.0, mediana=14.0, n=278",lidar,
+191918053,,roof,techo,,0.4,3.6,"lidar p75=5.0, mediana=4.0, n=184",lidar,
+191918054,Edificio 35 Torre (mirador),yes,volumen,15,63,0.0,"Dato del usuario: 63 m hasta plataforma de la veleta (prensa cita ~68 m); suelo del mirador a 48,5 m",manual,
+321893434,,roof,techo,,0.4,3.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+553042591,,roof,techo,,0.4,2.6,"lidar p75=3.0, mediana=3.0, n=84",lidar,
+555489157,,roof,techo,,0.4,3.1,"lidar p75=4.0, mediana=3.5, n=6",lidar,
+555489158,,roof,techo,,0.4,2.5,"lidar p75=3.0, mediana=2.5, n=6",lidar,
+555489167,,yes,volumen,1,4,0.0,"lidar p75=4.0, mediana=3.5, n=12",lidar,
+555538609,,greenhouse,volumen,1,5,0.0,"lidar p75=5.0, mediana=5.0, n=31",lidar,
+555538618,,roof,techo,,0.4,5.6,"lidar p75=7.0, mediana=6.0, n=5",lidar,
+1372454314,,university,volumen,1,4,0.0,"lidar p75=4.0, mediana=4.0, n=22",lidar,
+1373541633,Edificio 52. Servicios Centrales de Investigación III,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+1373541634,Edificio 51. Nave dotacional de investigación,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+1373541635,"Edificio 23. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",university,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=139",lidar,
+1373541636,Edificio 34. Biblioteca E.T.S.I.A.,university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+1373541637,"Edificio 32. ""Rosario Valpuesta"" (Rectorado)",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=132",lidar,
+1373541638,"Edificio 31. ""Leandro Fernández de Moratín"" (Paraninfo)",university,volumen,3,9,0.0,"lidar p75=9.0, mediana=8.0, n=84",lidar,
+1373541639,,university,techo,2,7,0.0,Pasillo cubierto del eje central (solo techo): losa con cubierta a 7 m sobre pilares,manual,perimetro
+1373541640,Edificio 1. Cafetería,university,volumen,2,6,0.0,"lidar p75=6.0, mediana=6.0, n=77",lidar,
+1373541641,"Edificio 4. ""Zenón de Somodevilla, Marqués de la Ensenada""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=102",lidar,
+1373541642,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=23",lidar,
+1373541643,"Edificio 3. ""José Moñino, Conde de Floridablanca""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=134",lidar,
+1373541644,"Edificio 6. ""Manuel José de Ayala""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=12.0, n=163",lidar,
+1373541645,,roof,techo,,0.4,6.6,"lidar p75=8.0, mediana=7.0, n=11",lidar,
+1373541646,,roof,techo,,0.4,7.6,"lidar p75=8.0, mediana=8.0, n=5",lidar,
+1373541647,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=24",lidar,
+1373541648,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=21",lidar,
+1373541649,"Edificio 5. José María Blanco White""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=97",lidar,
+1373541650,"Edificio 8. ""Félix de Azara""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=97",lidar,
+1373541651,"Edificio 7. ""Pedro Rodríguez Campomanes""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=153",lidar,
+1373541652,"Edificio 10. ""Francisco de Goya y Lucientes""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=16.0, n=160",lidar,
+1373541653,,roof,techo,,0.4,6.6,"lidar p75=8.0, mediana=7.0, n=11",lidar,
+1373541654,,roof,techo,,0.4,7.6,"lidar p75=8.0, mediana=8.0, n=8",lidar,
+1373541655,"Edificio 9. ""Francisco de Miranda""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=99",lidar,
+1373541656,"Edificio 12. ""Alejandro Malaspina""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=98",lidar,
+1373541657,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=20",lidar,
+1373541658,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=18",lidar,
+1373541659,"Edificio 11. ""Pedro Pablo Abarca de Bolea, Conde de Aranda""",university,volumen,5,16,0.0,"lidar p75=16.0, mediana=16.0, n=149",lidar,
+1373541660,,roof,techo,,0.4,3.6,"lidar p75=4.0, mediana=4.0, n=26",lidar,
+1373541661,"Edificio 14. ""Gaspar Melchor de Jovellanos y Ramírez""",university,volumen,5,17,0.0,"lidar p75=17.0, mediana=15.0, n=163",lidar,
+1373541662,,roof,techo,,0.4,3.6,"lidar p75=5.0, mediana=4.0, n=23",lidar,
+1373541663,"Edificio 13. ""Francisco José de Caldas""",university,volumen,2,8,0.0,"lidar p75=8.0, mediana=8.0, n=100",lidar,
+1373541664,"Edificio 16. ""José Cadalso y Vázquez""",university,volumen,3,9,0.0,"lidar p75=9.0, mediana=8.0, n=98",lidar,
+1373541665,Edificio 15. Residencia de estudiantes,dormitory,volumen,5,17,0.0,"lidar p75=17.0, mediana=17.0, n=89",lidar,
+1373541666,"Edificio 18. ""José Celestino Mutis""",university,volumen,3,12,0.0,"lidar p75=12.0, mediana=12.0, n=139",lidar,
+1373541667,"Edificio 17. ""José Celestino Mutis""",university,volumen,3,11,0.0,"lidar p75=11.0, mediana=11.0, n=91",lidar,
+1373541668,,roof,techo,,0.4,6.6,"lidar p75=7.0, mediana=7.0, n=12",lidar,
+1373541669,,roof,techo,,0.4,6.6,"lidar p75=7.0, mediana=7.0, n=5",lidar,
+1373541670,Edificio 53. Centro de Excelencia en Genómica y Análisis de la Biodiversidad (C.E.G.A.B.),university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+1373674172,,yes,volumen,3,11,0.0,"lidar p75=11.0, mediana=6.5, n=4",lidar,
+1373674189,,yes,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
+1373674192,"Edificio 36B. ""Jorge Juan Santacilica"" (E.T.S.I.A.)",university,volumen,3,,0.0,sin dato LiDAR (posible edificio posterior a 2010),defecto,
