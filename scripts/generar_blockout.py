@@ -6,15 +6,22 @@ Proyeccion: EPSG:25830 (UTM 30N) con origen en el centroide del contorno del
 campus. Ejes glTF (Y arriba): x = este, y = altura, z = -norte.
 
 Salidas: export/upo_blockout.glb, export/upo_blockout_meta.json,
-export/preview.png, export/zoom_22_24.png y data/alturas.csv (editable; solo se anaden
+export/preview.png, export/perfil_pasillo.png, export/zoom_22_24.png y data/alturas.csv (editable; solo se anaden
 filas nuevas; columna `fuente`: defecto|osm|lidar|manual; columna `forma`: volumen|techo).
 forma=tunel_z|tunel_x: losa + paredes de 0,3 m en los lados paralelos al eje; columna `pilares`: perimetro|todos|ninguno.
 forma=techo: losa de 0,4 m (cara superior a la altura de cubierta) sobre pilares de 0,4x0,4 m.
 data/pasos.csv: pasos peatonales (segmento + ancho + galibo) que parten los edificios volumen.
 Los nodos acabados en `-col` generan colision automatica al importar en Godot.
 
+Relieve (scripts/terreno.py): el suelo es `terreno-col`, una rejilla regular sobre el MDT (campus + 50 m); y_juego =
+cota - cota_ref (mediana de las cotas dentro del contorno). Caminos y zonas se drapean sobre el terreno; los
+edificios volumen van de la cota minima de su huella - 0,5 m a la cota media + altura; techos, tuneles, muros, vallas,
+padel y limite siguen el terreno (ver README). --terreno plano reproduce el suelo plano anterior.
+
 Uso: uv run python scripts/generar_blockout.py [--entrada data/raw/osm_upo.json]
      [--alturas data/alturas.csv] [--pasos data/pasos.csv] [--salida export/upo_blockout.glb] [--sin-preview]
+     [--mdt data/raw/mdt_lidar_1m.tif] [--terreno mdt|plano] [--paso-terreno 1] [--paso-grueso 4] [--buffer-fino 8]
+     [--suavizado-m 1]   (los valores por defecto viven en scripts/terreno.py)
      [--no-copiar-godot]   (por defecto copia el .glb a game/assets/mapa/)
 """
 import argparse
@@ -29,12 +36,16 @@ from collections import Counter
 from pathlib import Path
 
 import numpy as np
+import shapely
 import trimesh
 from pyproj import Transformer
 from shapely.affinity import rotate
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 from shapely.ops import linemerge, polygonize, unary_union
 from shapely.validation import make_valid
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import terreno as ter  # noqa: E402
 
 CAMPUS_ID = 39935092
 DESTINO_GODOT = "game/assets/mapa/upo_blockout.glb"
@@ -53,10 +64,13 @@ PILAR_SEP = 8.0
 PILAR_INTERIOR_BUFFER = 7.5  # pilares interiores solo en los puntos de la rejilla dentro de huella.buffer(-7.5)
 PILAR_TODOS_BUFFER = 3.0     # pilares=todos: rejilla dentro de huella.buffer(-3)
 GROSOR_PARED_TUNEL = 0.3
+ZOCALO_EDIFICIO = 0.5        # los volumenes bajan 0,5 m por debajo de la cota minima de su huella
+ENTERRADO_LINEAL = 0.3       # muros, vallas, padel, limite, pilares y paredes de tunel: base a terreno - 0,3 m
+EMPOTRADO_PILAR = 0.1        # el pilar entra 0,1 m en la losa
 FRAG_AREA_MIN = 0.25         # fragmentos de un edificio partido por pasos: < 25 % del mayor -> descartar
 FRAG_ANCHO_MIN = 1.5         # ... y los de menos de 1,5 m de ancho (desaparecen con buffer(-0.75))
 CAMPOS_PASOS = ["id", "descripcion", "x1", "z1", "x2", "z2", "ancho_m", "galibo_m", "notas"]
-# fuente: defecto | osm | lidar | manual (ver scripts/alturas_lidar.py; solo se pisan defecto y lidar)
+# fuente: defecto | osm | lidar | lidar2020 | manual (ver scripts/alturas_lidar.py; solo se pisan defecto y lidar)
 
 ANCHO_CAMINO = {
     "tertiary": 7, "residential": 6, "trunk_link": 6, "service": 4,
@@ -165,6 +179,175 @@ def extruir(geom, h, base=0.0):
         m.apply_translation([0, 0, base])
         ms.append(m)
     return trimesh.util.concatenate(ms) if ms else None
+
+
+# ---------------------------------------------------------------- mallas sobre el terreno
+def _poligonos(g):
+    """Todos los Polygon (no vacios) de una geometria cualquiera, sin filtrar por area."""
+    if g.is_empty:
+        return []
+    if g.geom_type == "Polygon":
+        return [g] if g.area > 1e-9 else []
+    return [q for h in g.geoms for q in _poligonos(h)] if hasattr(g, "geoms") else []
+
+
+def _earcut(p):
+    """Triangula un Polygon (con huecos) con earcut. Devuelve (v (N, 2), f (M, 3)) con normal +arriba."""
+    import mapbox_earcut as earcut
+    anillos = [np.asarray(p.exterior.coords)[:-1]] + [np.asarray(r.coords)[:-1] for r in p.interiors]
+    v = np.vstack(anillos).astype(np.float64)
+    fin = np.cumsum([len(r) for r in anillos]).astype(np.uint32)
+    f = np.asarray(earcut.triangulate_float64(v, fin), np.int64).reshape(-1, 3)
+    a, b, c = v[f[:, 0]], v[f[:, 1]], v[f[:, 2]]
+    neg = (b[:, 0] - a[:, 0]) * (c[:, 1] - a[:, 1]) - (b[:, 1] - a[:, 1]) * (c[:, 0] - a[:, 0]) < 0
+    f[neg] = f[neg][:, ::-1]
+    return v, f
+
+
+def superficie(geom, T):
+    """Triangula en planta los poligonos de geom sobre la malla del terreno T. T plano: un earcut por poligono.
+    Si no, el plano se corta en los bloques de T.paso_bloque alineados con el origen y cada bloque con las facetas
+    EXACTAS del terreno (T.facetas_bloques: 2 triangulos si es grueso, celdas de paso fino si es fino, abanico si es
+    de transicion). Los triangulos enteros dentro del poligono se copian tal cual; los de borde se intersecan con el
+    poligono y se triangulan con earcut. Asi las piezas quedan sobre facetas planas del terreno, los vertices
+    coinciden entre bloques vecinos (sin uniones en T; se sueldan por redondeo a 1 micra) y el dibujado sigue la
+    colision. Devuelve (v (N, 2), f (M, 3)) con normal +arriba, o (None, None)."""
+    vs, fs = [], []
+    G = None if T.es_plano else T.paso_bloque
+    for p in validos(geom):
+        if G is None:
+            v, f = _earcut(p)
+            vs.append(v)
+            fs.append(f)
+            continue
+        x0, y0, x1, y1 = p.bounds
+        i0, i1, j0, j1 = math.floor(x0 / G), math.ceil(x1 / G), math.floor(y0 / G), math.ceil(y1 / G)
+        ii, jj = np.meshgrid(np.arange(i0, i1), np.arange(j0, j1))
+        ii, jj = ii.ravel(), jj.ravel()
+        cajas = shapely.box(ii * G, jj * G, (ii + 1) * G, (jj + 1) * G)
+        shapely.prepare(p)
+        toca = shapely.intersects(p, cajas)
+        entera = toca & shapely.contains(p, cajas)
+        if entera.any():
+            tr = T.facetas_bloques(ii[entera], jj[entera])
+            vs.append(tr.reshape(-1, 2))
+            fs.append(np.arange(len(tr) * 3).reshape(-1, 3))
+        for i, j in zip(ii[toca & ~entera], jj[toca & ~entera]):
+            g = shapely.clip_by_rect(p, i * G, j * G, (i + 1) * G, (j + 1) * G)
+            if g.is_empty:
+                continue
+            tr = T.facetas_bloques(i, j)
+            tp = shapely.polygons(tr)
+            shapely.prepare(g)
+            dentro = shapely.contains(g, tp)
+            if dentro.any():
+                vs.append(tr[dentro].reshape(-1, 2))
+                fs.append(np.arange(int(dentro.sum()) * 3).reshape(-1, 3))
+            for k in np.nonzero(shapely.intersects(g, tp) & ~dentro)[0]:
+                for q in _poligonos(g.intersection(tp[k])):
+                    v, f = _earcut(q)
+                    vs.append(v)
+                    fs.append(f)
+    if not vs:
+        return None, None
+    off = np.cumsum([0] + [len(v) for v in vs[:-1]])
+    v = np.vstack(vs)
+    f = np.vstack([f + o for f, o in zip(fs, off)])
+    if G is not None:        # soldar vertices coincidentes
+        v, f = _soldar(v, f)
+    return v, f
+
+
+def _soldar(v, f):
+    """Une los vertices (N, 2) que coinciden (redondeo a 1 micra) y descarta los triangulos degenerados."""
+    claves = np.round(v * 1e6).astype(np.int64)
+    _, idx, inv = np.unique(claves, axis=0, return_index=True, return_inverse=True)
+    inv = np.asarray(inv).ravel()
+    v, f = v[idx], inv[f]
+    f = f[(f[:, 0] != f[:, 1]) & (f[:, 1] != f[:, 2]) & (f[:, 0] != f[:, 2])]
+    return v, f
+
+
+def plano_drapeado(geom, T, y_off):
+    """Malla (superficie) que sigue el terreno: cada vertice a altura(x, z) + y_off. Mesh local (x, norte, z)."""
+    v, f = superficie(geom, T)
+    if v is None:
+        return None
+    z = T.h(v[:, 0], v[:, 1]) + y_off
+    return trimesh.Trimesh(np.column_stack([v, z]), f, process=False)
+
+
+def prisma_drapeado(geom, fbot, ftop, T):
+    """Solido watertight sobre la planta geom: en cada vertice la cara inferior esta a fbot(x, y) y la
+    superior a ftop(x, y) (funciones del plano local (x, norte) -> cota de juego)."""
+    v, f = superficie(geom, T)
+    if v is None:
+        return None
+    n = len(v)
+    zt, zb = ftop(v[:, 0], v[:, 1]), fbot(v[:, 0], v[:, 1])
+    verts = np.vstack([np.column_stack([v, zt]), np.column_stack([v, zb])])
+    # aristas dirigidas que no tienen la inversa: borde de la planta (el exterior queda a la derecha)
+    e = np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]])
+    claves = e[:, 0] * n + e[:, 1]
+    inversas = e[:, 1] * n + e[:, 0]
+    borde = e[~np.isin(inversas, claves)]
+    a, b = borde[:, 0], borde[:, 1]
+    lados = np.concatenate([np.column_stack([a + n, b + n, b]), np.column_stack([a + n, b, a])])
+    faces = np.vstack([f, f[:, ::-1] + n, lados])
+    return trimesh.Trimesh(verts, faces, process=False)
+
+
+def malla_terreno(caja, T):
+    """Malla del terreno sobre `caja` (se redondea hacia fuera a bloques de T.paso_bloque alineados con el origen):
+    las facetas de Terreno.facetas_bloques (ver terreno.py: grueso / fino / transicion), con cada vertice a
+    T.h(x, y). Mesh local (x, norte, z)."""
+    x0, y0, x1, y1 = caja.bounds
+    if T.es_plano:
+        return plano(caja, 0.0)
+    G = T.paso_bloque
+    ii, jj = np.meshgrid(np.arange(math.floor(x0 / G), math.ceil(x1 / G)), np.arange(math.floor(y0 / G), math.ceil(y1 / G)))
+    tr = T.facetas_bloques(ii.ravel(), jj.ravel())
+    v, f = _soldar(tr.reshape(-1, 2), np.arange(len(tr) * 3).reshape(-1, 3))
+    return trimesh.Trimesh(np.column_stack([v, T.h(v[:, 0], v[:, 1])]), f, process=False)
+
+
+# zona de malla fina: detalle donde hay escaleras, rampas y muros de contencion
+EDIF_PASILLO = 1373541639
+HW_ZONA_FINA = ("steps", "footway", "path", "pedestrian")
+
+
+def zona_fina(mapa, campus, buffer_m):
+    """Geometria (x, norte local) donde la malla del terreno usa el paso fino: `buffer_m` alrededor de los
+    highway=steps/footway/path/pedestrian, los barrier=retaining_wall y el pasillo central. None si buffer_m <= 0."""
+    if buffer_m <= 0:
+        return None
+    gs = []
+    for w in mapa.ways.values():
+        t = w.get("tags", {})
+        if t.get("highway") in HW_ZONA_FINA or t.get("barrier") == "retaining_wall":
+            l = mapa.linea(w)
+            if l is not None:
+                gs.append(l)
+    w = mapa.ways.get(EDIF_PASILLO)
+    if w is not None and mapa.cerrado(w):
+        gs.extend(validos(mapa.poligono(w)))
+    if not gs:
+        return None
+    return unary_union([g.buffer(buffer_m) for g in gs]).intersection(campus.buffer(MARGEN_CAMINOS))
+
+
+def muestras_huella(poly, T, paso=1.0):
+    """Cotas de juego del terreno bajo una huella: rejilla de `paso` m dentro + vertices del contorno."""
+    x0, y0, x1, y1 = poly.bounds
+    X, Y = np.meshgrid(np.arange(x0, x1 + paso, paso), np.arange(y0, y1 + paso, paso))
+    X, Y = X.ravel(), Y.ravel()
+    d = shapely.contains_xy(poly, X, Y)
+    xs, ys = [X[d]], [Y[d]]
+    for p in validos(poly):
+        c = np.asarray(p.exterior.coords)
+        xs.append(c[:, 0])
+        ys.append(c[:, 1])
+    return T.h(np.concatenate(xs), np.concatenate(ys))
 
 
 # ---------------------------------------------------------------- datos OSM
@@ -386,11 +569,12 @@ def filtrar_fragmentos(geom):
     return ok, malos
 
 
-def partir_por_pasos(huella, base, top, pasos, etiqueta=""):
+def partir_por_pasos(huella, base, top, pasos, etiqueta="", ref=0.0):
     """Divide la huella de un edificio volumen con los pasos. Devuelve (mesh|None, n_pasos_aplicados).
     (huella - paso) se extruye entera; (huella ∩ paso) solo de galibo a top (soportal); sin
     galibo (o galibo >= top) el paso queda abierto al cielo. Si queda partida en varios
-    poligonos se descartan los fragmentos sueltos (ver filtrar_fragmentos) y se informa."""
+    poligonos se descartan los fragmentos sueltos (ver filtrar_fragmentos) y se informa.
+    base, top y `ref` son cotas de juego; el galibo se mide desde `ref` (cota media del terreno bajo la huella)."""
     resto, ms, n = huella, [], 0
 
     def limpiar(g, que):
@@ -410,8 +594,8 @@ def partir_por_pasos(huella, base, top, pasos, etiqueta=""):
         n += 1
         resto = resto.difference(p["poly"])
         g = p["galibo"]
-        if g is not None and g > 0 and g < top - 0.05:
-            z0 = max(g, base)
+        if g is not None and g > 0 and ref + g < top - 0.05:
+            z0 = max(ref + g, base)
             inter = limpiar(inter, f"soportal {p['id']}")
             m = extruir(inter, top - z0, z0) if inter is not None else None
             if m is not None:
@@ -425,11 +609,13 @@ def partir_por_pasos(huella, base, top, pasos, etiqueta=""):
 
 
 # ---------------------------------------------------------------- tuneles
-def malla_tunel(huella, forma, base, z_losa, top):
-    """Edificio-tunel: losa (z_losa..top) sobre toda la huella + paredes de 0,3 m hacia dentro, del
-    suelo a la losa, solo en los lados paralelos al eje (tunel_z: |dnorte| > |deste|, o sea caras
-    este/oeste; tunel_x: al reves). Devuelve (mesh, poligono_paredes)."""
-    ms = [extruir(huella, top - z_losa, z_losa)]
+def malla_tunel(huella, forma, base, z_losa, top, T):
+    """Edificio-tunel sobre el terreno: losa (cara superior a terreno + top, grosor top - z_losa) sobre toda la
+    huella + paredes de 0,3 m hacia dentro, del terreno (- ENTERRADO_LINEAL) a la cara inferior de la losa, solo en
+    los lados paralelos al eje (tunel_z: |dnorte| > |deste|, o sea caras este/oeste; tunel_x: al reves).
+    base, z_losa y top son alturas RELATIVAS al terreno local. Devuelve (mesh, poligono_paredes)."""
+    ent = 0.0 if T.es_plano else ENTERRADO_LINEAL
+    ms = [prisma_drapeado(huella, lambda x, y: T.h(x, y) + z_losa, lambda x, y: T.h(x, y) + top, T)]
     paredes = []
     for p in validos(huella):
         c = list(p.exterior.coords)
@@ -439,7 +625,8 @@ def malla_tunel(huella, forma, base, z_losa, top):
                 paredes.append(LineString([a, b]).buffer(GROSOR_PARED_TUNEL, cap_style="flat").intersection(p))
     muros = unary_union(paredes) if paredes else None
     if muros is not None and z_losa - base > 0.05:
-        m = extruir(muros, z_losa - base, base)
+        off = base - ent if base <= 0.05 else base
+        m = prisma_drapeado(muros, lambda x, y: T.h(x, y) + off, lambda x, y: T.h(x, y) + z_losa, T)
         if m is not None:
             ms.append(m)
     return trimesh.util.concatenate([m for m in ms if m is not None]), muros
@@ -498,19 +685,34 @@ def pilares_techo(huella, h, volumenes, modo=""):
     return out
 
 
-def malla_pilares(centros, h):
+def malla_pilares(centros, y_losa, T):
+    """Pilares de 0,4 x 0,4 m desde el terreno (- ENTERRADO_LINEAL) hasta la cara inferior de la losa,
+    que esta a y_losa m sobre el terreno local (entran EMPOTRADO_PILAR en la losa)."""
+    ent, emp = (0.0, 0.0) if T.es_plano else (ENTERRADO_LINEAL, EMPOTRADO_PILAR)
     ms = []
     for x, y in centros:
-        m = trimesh.creation.box(extents=[PILAR_LADO, PILAR_LADO, h])
-        m.apply_translation([x, y, h / 2])
+        h = float(T.h(x, y))
+        zb, zt = h - ent, h + y_losa + emp
+        m = trimesh.creation.box(extents=[PILAR_LADO, PILAR_LADO, zt - zb])
+        m.apply_translation([x, y, (zb + zt) / 2])
         ms.append(m)
     return trimesh.util.concatenate(ms) if ms else None
 
 
 # ---------------------------------------------------------------- construccion
-def construir(mapa, filas, pasos=(), pistas=()):
-    campus = mapa.poligono(mapa.ways[CAMPUS_ID])
-    campus = validos(campus)[0]
+def campus_local(mapa):
+    """Poligono del contorno del campus en el plano local (x = este, y = norte)."""
+    return validos(mapa.poligono(mapa.ways[CAMPUS_ID]))[0]
+
+
+def construir(mapa, filas, pasos=(), pistas=(), T=None):
+    """Piezas del blockout sobre el terreno T (Terreno.plano() por defecto). La malla del terreno (y la densificacion
+    de todo lo que se apoya en el) la fija T: ver Terreno.definir_zona_fina."""
+    if T is None:
+        T = ter.Terreno.plano()
+    ent_e = 0.0 if T.es_plano else ZOCALO_EDIFICIO
+    ent_l = 0.0 if T.es_plano else ENTERRADO_LINEAL
+    campus = campus_local(mapa)
     minx, miny, maxx, maxy = campus.bounds
     caja_suelo = box(minx - MARGEN_SUELO, miny - MARGEN_SUELO, maxx + MARGEN_SUELO, maxy + MARGEN_SUELO)
     zona_caminos = campus.buffer(MARGEN_CAMINOS)
@@ -519,11 +721,11 @@ def construir(mapa, filas, pasos=(), pistas=()):
     stats = Counter()
     edif_info = []  # para preview
 
-    # Suelo
-    piezas.append(("suelo-col", plano(caja_suelo, 0.0), "suelo"))
+    # Terreno (rejilla regular con colision)
+    piezas.append(("terreno-col", malla_terreno(caja_suelo, T), "suelo"))
 
     # Edificios
-    techos = []  # (wid, nombre, huella, z_losa_inferior, grosor, es_roof)
+    techos = []  # (info, z0 relativo al terreno de la cara inferior de la losa, es_roof)
     for wid, w in sorted(mapa.ways.items()):
         t = w.get("tags", {})
         if not (("building" in t or t.get("man_made") == "tower") and mapa.cerrado(w)):
@@ -535,25 +737,33 @@ def construir(mapa, filas, pasos=(), pistas=()):
         huella = unary_union(polys) if polys else None
         es_roof = t.get("building") == "roof"
         nombre = fila.get("nombre") or t.get("name", "")
+        muros_tunel = None
+        hs = muestras_huella(huella, T) if huella is not None else np.zeros(1)
+        h_min, h_med, h_max = float(hs.min()), float(hs.mean()), float(hs.max())
+        y_base = y_top = None
         if forma == "techo":
-            if es_roof:      # base_m + grosor altura_m
+            if es_roof:      # base_m + grosor altura_m, sobre el terreno local
                 z0, grosor = base, alt
-            else:            # altura_m = cota de la cara superior de la cubierta
+            else:            # altura_m = altura de la cara superior de la cubierta sobre el terreno local
                 grosor = min(GROSOR_TECHO, alt)
                 z0 = alt - grosor
             top = z0 + grosor
-            m = extruir(huella, grosor, z0)
+            m = prisma_drapeado(huella, lambda x, y, z0=z0: T.h(x, y) + z0,
+                                lambda x, y, top=top: T.h(x, y) + top, T)
         elif forma in ("tunel_z", "tunel_x"):
             top = alt + base
-            m, muros_tunel = malla_tunel(huella, forma, base, top - min(GROSOR_TECHO, alt), top)
+            m, muros_tunel = malla_tunel(huella, forma, base, top - min(GROSOR_TECHO, alt), top, T)
         else:
+            # volumen: base = cota minima bajo la huella - zocalo; cubierta = cota media + altura
             top = alt + base
+            y_base = h_min - ent_e if base <= 0.05 else h_med + base
+            y_top = h_med + top
             if pasos and huella is not None:
-                m, n = partir_por_pasos(huella, base, top, pasos, f"{wid} {nombre}"[:40])
+                m, n = partir_por_pasos(huella, y_base, y_top, pasos, f"{wid} {nombre}"[:40], ref=h_med)
                 if n:
                     stats["edificios_partidos"] += 1
             else:
-                m = extruir(huella, alt, base)
+                m = extruir(huella, y_top - y_base, y_base)
         if m is None:
             stats["edificios_descartados"] += 1
             print(f"AVISO: edificio {wid} sin geometria valida", file=sys.stderr)
@@ -568,7 +778,8 @@ def construir(mapa, filas, pasos=(), pistas=()):
         stats["edificios"] += 1
         info = {"id": wid, "nombre": nombre, "poly": unary_union(polys), "altura": top,
                 "clave": clave, "forma": forma, "tags": t, "pilares": [],
-                "muros": muros_tunel if forma in ("tunel_z", "tunel_x") else None}
+                "muros": muros_tunel, "h_min": h_min, "h_med": h_med, "h_max": h_max,
+                "y_base": y_base, "y_top": y_top}
         edif_info.append(info)
         if forma == "techo":
             techos.append((info, z0, es_roof))
@@ -586,7 +797,7 @@ def construir(mapa, filas, pasos=(), pistas=()):
         if modo == "ninguno":
             continue
         centros = pilares_techo(poly, z0, volumenes, modo)
-        m = malla_pilares(centros, z0)
+        m = malla_pilares(centros, z0, T)
         if m is not None:
             piezas.append((f"pilares_{info['id']}_{slug(info['nombre'])}-col", m, "pilar"))
             info["pilares"] = centros
@@ -608,7 +819,7 @@ def construir(mapa, filas, pasos=(), pistas=()):
     for hw, bufs in por_tipo.items():
         g = unary_union(bufs).intersection(zona_caminos)
         caminos_geom[hw] = g
-        m = plano(g, 0.03)
+        m = plano_drapeado(g, T, 0.03)
         if m is not None:
             clave = "camino_asfalto" if hw in ASFALTO else "camino_peatonal"
             piezas.append((f"caminos_{hw}", m, clave))
@@ -635,10 +846,14 @@ def construir(mapa, filas, pasos=(), pistas=()):
             continue
         g = unary_union(cats[cat]).intersection(caja_suelo)
         zonas_geom[cat] = g
-        m = plano(g, y)
+        m = plano_drapeado(g, T, y)
         if m is not None:
             piezas.append((f"zona_{cat}", m, cat))
             stats["zonas_" + cat] = len(cats[cat])
+
+    def sobre_terreno(geom, altura):
+        """Prisma cuya base sigue el terreno (- ENTERRADO_LINEAL) y cuya cara superior esta a terreno + altura."""
+        return prisma_drapeado(geom, lambda x, y: T.h(x, y) - ent_l, lambda x, y: T.h(x, y) + altura, T)
 
     # Muros y vallas
     for nombre, valor, grosor, h, clave in (("muros-col", "retaining_wall", 0.15, 1.2, "muros"),
@@ -649,7 +864,7 @@ def construir(mapa, filas, pasos=(), pistas=()):
                 l = mapa.linea(w)
                 if l is not None:
                     bufs.append(l.buffer(grosor, cap_style="flat", join_style="mitre"))
-        m = extruir(unary_union(bufs), h) if bufs else None
+        m = sobre_terreno(unary_union(bufs), h) if bufs else None
         if m is not None:
             piezas.append((nombre, m, clave))
             stats[nombre] = len(bufs)
@@ -663,7 +878,7 @@ def construir(mapa, filas, pasos=(), pistas=()):
             print(f"AVISO: pista {pi['id']} no encontrada o no cerrada en el OSM", file=sys.stderr)
             continue
         poly = polys[0]
-        m = extruir(cerramiento_pista(poly, GROSOR_CERRAMIENTO), pi["altura"])
+        m = sobre_terreno(cerramiento_pista(poly, GROSOR_CERRAMIENTO), pi["altura"])
         if m is not None:
             mallas_padel.append(m)
         pistas_info.append({"id": pi["id"], "nombre": pi["nombre"], "poly": poly})
@@ -674,10 +889,11 @@ def construir(mapa, filas, pasos=(), pistas=()):
     # Limite del mapa
     ext = campus.buffer(MARGEN_LIMITE)
     anillo = ext.exterior.buffer(0.25, join_style="mitre")
-    piezas.append(("limite-col", extruir(anillo, 6.0), "limite"))
+    piezas.append(("limite-col", sobre_terreno(anillo, 6.0), "limite"))
 
     return piezas, stats, {"campus": campus, "edificios": edif_info, "caminos": caminos_geom,
-                           "zonas": zonas_geom, "suelo": caja_suelo, "pasos": list(pasos), "pistas": pistas_info}
+                           "zonas": zonas_geom, "suelo": caja_suelo, "pasos": list(pasos), "pistas": pistas_info,
+                           "terreno": T}
 
 
 # ---------------------------------------------------------------- preview
@@ -709,6 +925,17 @@ def preview(ruta, geo, extra=None):
     for cat, g in geo["zonas"].items():
         for p in parche(g, fc=col_z[cat], ec="none", zorder=1):
             ax.add_patch(p)
+    T = geo.get("terreno")
+    if T is not None and not T.es_plano:  # curvas de nivel suaves cada 1 m (cota sobre el nivel del mar)
+        gx = np.arange(suelo.bounds[0], suelo.bounds[2] + 2, 2.0)
+        gy = np.arange(suelo.bounds[1], suelo.bounds[3] + 2, 2.0)
+        GX, GY = np.meshgrid(gx, gy)
+        cota = T.h(GX, GY) + T.cota_ref
+        lv = np.arange(math.floor(cota.min()), math.ceil(cota.max()) + 1)
+        ax.contour(GX, GY, cota, levels=lv, colors="#7a5c2e", linewidths=0.4, alpha=0.7, zorder=1.5)
+        cs5 = ax.contour(GX, GY, cota, levels=[v for v in lv if v % 5 == 0], colors="#6b4a1a",
+                         linewidths=0.8, alpha=0.8, zorder=1.6)
+        ax.clabel(cs5, fmt="%d m", fontsize=7)
     for hw, g in geo["caminos"].items():
         c = "#555555" if hw in ASFALTO else "#9a9a9a"
         for p in parche(g, fc=c, ec="none", zorder=2):
@@ -743,7 +970,8 @@ def preview(ruta, geo, extra=None):
     ax.set_aspect("equal")
     ax.set_xlabel("Este (m) respecto al centroide del campus")
     ax.set_ylabel("Norte (m)")
-    ax.set_title("UPO blockout - vista cenital (norte arriba); color = altura de cubierta (m)")
+    ax.set_title("UPO blockout - vista cenital (norte arriba); color = altura de cubierta (m)"
+                 + ("" if T is None or T.es_plano else "; curvas de nivel cada 1 m (cota s.n.m.)"))
     fig.colorbar(ScalarMappable(norm=norm, cmap=cmap), ax=ax, shrink=0.7, label="altura (m)")
     ax.grid(alpha=0.25)
     if extra is not None:  # extra(ax): dibuja encima antes de guardar
@@ -897,6 +1125,166 @@ def zoom_tunel(ruta, geo, edif_id, radio=40.0):
     print(f"Zoom: {ruta}")
 
 
+def perfil_pasillo(ruta, glb, geo, edif_id=1373541639):
+    """Perfil lateral del techo `edif_id` (pasillo central) medido sobre el .glb exportado: plano vertical por
+    el eje largo del techo; distancia a lo largo del eje frente a y (juego) con terreno, losa y pilares."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    e = next((q for q in geo["edificios"] if q["id"] == edif_id), None)
+    if e is None:
+        return
+    cs = list(e["poly"].minimum_rotated_rectangle.exterior.coords)
+    l0, l1 = (cs[0], cs[1]) if math.dist(cs[0], cs[1]) > math.dist(cs[1], cs[2]) else (cs[1], cs[2])
+    L = math.dist(l0, l1)
+    d = np.array([(l1[0] - l0[0]) / L, 0.0, -(l1[1] - l0[1]) / L])      # eje en coordenadas del juego
+    c = e["poly"].centroid
+    o = np.array([c.x, 0.0, -c.y])
+    n = np.array([-d[2], 0.0, d[0]])
+    sc = trimesh.load(glb, force="scene")
+    semiancho = min(math.dist(cs[0], cs[1]), math.dist(cs[1], cs[2])) / 2 + 1.0
+
+    def geom(prefijo):
+        return [sc.geometry[sc.graph[nm][1]] for nm in sc.graph.nodes_geometry if nm.startswith(prefijo)]
+
+    def secciones(mesh):
+        """Segmentos (s, y) de la interseccion de la malla con el plano vertical (sin scipy)."""
+        v, f = mesh.vertices, mesh.faces
+        dist = (v - o) @ n
+        dist[dist == 0] = 1e-9
+        a_, b_ = f, np.roll(f, -1, axis=1)
+        da, db = dist[a_], dist[b_]
+        cruza = (da > 0) != (db > 0)
+        k = cruza.sum(1) == 2
+        t = da[k] / (da[k] - db[k])
+        P = v[a_[k]] + (v[b_[k]] - v[a_[k]]) * t[..., None]
+        seg = P[cruza[k]].reshape(-1, 2, 3)
+        return (seg - o) @ d, seg[:, :, 1]
+
+    def envolvente(ss, yy, grid):
+        """Cota minima y maxima de la seccion en cada s de la rejilla."""
+        lo, hi = np.full(len(grid), np.inf), np.full(len(grid), -np.inf)
+        for (s0, s1), (y0, y1) in zip(ss, yy):
+            if s0 == s1:
+                continue
+            if s0 > s1:
+                s0, s1, y0, y1 = s1, s0, y1, y0
+            m = (grid >= s0) & (grid <= s1)
+            y = y0 + (y1 - y0) * (grid[m] - s0) / (s1 - s0)
+            lo[m], hi[m] = np.minimum(lo[m], y), np.maximum(hi[m], y)
+        ok = np.isfinite(lo)
+        return ok, lo, hi
+
+    proy = np.array([(np.array([x, 0.0, -y]) - o) @ d for x, y in e["poly"].exterior.coords])
+    grid = np.arange(proy.min() - 15, proy.max() + 15, 0.5)
+    fig, ax = plt.subplots(figsize=(18, 6.5), dpi=100)
+    ok, lo, hi = envolvente(*secciones(geom("terreno")[0]), grid)
+    ax.fill_between(grid[ok], hi[ok], hi[ok].min() - 3, color="#d9c9a3", zorder=1)
+    ax.plot(grid[ok], hi[ok], color="#7a5c2e", lw=1.5, zorder=2, label="terreno (plano vertical por el eje)")
+    for g in geom(f"edif_{edif_id}_"):
+        ok, lo, hi = envolvente(*secciones(g), grid)
+        ax.fill_between(grid[ok], lo[ok], hi[ok], color="#555860", zorder=3, label="losa (cara inferior a superior)")
+    n_pil = 0
+    for g in geom(f"pilares_{edif_id}_"):
+        v = g.vertices
+        for px, py in e["pilares"]:
+            q = np.array([px, 0.0, -py])
+            if abs((q - o) @ n) > semiancho:
+                continue
+            m = (np.abs(v[:, 0] - q[0]) < 0.25) & (np.abs(v[:, 2] - q[2]) < 0.25)
+            if not m.any():
+                continue
+            s_ = float((q - o) @ d)
+            ax.plot([s_, s_], [v[m, 1].min(), v[m, 1].max()], color="#b03030", lw=2.2, zorder=4,
+                    label="pilares (proyectados)" if n_pil == 0 else None)
+            n_pil += 1
+    h, lab = ax.get_legend_handles_labels()
+    ax.legend(dict(zip(lab, h)).values(), dict(zip(lab, h)).keys(), loc="upper right")
+    ax.set_xlabel("distancia a lo largo del eje del techo (m)")
+    ax.set_ylabel("y del juego (m)")
+    ax.set_title(f"Perfil del pasillo cubierto {edif_id} (plano vertical por su eje; escala vertical exagerada); "
+                 f"{n_pil} pilares proyectados")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Perfil: {ruta}")
+
+
+ESCALERAS_PERFIL = (1373674173, 1373674174)   # dos escaleras/rampas largas (highway=steps) con tramos de varios metros de desnivel
+
+
+def _y_malla(mesh, x, z):
+    """y de la malla `mesh` (trimesh, ejes del glb) bajo cada punto (x, z) por la vertical, sin rtree: se filtran
+    los triangulos de la caja de los puntos y se resuelven las coordenadas baricentricas. NaN si no hay triangulo."""
+    v, f = mesh.vertices, mesh.faces
+    tri = v[f]
+    caja = ((tri[:, :, 0].max(1) >= x.min() - 1) & (tri[:, :, 0].min(1) <= x.max() + 1)
+            & (tri[:, :, 2].max(1) >= z.min() - 1) & (tri[:, :, 2].min(1) <= z.max() + 1))
+    t = tri[caja]
+    a, b, c = t[:, 0], t[:, 1], t[:, 2]
+    d = (b[:, 2] - c[:, 2]) * (a[:, 0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (a[:, 2] - c[:, 2])
+    out = np.full(len(x), np.nan)
+    ok = np.abs(d) > 1e-12
+    a, b, c, d = a[ok], b[ok], c[ok], d[ok]
+    for i in range(len(x)):
+        l1 = ((b[:, 2] - c[:, 2]) * (x[i] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (z[i] - c[:, 2])) / d
+        l2 = ((c[:, 2] - a[:, 2]) * (x[i] - c[:, 0]) + (a[:, 0] - c[:, 0]) * (z[i] - c[:, 2])) / d
+        m = (l1 >= -1e-9) & (l2 >= -1e-9) & (1 - l1 - l2 >= -1e-9)
+        if m.any():
+            k = np.nonzero(m)[0][0]
+            out[i] = l1[k] * a[k, 1] + l2[k] * b[k, 1] + (1 - l1[k] - l2[k]) * c[k, 1]
+    return out
+
+
+def perfil_escaleras(ruta, glb, mapa, T, E0, N0, campus, ways=ESCALERAS_PERFIL):
+    """Perfil a lo largo de las escaleras/rampas `ways` (distancia por la polilinea frente a cota s.n.m.):
+    MDT de 5 m (IGN, suavizado de 5 m: el relieve de antes), MDT de 1 m (LiDAR, sin suavizar), el 1 m con el
+    suavizado usado y la malla final (corte de terreno-col del .glb por la vertical de cada punto) con su
+    triangulacion (puntos = vertices de la malla), mas la pieza `caminos_steps` (+3 cm)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fuentes = []
+    for etiqueta, ruta_mdt, suav, estilo in (
+            ("MDT 5 m IGN (suavizado 5 m)", ter.MDT_ALTERNATIVO, 5.0, dict(color="#c0392b", lw=1.6, ls="--")),
+            ("MDT 1 m LiDAR (sin suavizar)", ter.MDT_DEFECTO, 0.0, dict(color="#2c7fb8", lw=1.0, alpha=0.8))):
+        if Path(ruta_mdt).exists():
+            fuentes.append((etiqueta, ter.Terreno.desde_raster(ruta_mdt, E0, N0, campus, suav, 1.0), estilo))
+    sc = trimesh.load(glb, force="scene")
+    malla = sc.geometry["terreno-col"]
+    pasos_ = sc.geometry[sc.graph["caminos_steps"][1]] if "caminos_steps" in sc.graph.nodes_geometry else None
+    fig, axs = plt.subplots(len(ways), 1, figsize=(15, 5.2 * len(ways)), dpi=100)
+    axs = np.atleast_1d(axs)
+    for ax, wid in zip(axs, ways):
+        w = mapa.ways.get(wid)
+        l = mapa.linea(w) if w is not None else None
+        if l is None:
+            continue
+        d = np.arange(0.0, l.length, 0.1)
+        pts = np.array([l.interpolate(q).coords[0] for q in d])
+        x, z = pts[:, 0], -pts[:, 1]
+        for etiqueta, F, estilo in fuentes:
+            ax.plot(d, F.altura_raster(x, z) + F.cota_ref, label=etiqueta, **estilo)
+        # corte de la malla final: rayos verticales sobre cada punto
+        ymalla = _y_malla(malla, x, z)
+        ax.plot(d, ymalla + T.cota_ref, color="#1b7837", lw=2.4, label=f"malla final del .glb (terreno-col; suavizado {T.suavizado_m:g} m)")
+        if pasos_ is not None:
+            yp = _y_malla(pasos_, x, z)
+            ax.plot(d, yp + T.cota_ref, color="#f39c12", lw=1.0, label="pieza caminos_steps (+3 cm)")
+        ax.set_xlabel("distancia a lo largo de la polilinea de la escalera (m)")
+        ax.set_ylabel("cota s.n.m. (m)")
+        ax.set_title(f"OSM way {wid} (highway=steps, {l.length:.0f} m; pendiente media "
+                     f"{abs(ymalla[-1] - ymalla[0]) / l.length * 100 if np.isfinite(ymalla[[0, -1]]).all() else float('nan'):.0f} %)")
+        ax.grid(alpha=0.3)
+        ax.legend(loc="best", fontsize=8)
+    fig.suptitle("Perfil de las escaleras: MDT 5 m vs MDT 1 m vs malla final")
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Perfil escaleras: {ruta}")
+
+
 # ---------------------------------------------------------------- verificacion
 def verificar(ruta):
     sc = trimesh.load(ruta, force="scene")
@@ -915,10 +1303,18 @@ def verificar(ruta):
     print(f"[verificacion] edificios: {len(edif)} | NO watertight: {len(malos)}")
     for n in malos:
         print("   no watertight:", n)
+    lineales = [n for n in nombres if n.startswith(("muros", "vallas", "padel", "limite"))]
+    malos_l = [n for n in lineales if not sc.geometry[sc.graph[n][1]].is_watertight]
+    print(f"[verificacion] prismas lineales (muros, vallas, padel, limite): {len(lineales)} | NO watertight: {len(malos_l)}")
+    for n in malos_l:
+        print("   no watertight:", n)
+    tri_terreno = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("terreno"))
+    print(f"[verificacion] triangulos del terreno: {tri_terreno}")
     mats = {sc.geometry[sc.graph[n][1]].visual.material.name for n in nombres}
     print(f"[verificacion] materiales distintos: {len(mats)} {sorted(mats)}")
     return {"nodos": len(nombres), "triangulos": tris, "bounds": b.tolist(),
-            "edificios": len(edif), "no_watertight": malos}
+            "edificios": len(edif), "no_watertight": malos + malos_l,
+            "triangulos_terreno": tri_terreno}
 
 
 def main():
@@ -931,6 +1327,7 @@ def main():
     ap.add_argument("--sin-preview", action="store_true")
     ap.add_argument("--copiar-godot", action=argparse.BooleanOptionalAction, default=True,
                     help="copia el .glb a game/assets/mapa/ (--no-copiar-godot lo desactiva)")
+    ter.anadir_argumentos(ap)
     a = ap.parse_args()
 
     mapa = Mapa(a.entrada)
@@ -939,7 +1336,10 @@ def main():
                  and ("building" in w["tags"] or w["tags"].get("man_made") == "tower")]
     filas = cargar_alturas(a.alturas, edificios)
     pasos = cargar_pasos(a.pasos)
-    piezas, stats, geo = construir(mapa, filas, pasos, cargar_pistas(a.pistas))
+    campus = campus_local(mapa)
+    T = ter.crear(a, mapa.E0, mapa.N0, campus, zona_fina(mapa, campus, a.buffer_fino))
+    print(f"Terreno: {T.info()}")
+    piezas, stats, geo = construir(mapa, filas, pasos, cargar_pistas(a.pistas), T)
 
     escena = trimesh.Scene()
     for nombre, mesh, clave in piezas:
@@ -960,11 +1360,19 @@ def main():
 
     campus = geo["campus"]
     minx, miny, maxx, maxy = campus.bounds
+    sx0, sy0, sx1, sy1 = geo["suelo"].bounds
+    q = T.paso_bloque or 1.0   # la malla se redondea hacia fuera a multiplos del bloque
+    bbox_malla = list(geo["suelo"].bounds) if T.es_plano else [
+        math.floor(sx0 / q) * q, math.floor(sy0 / q) * q, math.ceil(sx1 / q) * q, math.ceil(sy1 / q) * q]
     meta = {
         "origen": {"lat": mapa.origen[0], "lon": mapa.origen[1], "E_utm25830": mapa.E0, "N_utm25830": mapa.N0},
         "ejes_gltf": "x=este, y=altura, z=-norte (metros)",
         "bbox_campus_m": {"x_min": minx, "x_max": maxx, "norte_min": miny, "norte_max": maxy},
         "bbox_suelo_m": dict(zip(["x_min", "norte_min", "x_max", "norte_max"], geo["suelo"].bounds)),
+        "terreno": {**T.info(), "paso_terreno_m": a.paso_terreno, "buffer_fino_m": a.buffer_fino,
+                    "ejes": "y_juego = cota_s.n.m. - cota_ref",
+                    "bbox_malla_m": bbox_malla,
+                    "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"},
         "recuentos": dict(stats),
     }
     meta_ruta = salida.with_name(salida.stem + "_meta.json")
@@ -980,6 +1388,9 @@ def main():
         preview(salida.with_name("preview.png"), geo)
         zoom_paso(salida.with_name("zoom_22_24.png"), geo, mapa, "22-24")
         zoom_tunel(salida.with_name("zoom_37.png"), geo, 142276198)
+        if not T.es_plano:
+            perfil_pasillo(salida.with_name("perfil_pasillo.png"), salida, geo)
+            perfil_escaleras(salida.with_name("perfil_escaleras.png"), salida, mapa, T, mapa.E0, mapa.N0, campus)
 
 
 if __name__ == "__main__":

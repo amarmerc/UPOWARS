@@ -12,8 +12,8 @@ pixeles validos o cobertura valida < 30 % -> "sin dato LiDAR" (edificio posiblem
 posterior a ~2010). building=roof: base_m = mediana - 0,4 (minimo 2,5).
 
 Columna `forma` (volumen|techo): se conserva; en techo, altura_m = cota de la cubierta.
-Columna `fuente` del CSV: defecto | osm | lidar | manual. Este script SOLO toca
-filas con fuente `defecto` o `lidar`. SI EDITAS UNA FILA A MANO, PON fuente=manual
+Columna `fuente` del CSV: defecto | osm | lidar | lidar2020 | manual. Este script SOLO toca
+filas con fuente `defecto` o `lidar` (lidar2020 la escribe lidar_procesar.py --aplicar-alturas y no se pisa). SI EDITAS UNA FILA A MANO, PON fuente=manual
 (o se pisara al re-ejecutar).
 
 Uso: uv run python scripts/alturas_lidar.py [--entrada data/raw/osm_upo.json]

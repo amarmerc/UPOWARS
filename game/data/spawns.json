@@ -12,9 +12,10 @@
       "nombre": "Entrada principal",
       "pos": [
         -486.58,
-        0.1,
+        -1.896,
         142.56
       ],
+      "y_terreno": -1.996,
       "yaw_deg": -73.7,
       "info": {
         "distancia_parada_m": 1.0,
@@ -26,9 +27,10 @@
       "nombre": "Biblioteca (Edificio 25)",
       "pos": [
         62.17,
-        0.1,
+        -1.008,
         -213.04
       ],
+      "y_terreno": -1.108,
       "yaw_deg": -84.7,
       "info": {
         "distancia_fachada_m": 8.0,
@@ -40,9 +42,10 @@
       "nombre": "Pabellón / Gimnasio (Edificio 26)",
       "pos": [
         128.58,
-        0.1,
+        -0.908,
         -39.64
       ],
+      "y_terreno": -1.008,
       "yaw_deg": -85.7,
       "info": {
         "distancia_fachada_m": 8.0,
@@ -54,9 +57,10 @@
       "nombre": "Rectorado (Edificio 32)",
       "pos": [
         33.29,
-        0.1,
+        2.028,
         176.03
       ],
+      "y_terreno": 1.928,
       "yaw_deg": 166.5,
       "info": {
         "distancia_fachada_m": 8.0,
@@ -68,9 +72,10 @@
       "nombre": "Eje central (Edificio 8)",
       "pos": [
         36.32,
-        0.1,
+        -0.328,
         19.02
       ],
+      "y_terreno": -0.428,
       "yaw_deg": 120.0,
       "info": {
         "distancia_fachada_m": 12.0,
@@ -82,9 +87,10 @@
       "nombre": "Aparcamiento",
       "pos": [
         292.88,
-        0.1,
+        1.283,
         -352.44
       ],
+      "y_terreno": 1.183,
       "yaw_deg": 140.3,
       "info": {
         "aparcamiento": "P11",
@@ -97,28 +103,42 @@
     "rayo_horizontal": {
       "desde": [
         -41.33,
-        1.5,
+        1.316,
         8.14
       ],
       "hasta": [
         -53.81,
-        1.5,
+        1.314,
         15.0
+      ],
+      "tramos": [
+        [
+          [
+            -41.33,
+            1.316,
+            8.14
+          ],
+          [
+            -53.81,
+            1.314,
+            15.0
+          ]
+        ]
       ]
     },
     "rayo_vertical": {
       "desde": [
         -47.57,
-        1.5,
+        1.319,
         11.57
       ],
       "hasta": [
         -47.57,
-        30.0,
+        29.819,
         11.57
       ],
-      "techo_y_min": 6.6,
-      "techo_y_max": 7.0
+      "techo_y_min": 6.419,
+      "techo_y_max": 6.819
     },
     "ancho_pasillo_m": 11.2
   },
@@ -128,13 +148,27 @@
     "rayo_horizontal": {
       "desde": [
         74.0,
-        1.5,
+        1.216,
         -307.0
       ],
       "hasta": [
         118.0,
-        1.5,
+        0.907,
         -310.5
+      ],
+      "tramos": [
+        [
+          [
+            74.0,
+            1.216,
+            -307.0
+          ],
+          [
+            118.0,
+            0.907,
+            -310.5
+          ]
+        ]
       ]
     }
   },
@@ -143,13 +177,27 @@
     "rayo_horizontal": {
       "desde": [
         1.93,
-        1.5,
+        2.343,
         92.29
       ],
       "hasta": [
         17.72,
-        1.5,
+        2.348,
         117.8
+      ],
+      "tramos": [
+        [
+          [
+            1.93,
+            2.343,
+            92.29
+          ],
+          [
+            17.72,
+            2.348,
+            117.8
+          ]
+        ]
       ]
     },
     "dist_min_pilar_m": 5.5
@@ -159,26 +207,136 @@
     "rayo_norte_sur": {
       "desde": [
         -179.42,
-        1.5,
+        1.987,
         129.6
       ],
       "hasta": [
         -179.42,
-        1.5,
+        2.172,
         173.02
+      ],
+      "tramos": [
+        [
+          [
+            -179.42,
+            1.987,
+            129.6
+          ],
+          [
+            -179.42,
+            2.172,
+            173.02
+          ]
+        ]
       ]
     },
     "rayo_oeste_este": {
       "desde": [
         -203.46,
-        1.5,
+        2.025,
         151.36
       ],
       "hasta": [
         -155.43,
-        1.5,
+        2.571,
         151.36
+      ],
+      "tramos": [
+        [
+          [
+            -203.46,
+            2.025,
+            151.36
+          ],
+          [
+            -155.43,
+            2.571,
+            151.36
+          ]
+        ]
       ]
     }
+  },
+  "test_terreno": {
+    "descripcion": "5 puntos libres con cotas distintas: y esperada del terreno",
+    "puntos": [
+      {
+        "nombre": "bajo",
+        "pos": [
+          -525.0,
+          -5.52,
+          -24.55
+        ]
+      },
+      {
+        "nombre": "p25",
+        "pos": [
+          70.0,
+          -1.236,
+          -179.55
+        ]
+      },
+      {
+        "nombre": "p50",
+        "pos": [
+          -335.0,
+          0.229,
+          195.45
+        ]
+      },
+      {
+        "nombre": "p75",
+        "pos": [
+          -90.0,
+          3.468,
+          195.45
+        ]
+      },
+      {
+        "nombre": "alto",
+        "pos": [
+          140.0,
+          10.788,
+          325.45
+        ]
+      }
+    ]
+  },
+  "test_subida": {
+    "descripcion": "tramo de 12 m con la mayor pendiente media del campus (28.8 grados)",
+    "desde": [
+      29.0,
+      6.835,
+      549.45
+    ],
+    "hasta": [
+      20.51,
+      13.326,
+      557.93
+    ],
+    "yaw_deg": 135.0,
+    "longitud_m": 12.0,
+    "pendiente_grados": 28.78
+  },
+  "terreno": {
+    "fuente": "data/raw/mdt_lidar_1m.tif",
+    "resolucion_m": 1.0,
+    "suavizado_m": 1.0,
+    "paso_fino_m": 1.0,
+    "paso_grueso_m": 4.0,
+    "zona_fina_m2": 107904,
+    "cota_ref": 15.5111,
+    "cota_min_campus": 9.95,
+    "cota_max_campus": 26.61,
+    "paso_terreno_m": 1.0,
+    "buffer_fino_m": 8.0,
+    "ejes": "y_juego = cota_s.n.m. - cota_ref",
+    "bbox_malla_m": [
+      -768.0,
+      -636.0,
+      540.0,
+      592.0
+    ],
+    "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"
   }
 }

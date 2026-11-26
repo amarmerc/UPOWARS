@@ -1,0 +1,1396 @@
+{
+  "fuente": {
+    "servicio": "https://servicios.idee.es/wcs-inspire/mdt",
+    "coverage": "Elevacion25830_5",
+    "resolucion_m": 5.0,
+    "raster": "data\\raw\\mdt_upo.tif",
+    "crs": "EPSG:25830",
+    "margen_m": 60.0
+  },
+  "cota_campus_m": {
+    "min": 10.0,
+    "max": 26.0,
+    "p5": 11.339,
+    "p50": 15.275,
+    "p95": 23.0,
+    "media": 16.212,
+    "desnivel_total_m": 16.0,
+    "desnivel_p5_p95_m": 11.661,
+    "pixeles": 28111
+  },
+  "pendiente_campus_pct": {
+    "p5": 0.0,
+    "p50": 2.52,
+    "p75": 7.074,
+    "p90": 10.303,
+    "p95": 14.513,
+    "p99": 24.706,
+    "max": 46.093,
+    "media": 4.296,
+    "pct_area_mayor_2": 53.3,
+    "pct_area_mayor_5": 35.6,
+    "pct_area_mayor_8": 21.1
+  },
+  "edificios": {
+    "n": 73,
+    "dif_max_min_mediana_m": 0.779,
+    "n_dif_mayor_0_5m": 47,
+    "n_dif_mayor_1m": 25,
+    "top_ladera": [
+      {
+        "osm_id": 1373541637,
+        "nombre": "Edificio 32. \"Rosario Valpuesta\" (Rectorado)",
+        "building": "university",
+        "area_m2": 1765.5,
+        "cota_media": 19.67,
+        "cota_min": 17.017,
+        "cota_max": 23.0,
+        "dif_max_min_m": 5.983,
+        "n_muestras": 440
+      },
+      {
+        "osm_id": 1373541639,
+        "nombre": "",
+        "building": "university",
+        "area_m2": 4525.4,
+        "cota_media": 15.447,
+        "cota_min": 12.0,
+        "cota_max": 17.075,
+        "dif_max_min_m": 5.075,
+        "n_muestras": 1127
+      },
+      {
+        "osm_id": 1373541638,
+        "nombre": "Edificio 31. \"Leandro Fernández de Moratín\" (Paraninfo)",
+        "building": "university",
+        "area_m2": 954.4,
+        "cota_media": 20.217,
+        "cota_min": 18.166,
+        "cota_max": 22.929,
+        "dif_max_min_m": 4.763,
+        "n_muestras": 236
+      },
+      {
+        "osm_id": 191918053,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 2186.6,
+        "cota_media": 22.512,
+        "cota_min": 19.287,
+        "cota_max": 23.517,
+        "dif_max_min_m": 4.23,
+        "n_muestras": 545
+      },
+      {
+        "osm_id": 142262879,
+        "nombre": "Edificio 46. Instituto de la Grasa (CSIC)",
+        "building": "yes",
+        "area_m2": 8933.9,
+        "cota_media": 14.462,
+        "cota_min": 12.0,
+        "cota_max": 16.0,
+        "dif_max_min_m": 4.0,
+        "n_muestras": 2232
+      },
+      {
+        "osm_id": 142262880,
+        "nombre": "Edifiicio 24. \"Fausto Elhuyar y de Suvisa\" (aulas)",
+        "building": "university",
+        "area_m2": 3088.0,
+        "cota_media": 13.74,
+        "cota_min": 12.002,
+        "cota_max": 15.894,
+        "dif_max_min_m": 3.891,
+        "n_muestras": 770
+      },
+      {
+        "osm_id": 191918052,
+        "nombre": "Escuela Técnica Superior de Ingeniería Agronómica",
+        "building": "university",
+        "area_m2": 2061.1,
+        "cota_media": 19.412,
+        "cota_min": 18.984,
+        "cota_max": 22.677,
+        "dif_max_min_m": 3.693,
+        "n_muestras": 514
+      },
+      {
+        "osm_id": 553042591,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 947.9,
+        "cota_media": 12.801,
+        "cota_min": 12.0,
+        "cota_max": 15.0,
+        "dif_max_min_m": 3.0,
+        "n_muestras": 243
+      },
+      {
+        "osm_id": 555538618,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 86.0,
+        "cota_media": 13.267,
+        "cota_min": 12.018,
+        "cota_max": 15.014,
+        "dif_max_min_m": 2.996,
+        "n_muestras": 16
+      },
+      {
+        "osm_id": 1373541643,
+        "nombre": "Edificio 3. \"José Moñino, Conde de Floridablanca\"",
+        "building": "university",
+        "area_m2": 1317.3,
+        "cota_media": 15.732,
+        "cota_min": 14.033,
+        "cota_max": 16.0,
+        "dif_max_min_m": 1.967,
+        "n_muestras": 330
+      },
+      {
+        "osm_id": 1373541661,
+        "nombre": "Edificio 14. \"Gaspar Melchor de Jovellanos y Ramírez\"",
+        "building": "university",
+        "area_m2": 1580.0,
+        "cota_media": 14.737,
+        "cota_min": 13.239,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.761,
+        "n_muestras": 398
+      },
+      {
+        "osm_id": 1373541644,
+        "nombre": "Edificio 6. \"Manuel José de Ayala\"",
+        "building": "university",
+        "area_m2": 1579.7,
+        "cota_media": 15.582,
+        "cota_min": 14.272,
+        "cota_max": 16.0,
+        "dif_max_min_m": 1.728,
+        "n_muestras": 397
+      },
+      {
+        "osm_id": 1373541652,
+        "nombre": "Edificio 10. \"Francisco de Goya y Lucientes\"",
+        "building": "university",
+        "area_m2": 1579.6,
+        "cota_media": 14.861,
+        "cota_min": 13.423,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.577,
+        "n_muestras": 397
+      },
+      {
+        "osm_id": 1373541640,
+        "nombre": "Edificio 1. Cafetería",
+        "building": "university",
+        "area_m2": 778.5,
+        "cota_media": 16.356,
+        "cota_min": 15.451,
+        "cota_max": 16.998,
+        "dif_max_min_m": 1.547,
+        "n_muestras": 194
+      },
+      {
+        "osm_id": 142259594,
+        "nombre": "Edificio 19. Central térmica",
+        "building": "yes",
+        "area_m2": 1071.7,
+        "cota_media": 11.881,
+        "cota_min": 11.031,
+        "cota_max": 12.574,
+        "dif_max_min_m": 1.543,
+        "n_muestras": 266
+      }
+    ],
+    "todos": [
+      {
+        "osm_id": 142258873,
+        "nombre": "Edificio 45. \"Alexander Von Humboldt\" (Centro de Estudios de Postgrado\"",
+        "building": "university",
+        "area_m2": 5571.9,
+        "cota_media": 10.927,
+        "cota_min": 10.105,
+        "cota_max": 11.193,
+        "dif_max_min_m": 1.088,
+        "n_muestras": 1392
+      },
+      {
+        "osm_id": 142258882,
+        "nombre": "Edificio 38. Edificio Multiusos Cubierto \"Rabat\"",
+        "building": "yes",
+        "area_m2": 1717.3,
+        "cota_media": 14.615,
+        "cota_min": 13.999,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.001,
+        "n_muestras": 431
+      },
+      {
+        "osm_id": 142258883,
+        "nombre": "Edificio 48. Vestuarios",
+        "building": "yes",
+        "area_m2": 698.4,
+        "cota_media": 14.99,
+        "cota_min": 14.882,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.118,
+        "n_muestras": 172
+      },
+      {
+        "osm_id": 142258884,
+        "nombre": "Edificico 39. Pabellón Cubierto de Gimnasia",
+        "building": "yes",
+        "area_m2": 1135.5,
+        "cota_media": 13.018,
+        "cota_min": 13.0,
+        "cota_max": 13.36,
+        "dif_max_min_m": 0.36,
+        "n_muestras": 283
+      },
+      {
+        "osm_id": 142258887,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 414.4,
+        "cota_media": 12.004,
+        "cota_min": 12.0,
+        "cota_max": 12.042,
+        "dif_max_min_m": 0.042,
+        "n_muestras": 101
+      },
+      {
+        "osm_id": 142259594,
+        "nombre": "Edificio 19. Central térmica",
+        "building": "yes",
+        "area_m2": 1071.7,
+        "cota_media": 11.881,
+        "cota_min": 11.031,
+        "cota_max": 12.574,
+        "dif_max_min_m": 1.543,
+        "n_muestras": 266
+      },
+      {
+        "osm_id": 142262877,
+        "nombre": "Edificio 25. \"Juan Bautista Muñoz\" (Biblioteca / C.R.A.I.)",
+        "building": "university",
+        "area_m2": 11042.8,
+        "cota_media": 14.747,
+        "cota_min": 14.0,
+        "cota_max": 15.012,
+        "dif_max_min_m": 1.012,
+        "n_muestras": 2764
+      },
+      {
+        "osm_id": 142262878,
+        "nombre": "Edificio 22. \"Fausto Elhuyar y de Suvisa\" (laboratorios docentes)",
+        "building": "yes",
+        "area_m2": 1000.6,
+        "cota_media": 14.958,
+        "cota_min": 14.034,
+        "cota_max": 15.13,
+        "dif_max_min_m": 1.096,
+        "n_muestras": 250
+      },
+      {
+        "osm_id": 142262879,
+        "nombre": "Edificio 46. Instituto de la Grasa (CSIC)",
+        "building": "yes",
+        "area_m2": 8933.9,
+        "cota_media": 14.462,
+        "cota_min": 12.0,
+        "cota_max": 16.0,
+        "dif_max_min_m": 4.0,
+        "n_muestras": 2232
+      },
+      {
+        "osm_id": 142262880,
+        "nombre": "Edifiicio 24. \"Fausto Elhuyar y de Suvisa\" (aulas)",
+        "building": "university",
+        "area_m2": 3088.0,
+        "cota_media": 13.74,
+        "cota_min": 12.002,
+        "cota_max": 15.894,
+        "dif_max_min_m": 3.891,
+        "n_muestras": 770
+      },
+      {
+        "osm_id": 142262881,
+        "nombre": "Edificio 20. Centro Andaluz de Biologia del Desarrollo",
+        "building": "yes",
+        "area_m2": 2756.6,
+        "cota_media": 15.999,
+        "cota_min": 15.942,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.058,
+        "n_muestras": 686
+      },
+      {
+        "osm_id": 142262882,
+        "nombre": "Edificio 40. Nave Almacén",
+        "building": "university",
+        "area_m2": 1387.6,
+        "cota_media": 14.345,
+        "cota_min": 14.0,
+        "cota_max": 15.017,
+        "dif_max_min_m": 1.017,
+        "n_muestras": 343
+      },
+      {
+        "osm_id": 142262883,
+        "nombre": "Edificio 26. \"Pabellón de las trabajadoras del campo andaluz\" (Gimnasio)",
+        "building": "yes",
+        "area_m2": 1480.3,
+        "cota_media": 14.107,
+        "cota_min": 14.0,
+        "cota_max": 14.736,
+        "dif_max_min_m": 0.736,
+        "n_muestras": 366
+      },
+      {
+        "osm_id": 142262884,
+        "nombre": "Edificio 33. Teatr",
+        "building": "yes",
+        "area_m2": 1840.4,
+        "cota_media": 23.003,
+        "cota_min": 22.995,
+        "cota_max": 23.193,
+        "dif_max_min_m": 0.198,
+        "n_muestras": 460
+      },
+      {
+        "osm_id": 142262885,
+        "nombre": "Edificio 2. \"Antonio de Ulloa\"",
+        "building": "university",
+        "area_m2": 1576.0,
+        "cota_media": 16.815,
+        "cota_min": 15.577,
+        "cota_max": 17.0,
+        "dif_max_min_m": 1.423,
+        "n_muestras": 396
+      },
+      {
+        "osm_id": 142262886,
+        "nombre": "Edificio 44. \"Josefa Amar y Borbón\" (Centro de investigación)",
+        "building": "yes",
+        "area_m2": 721.3,
+        "cota_media": 17.974,
+        "cota_min": 17.458,
+        "cota_max": 18.111,
+        "dif_max_min_m": 0.652,
+        "n_muestras": 175
+      },
+      {
+        "osm_id": 142262890,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 342.2,
+        "cota_media": 15.0,
+        "cota_min": 15.0,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 84
+      },
+      {
+        "osm_id": 142263535,
+        "nombre": "Edificio 27. \"Pabellón Juan José González Badillo\" (Centro de Investigación de Rendimiento Físico y Deportivo)",
+        "building": "university",
+        "area_m2": 1558.5,
+        "cota_media": 16.842,
+        "cota_min": 16.032,
+        "cota_max": 17.114,
+        "dif_max_min_m": 1.082,
+        "n_muestras": 390
+      },
+      {
+        "osm_id": 142263536,
+        "nombre": "Edificio 47. Servicios Centrales de Investigación II",
+        "building": "university",
+        "area_m2": 838.7,
+        "cota_media": 14.835,
+        "cota_min": 14.047,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.953,
+        "n_muestras": 209
+      },
+      {
+        "osm_id": 142263537,
+        "nombre": "Edificio 21. Servicios Centrales de Investigación I",
+        "building": "university",
+        "area_m2": 1776.0,
+        "cota_media": 15.276,
+        "cota_min": 15.0,
+        "cota_max": 15.991,
+        "dif_max_min_m": 0.991,
+        "n_muestras": 441
+      },
+      {
+        "osm_id": 142276198,
+        "nombre": "Edificio 37. Pabellón Multiusos Semidescubierto",
+        "building": "university",
+        "area_m2": 1223.3,
+        "cota_media": 16.005,
+        "cota_min": 15.917,
+        "cota_max": 16.487,
+        "dif_max_min_m": 0.571,
+        "n_muestras": 304
+      },
+      {
+        "osm_id": 191918052,
+        "nombre": "Escuela Técnica Superior de Ingeniería Agronómica",
+        "building": "university",
+        "area_m2": 2061.1,
+        "cota_media": 19.412,
+        "cota_min": 18.984,
+        "cota_max": 22.677,
+        "dif_max_min_m": 3.693,
+        "n_muestras": 514
+      },
+      {
+        "osm_id": 191918053,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 2186.6,
+        "cota_media": 22.512,
+        "cota_min": 19.287,
+        "cota_max": 23.517,
+        "dif_max_min_m": 4.23,
+        "n_muestras": 545
+      },
+      {
+        "osm_id": 191918054,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 114.7,
+        "cota_media": 23.003,
+        "cota_min": 22.997,
+        "cota_max": 23.053,
+        "dif_max_min_m": 0.055,
+        "n_muestras": 28
+      },
+      {
+        "osm_id": 321893434,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 1144.6,
+        "cota_media": 15.363,
+        "cota_min": 15.0,
+        "cota_max": 16.0,
+        "dif_max_min_m": 1.0,
+        "n_muestras": 283
+      },
+      {
+        "osm_id": 553042591,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 947.9,
+        "cota_media": 12.801,
+        "cota_min": 12.0,
+        "cota_max": 15.0,
+        "dif_max_min_m": 3.0,
+        "n_muestras": 243
+      },
+      {
+        "osm_id": 555489157,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 104.6,
+        "cota_media": 15.0,
+        "cota_min": 15.0,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 26
+      },
+      {
+        "osm_id": 555489158,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 80.8,
+        "cota_media": 15.001,
+        "cota_min": 15.0,
+        "cota_max": 15.01,
+        "dif_max_min_m": 0.01,
+        "n_muestras": 18
+      },
+      {
+        "osm_id": 555489167,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 122.5,
+        "cota_media": 12.0,
+        "cota_min": 12.0,
+        "cota_max": 12.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 30
+      },
+      {
+        "osm_id": 555538609,
+        "nombre": "",
+        "building": "greenhouse",
+        "area_m2": 367.7,
+        "cota_media": 15.973,
+        "cota_min": 15.708,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.292,
+        "n_muestras": 90
+      },
+      {
+        "osm_id": 555538618,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 86.0,
+        "cota_media": 13.267,
+        "cota_min": 12.018,
+        "cota_max": 15.014,
+        "dif_max_min_m": 2.996,
+        "n_muestras": 16
+      },
+      {
+        "osm_id": 1372454314,
+        "nombre": "",
+        "building": "university",
+        "area_m2": 274.6,
+        "cota_media": 16.0,
+        "cota_min": 15.999,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.001,
+        "n_muestras": 67
+      },
+      {
+        "osm_id": 1373541633,
+        "nombre": "Edificio 52. Servicios Centrales de Investigación III",
+        "building": "university",
+        "area_m2": 595.1,
+        "cota_media": 15.973,
+        "cota_min": 15.722,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.278,
+        "n_muestras": 144
+      },
+      {
+        "osm_id": 1373541634,
+        "nombre": "Edificio 51. Nave dotacional de investigación",
+        "building": "university",
+        "area_m2": 169.7,
+        "cota_media": 15.77,
+        "cota_min": 15.397,
+        "cota_max": 15.999,
+        "dif_max_min_m": 0.602,
+        "n_muestras": 39
+      },
+      {
+        "osm_id": 1373541635,
+        "nombre": "Edificio 23. \"Fausto Elhuyar y de Suvisa\" (laboratorios docentes)",
+        "building": "university",
+        "area_m2": 1876.8,
+        "cota_media": 14.985,
+        "cota_min": 14.163,
+        "cota_max": 15.02,
+        "dif_max_min_m": 0.858,
+        "n_muestras": 464
+      },
+      {
+        "osm_id": 1373541636,
+        "nombre": "Edificio 34. Biblioteca E.T.S.I.A.",
+        "building": "university",
+        "area_m2": 152.2,
+        "cota_media": 23.0,
+        "cota_min": 23.0,
+        "cota_max": 23.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 37
+      },
+      {
+        "osm_id": 1373541637,
+        "nombre": "Edificio 32. \"Rosario Valpuesta\" (Rectorado)",
+        "building": "university",
+        "area_m2": 1765.5,
+        "cota_media": 19.67,
+        "cota_min": 17.017,
+        "cota_max": 23.0,
+        "dif_max_min_m": 5.983,
+        "n_muestras": 440
+      },
+      {
+        "osm_id": 1373541638,
+        "nombre": "Edificio 31. \"Leandro Fernández de Moratín\" (Paraninfo)",
+        "building": "university",
+        "area_m2": 954.4,
+        "cota_media": 20.217,
+        "cota_min": 18.166,
+        "cota_max": 22.929,
+        "dif_max_min_m": 4.763,
+        "n_muestras": 236
+      },
+      {
+        "osm_id": 1373541639,
+        "nombre": "",
+        "building": "university",
+        "area_m2": 4525.4,
+        "cota_media": 15.447,
+        "cota_min": 12.0,
+        "cota_max": 17.075,
+        "dif_max_min_m": 5.075,
+        "n_muestras": 1127
+      },
+      {
+        "osm_id": 1373541640,
+        "nombre": "Edificio 1. Cafetería",
+        "building": "university",
+        "area_m2": 778.5,
+        "cota_media": 16.356,
+        "cota_min": 15.451,
+        "cota_max": 16.998,
+        "dif_max_min_m": 1.547,
+        "n_muestras": 194
+      },
+      {
+        "osm_id": 1373541641,
+        "nombre": "Edificio 4. \"Zenón de Somodevilla, Marqués de la Ensenada\"",
+        "building": "university",
+        "area_m2": 808.8,
+        "cota_media": 16.81,
+        "cota_min": 16.17,
+        "cota_max": 16.999,
+        "dif_max_min_m": 0.83,
+        "n_muestras": 202
+      },
+      {
+        "osm_id": 1373541642,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 232.7,
+        "cota_media": 16.941,
+        "cota_min": 16.735,
+        "cota_max": 16.999,
+        "dif_max_min_m": 0.264,
+        "n_muestras": 57
+      },
+      {
+        "osm_id": 1373541643,
+        "nombre": "Edificio 3. \"José Moñino, Conde de Floridablanca\"",
+        "building": "university",
+        "area_m2": 1317.3,
+        "cota_media": 15.732,
+        "cota_min": 14.033,
+        "cota_max": 16.0,
+        "dif_max_min_m": 1.967,
+        "n_muestras": 330
+      },
+      {
+        "osm_id": 1373541644,
+        "nombre": "Edificio 6. \"Manuel José de Ayala\"",
+        "building": "university",
+        "area_m2": 1579.7,
+        "cota_media": 15.582,
+        "cota_min": 14.272,
+        "cota_max": 16.0,
+        "dif_max_min_m": 1.728,
+        "n_muestras": 397
+      },
+      {
+        "osm_id": 1373541645,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 117.0,
+        "cota_media": 15.547,
+        "cota_min": 14.688,
+        "cota_max": 15.984,
+        "dif_max_min_m": 1.296,
+        "n_muestras": 29
+      },
+      {
+        "osm_id": 1373541646,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 81.2,
+        "cota_media": 15.61,
+        "cota_min": 15.102,
+        "cota_max": 15.902,
+        "dif_max_min_m": 0.8,
+        "n_muestras": 20
+      },
+      {
+        "osm_id": 1373541647,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 248.5,
+        "cota_media": 15.95,
+        "cota_min": 15.768,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.232,
+        "n_muestras": 62
+      },
+      {
+        "osm_id": 1373541648,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 214.0,
+        "cota_media": 15.986,
+        "cota_min": 15.89,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.11,
+        "n_muestras": 54
+      },
+      {
+        "osm_id": 1373541649,
+        "nombre": "Edificio 5. José María Blanco White\"",
+        "building": "university",
+        "area_m2": 738.3,
+        "cota_media": 15.957,
+        "cota_min": 15.436,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.564,
+        "n_muestras": 186
+      },
+      {
+        "osm_id": 1373541650,
+        "nombre": "Edificio 8. \"Félix de Azara\"",
+        "building": "university",
+        "area_m2": 783.6,
+        "cota_media": 15.932,
+        "cota_min": 15.221,
+        "cota_max": 16.0,
+        "dif_max_min_m": 0.779,
+        "n_muestras": 195
+      },
+      {
+        "osm_id": 1373541651,
+        "nombre": "Edificio 7. \"Pedro Rodríguez Campomanes\"",
+        "building": "university",
+        "area_m2": 1317.2,
+        "cota_media": 14.872,
+        "cota_min": 13.886,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.114,
+        "n_muestras": 330
+      },
+      {
+        "osm_id": 1373541652,
+        "nombre": "Edificio 10. \"Francisco de Goya y Lucientes\"",
+        "building": "university",
+        "area_m2": 1579.6,
+        "cota_media": 14.861,
+        "cota_min": 13.423,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.577,
+        "n_muestras": 397
+      },
+      {
+        "osm_id": 1373541653,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 105.4,
+        "cota_media": 14.647,
+        "cota_min": 14.226,
+        "cota_max": 14.945,
+        "dif_max_min_m": 0.719,
+        "n_muestras": 25
+      },
+      {
+        "osm_id": 1373541654,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 91.2,
+        "cota_media": 14.662,
+        "cota_min": 14.097,
+        "cota_max": 14.95,
+        "dif_max_min_m": 0.853,
+        "n_muestras": 23
+      },
+      {
+        "osm_id": 1373541655,
+        "nombre": "Edificio 9. \"Francisco de Miranda\"",
+        "building": "university",
+        "area_m2": 741.7,
+        "cota_media": 14.97,
+        "cota_min": 14.679,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.321,
+        "n_muestras": 185
+      },
+      {
+        "osm_id": 1373541656,
+        "nombre": "Edificio 12. \"Alejandro Malaspina\"",
+        "building": "university",
+        "area_m2": 778.7,
+        "cota_media": 14.919,
+        "cota_min": 14.442,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.558,
+        "n_muestras": 195
+      },
+      {
+        "osm_id": 1373541657,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 238.0,
+        "cota_media": 14.969,
+        "cota_min": 14.771,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.229,
+        "n_muestras": 59
+      },
+      {
+        "osm_id": 1373541658,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 228.5,
+        "cota_media": 14.972,
+        "cota_min": 14.833,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.167,
+        "n_muestras": 56
+      },
+      {
+        "osm_id": 1373541659,
+        "nombre": "Edificio 11. \"Pedro Pablo Abarca de Bolea, Conde de Aranda\"",
+        "building": "university",
+        "area_m2": 1317.3,
+        "cota_media": 14.883,
+        "cota_min": 13.747,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.253,
+        "n_muestras": 330
+      },
+      {
+        "osm_id": 1373541660,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 251.4,
+        "cota_media": 14.872,
+        "cota_min": 14.514,
+        "cota_max": 14.992,
+        "dif_max_min_m": 0.478,
+        "n_muestras": 63
+      },
+      {
+        "osm_id": 1373541661,
+        "nombre": "Edificio 14. \"Gaspar Melchor de Jovellanos y Ramírez\"",
+        "building": "university",
+        "area_m2": 1580.0,
+        "cota_media": 14.737,
+        "cota_min": 13.239,
+        "cota_max": 15.0,
+        "dif_max_min_m": 1.761,
+        "n_muestras": 398
+      },
+      {
+        "osm_id": 1373541662,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 245.3,
+        "cota_media": 14.84,
+        "cota_min": 14.468,
+        "cota_max": 14.988,
+        "dif_max_min_m": 0.521,
+        "n_muestras": 60
+      },
+      {
+        "osm_id": 1373541663,
+        "nombre": "Edificio 13. \"Francisco José de Caldas\"",
+        "building": "university",
+        "area_m2": 745.2,
+        "cota_media": 14.825,
+        "cota_min": 14.189,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.811,
+        "n_muestras": 187
+      },
+      {
+        "osm_id": 1373541664,
+        "nombre": "Edificio 16. \"José Cadalso y Vázquez\"",
+        "building": "university",
+        "area_m2": 775.8,
+        "cota_media": 14.886,
+        "cota_min": 14.3,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.7,
+        "n_muestras": 193
+      },
+      {
+        "osm_id": 1373541665,
+        "nombre": "Edificio 15. Residencia de estudiantes",
+        "building": "dormitory",
+        "area_m2": 911.9,
+        "cota_media": 12.0,
+        "cota_min": 12.0,
+        "cota_max": 12.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 229
+      },
+      {
+        "osm_id": 1373541666,
+        "nombre": "Edificio 18. \"José Celestino Mutis\"",
+        "building": "university",
+        "area_m2": 1085.4,
+        "cota_media": 12.0,
+        "cota_min": 12.0,
+        "cota_max": 12.0,
+        "dif_max_min_m": 0.0,
+        "n_muestras": 269
+      },
+      {
+        "osm_id": 1373541667,
+        "nombre": "Edificio 17. \"José Celestino Mutis\"",
+        "building": "university",
+        "area_m2": 918.4,
+        "cota_media": 11.99,
+        "cota_min": 11.646,
+        "cota_max": 12.0,
+        "dif_max_min_m": 0.354,
+        "n_muestras": 229
+      },
+      {
+        "osm_id": 1373541668,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 115.3,
+        "cota_media": 14.79,
+        "cota_min": 14.096,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.904,
+        "n_muestras": 28
+      },
+      {
+        "osm_id": 1373541669,
+        "nombre": "",
+        "building": "roof",
+        "area_m2": 84.1,
+        "cota_media": 14.883,
+        "cota_min": 14.485,
+        "cota_max": 15.0,
+        "dif_max_min_m": 0.515,
+        "n_muestras": 20
+      },
+      {
+        "osm_id": 1373541670,
+        "nombre": "Edificio 53. Centro de Excelencia en Genómica y Análisis de la Biodiversidad (C.E.G.A.B.)",
+        "building": "university",
+        "area_m2": 383.6,
+        "cota_media": 15.32,
+        "cota_min": 15.0,
+        "cota_max": 15.984,
+        "dif_max_min_m": 0.984,
+        "n_muestras": 96
+      },
+      {
+        "osm_id": 1373674172,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 46.1,
+        "cota_media": 14.954,
+        "cota_min": 14.365,
+        "cota_max": 15.305,
+        "dif_max_min_m": 0.941,
+        "n_muestras": 9
+      },
+      {
+        "osm_id": 1373674189,
+        "nombre": "",
+        "building": "yes",
+        "area_m2": 23.2,
+        "cota_media": 14.206,
+        "cota_min": 14.116,
+        "cota_max": 14.379,
+        "dif_max_min_m": 0.263,
+        "n_muestras": 5
+      },
+      {
+        "osm_id": 1373674192,
+        "nombre": "Edificio 36B. \"Jorge Juan Santacilica\" (E.T.S.I.A.)",
+        "building": "university",
+        "area_m2": 3307.4,
+        "cota_media": 19.0,
+        "cota_min": 19.0,
+        "cota_max": 19.006,
+        "dif_max_min_m": 0.006,
+        "n_muestras": 826
+      }
+    ]
+  },
+  "escaleras": {
+    "resumen": {
+      "n": 7,
+      "dz_perp_max_abs_mediana": 0.298,
+      "dz_perp_max_abs_max": 2.827,
+      "n_con_salto_mayor_0_5m": 3,
+      "n_con_salto_mayor_1m": 2
+    },
+    "detalle": [
+      {
+        "osm_id": 1372454347,
+        "nombre": "",
+        "largo_m": 6.9,
+        "dz_perp_max_abs": 0.289,
+        "dz_perp_mediana_abs": 0.289,
+        "n_perfiles": 1,
+        "tags": {
+          "incline": "up"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": 1.155
+      },
+      {
+        "osm_id": 1372454349,
+        "nombre": "",
+        "largo_m": 5.0,
+        "dz_perp_max_abs": 0.021,
+        "dz_perp_mediana_abs": 0.021,
+        "n_perfiles": 1,
+        "tags": {
+          "incline": "up"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": 0.448
+      },
+      {
+        "osm_id": 1373674169,
+        "nombre": "",
+        "largo_m": 14.5,
+        "dz_perp_max_abs": 0.254,
+        "dz_perp_mediana_abs": 0.239,
+        "n_perfiles": 3,
+        "tags": {
+          "incline": "down"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": -1.556
+      },
+      {
+        "osm_id": 1373674170,
+        "nombre": "",
+        "largo_m": 24.1,
+        "dz_perp_max_abs": 0.298,
+        "dz_perp_mediana_abs": 0.253,
+        "n_perfiles": 5,
+        "tags": {
+          "incline": "down"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": -0.964
+      },
+      {
+        "osm_id": 1373674171,
+        "nombre": "",
+        "largo_m": 13.0,
+        "dz_perp_max_abs": 0.505,
+        "dz_perp_mediana_abs": 0.457,
+        "n_perfiles": 3,
+        "tags": {},
+        "dz_a_lo_largo_fin_menos_inicio": -0.457
+      },
+      {
+        "osm_id": 1373674173,
+        "nombre": "",
+        "largo_m": 62.8,
+        "dz_perp_max_abs": 2.827,
+        "dz_perp_mediana_abs": 2.433,
+        "n_perfiles": 13,
+        "tags": {
+          "incline": "down"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": -1.87
+      },
+      {
+        "osm_id": 1373674174,
+        "nombre": "",
+        "largo_m": 71.8,
+        "dz_perp_max_abs": 1.992,
+        "dz_perp_mediana_abs": 1.603,
+        "n_perfiles": 14,
+        "tags": {
+          "incline": "down"
+        },
+        "dz_a_lo_largo_fin_menos_inicio": -1.563
+      }
+    ]
+  },
+  "muros_contencion": {
+    "resumen": {
+      "n": 31,
+      "dz_perp_max_abs_mediana": 0.962,
+      "dz_perp_max_abs_max": 2.416,
+      "n_con_salto_mayor_0_5m": 25,
+      "n_con_salto_mayor_1m": 11
+    },
+    "detalle": [
+      {
+        "osm_id": 1372454315,
+        "nombre": "",
+        "largo_m": 78.5,
+        "dz_perp_max_abs": 2.294,
+        "dz_perp_mediana_abs": 1.992,
+        "n_perfiles": 16,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454316,
+        "nombre": "",
+        "largo_m": 48.1,
+        "dz_perp_max_abs": 1.675,
+        "dz_perp_mediana_abs": 0.927,
+        "n_perfiles": 10,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454317,
+        "nombre": "",
+        "largo_m": 47.7,
+        "dz_perp_max_abs": 0.208,
+        "dz_perp_mediana_abs": 0.0,
+        "n_perfiles": 10,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454318,
+        "nombre": "",
+        "largo_m": 41.6,
+        "dz_perp_max_abs": 0.987,
+        "dz_perp_mediana_abs": 0.847,
+        "n_perfiles": 8,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454319,
+        "nombre": "",
+        "largo_m": 2.8,
+        "dz_perp_max_abs": 0.403,
+        "dz_perp_mediana_abs": 0.403,
+        "n_perfiles": 1,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454320,
+        "nombre": "",
+        "largo_m": 45.1,
+        "dz_perp_max_abs": 1.515,
+        "dz_perp_mediana_abs": 1.171,
+        "n_perfiles": 9,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454321,
+        "nombre": "",
+        "largo_m": 6.1,
+        "dz_perp_max_abs": 0.792,
+        "dz_perp_mediana_abs": 0.792,
+        "n_perfiles": 1,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454322,
+        "nombre": "",
+        "largo_m": 67.4,
+        "dz_perp_max_abs": 0.319,
+        "dz_perp_mediana_abs": 0.136,
+        "n_perfiles": 13,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454323,
+        "nombre": "",
+        "largo_m": 51.6,
+        "dz_perp_max_abs": 0.51,
+        "dz_perp_mediana_abs": 0.004,
+        "n_perfiles": 10,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454324,
+        "nombre": "",
+        "largo_m": 30.4,
+        "dz_perp_max_abs": 1.495,
+        "dz_perp_mediana_abs": 1.268,
+        "n_perfiles": 6,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454325,
+        "nombre": "",
+        "largo_m": 59.6,
+        "dz_perp_max_abs": 0.733,
+        "dz_perp_mediana_abs": 0.349,
+        "n_perfiles": 12,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454326,
+        "nombre": "",
+        "largo_m": 34.8,
+        "dz_perp_max_abs": 0.053,
+        "dz_perp_mediana_abs": 0.028,
+        "n_perfiles": 7,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454327,
+        "nombre": "",
+        "largo_m": 61.6,
+        "dz_perp_max_abs": 0.037,
+        "dz_perp_mediana_abs": 0.007,
+        "n_perfiles": 12,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454328,
+        "nombre": "",
+        "largo_m": 13.6,
+        "dz_perp_max_abs": 0.156,
+        "dz_perp_mediana_abs": 0.01,
+        "n_perfiles": 3,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454329,
+        "nombre": "",
+        "largo_m": 45.2,
+        "dz_perp_max_abs": 2.416,
+        "dz_perp_mediana_abs": 2.255,
+        "n_perfiles": 9,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454330,
+        "nombre": "",
+        "largo_m": 58.0,
+        "dz_perp_max_abs": 2.21,
+        "dz_perp_mediana_abs": 2.006,
+        "n_perfiles": 12,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454331,
+        "nombre": "",
+        "largo_m": 69.6,
+        "dz_perp_max_abs": 1.888,
+        "dz_perp_mediana_abs": 1.698,
+        "n_perfiles": 14,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454332,
+        "nombre": "",
+        "largo_m": 10.7,
+        "dz_perp_max_abs": 0.963,
+        "dz_perp_mediana_abs": 0.961,
+        "n_perfiles": 2,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454333,
+        "nombre": "",
+        "largo_m": 61.4,
+        "dz_perp_max_abs": 0.962,
+        "dz_perp_mediana_abs": 0.919,
+        "n_perfiles": 12,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454334,
+        "nombre": "",
+        "largo_m": 41.2,
+        "dz_perp_max_abs": 0.937,
+        "dz_perp_mediana_abs": 0.899,
+        "n_perfiles": 8,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454335,
+        "nombre": "",
+        "largo_m": 46.6,
+        "dz_perp_max_abs": 0.963,
+        "dz_perp_mediana_abs": 0.856,
+        "n_perfiles": 9,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454336,
+        "nombre": "",
+        "largo_m": 45.6,
+        "dz_perp_max_abs": 0.883,
+        "dz_perp_mediana_abs": 0.829,
+        "n_perfiles": 9,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454337,
+        "nombre": "",
+        "largo_m": 23.0,
+        "dz_perp_max_abs": 1.028,
+        "dz_perp_mediana_abs": 0.811,
+        "n_perfiles": 5,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454338,
+        "nombre": "",
+        "largo_m": 25.4,
+        "dz_perp_max_abs": 1.138,
+        "dz_perp_mediana_abs": 0.902,
+        "n_perfiles": 5,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454339,
+        "nombre": "",
+        "largo_m": 73.2,
+        "dz_perp_max_abs": 0.966,
+        "dz_perp_mediana_abs": 0.62,
+        "n_perfiles": 15,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454340,
+        "nombre": "",
+        "largo_m": 24.5,
+        "dz_perp_max_abs": 0.783,
+        "dz_perp_mediana_abs": 0.318,
+        "n_perfiles": 5,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454341,
+        "nombre": "",
+        "largo_m": 25.7,
+        "dz_perp_max_abs": 1.331,
+        "dz_perp_mediana_abs": 1.179,
+        "n_perfiles": 5,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454342,
+        "nombre": "",
+        "largo_m": 18.5,
+        "dz_perp_max_abs": 0.949,
+        "dz_perp_mediana_abs": 0.577,
+        "n_perfiles": 4,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454343,
+        "nombre": "",
+        "largo_m": 36.7,
+        "dz_perp_max_abs": 1.761,
+        "dz_perp_mediana_abs": 1.677,
+        "n_perfiles": 7,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454344,
+        "nombre": "",
+        "largo_m": 123.7,
+        "dz_perp_max_abs": 0.952,
+        "dz_perp_mediana_abs": 0.319,
+        "n_perfiles": 25,
+        "tags": {}
+      },
+      {
+        "osm_id": 1372454345,
+        "nombre": "",
+        "largo_m": 55.1,
+        "dz_perp_max_abs": 0.933,
+        "dz_perp_mediana_abs": 0.812,
+        "n_perfiles": 11,
+        "tags": {}
+      }
+    ]
+  },
+  "nota": "Perfil perpendicular: cota(+6 m) - cota(-6 m) cada 5 m; muestreo bilineal sobre el MDT. Las escaleras salvan el desnivel a lo largo del eje, ver dz_a_lo_largo."
+}

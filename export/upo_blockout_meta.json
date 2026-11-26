@@ -18,6 +18,27 @@
     "x_max": 536.2353169542039,
     "norte_max": 591.4523156131618
   },
+  "terreno": {
+    "fuente": "data/raw/mdt_lidar_1m.tif",
+    "resolucion_m": 1.0,
+    "suavizado_m": 1.0,
+    "paso_fino_m": 1.0,
+    "paso_grueso_m": 4.0,
+    "zona_fina_m2": 107904,
+    "cota_ref": 15.5111,
+    "cota_min_campus": 9.95,
+    "cota_max_campus": 26.61,
+    "paso_terreno_m": 1.0,
+    "buffer_fino_m": 8.0,
+    "ejes": "y_juego = cota_s.n.m. - cota_ref",
+    "bbox_malla_m": [
+      -768.0,
+      -636.0,
+      540.0,
+      592.0
+    ],
+    "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"
+  },
   "recuentos": {
     "edificios": 73,
     "edificios_partidos": 3,
@@ -43,20 +64,21 @@
   },
   "verificacion": {
     "nodos": 112,
-    "triangulos": 14693,
+    "triangulos": 688656,
     "bounds": [
       [
-        -765.0030517578125,
-        0.0,
-        -591.4523315429688
+        -768.0,
+        -7.818562030792236,
+        -592.0
       ],
       [
-        536.2352905273438,
-        63.0,
-        635.44873046875
+        540.0,
+        70.8457260131836,
+        636.0
       ]
     ],
     "edificios": 93,
-    "no_watertight": []
+    "no_watertight": [],
+    "triangulos_terreno": 415004
   }
 }

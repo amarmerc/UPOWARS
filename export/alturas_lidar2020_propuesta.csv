@@ -1,0 +1,74 @@
+﻿osm_id,nombre,altura_actual,fuente_actual,altura_2020,n_px,diferencia,mediana_2020,cobertura,building,notas
+142258873,"Edificio 45. ""Alexander Von Humboldt"" (Centro de Estudios de Postgrado""",10.5,osm,9.2,4462,-1.3,9.0,0.85,university,"altura_actual = plantas x 3,5 (sin altura)"
+142258882,"Edificio 38. Edificio Multiusos Cubierto ""Rabat""",10.5,defecto,6.6,866,-3.9,5.5,0.56,yes,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); difiere > 3 m"
+142258883,Edificio 48. Vestuarios,3,lidar,3.2,427,0.2,3.2,0.74,yes,
+142258884,Edificico 39. Pabellón Cubierto de Gimnasia,10.5,defecto,6.7,551,-3.8,5.6,0.55,yes,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); difiere > 3 m"
+142258887,Edificio 43,3,manual,3.2,266,0.2,3.1,0.87,yes,
+142259594,Edificio 19. Central térmica,14,lidar,14.6,832,0.6,13.8,0.89,yes,
+142262877,"Edificio 25. ""Juan Bautista Muñoz"" (Biblioteca / C.R.A.I.)",12.5,manual,8.9,9999,-3.6,8.0,0.95,university,difiere > 3 m
+142262878,"Edificio 22. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",21,lidar,21.7,783,0.7,20.7,0.94,yes,
+142262879,Edificio 46. Instituto de la Grasa (CSIC),15,lidar,20.2,4047,5.2,14.1,0.47,yes,difiere > 3 m
+142262880,"Edifiicio 24. ""Fausto Elhuyar y de Suvisa"" (aulas)",13,lidar,13.1,2535,0.1,12.0,0.92,university,
+142262881,Edificio 20. Centro Andaluz de Biologia del Desarrollo,15,lidar,16.4,1378,1.4,14.6,0.54,yes,
+142262882,Edificio 40. Nave Almacén,7,lidar,7.5,1042,0.5,6.7,0.85,university,
+142262883,"Edificio 26. ""Pabellón de las trabajadoras del campo andaluz"" (Gimnasio)",7,lidar,7.1,1298,0.1,6.1,0.97,yes,
+142262884,Edificio 33. Teatr,11,lidar,11.0,965,0.0,11.0,0.58,yes,
+142262885,"Edificio 2. ""Antonio de Ulloa""",16,lidar,16.3,1035,0.3,10.2,0.78,university,
+142262886,"Edificio 44. ""Josefa Amar y Borbón"" (Centro de investigación)",12,lidar,12.4,476,0.4,12.3,0.82,yes,
+142262890,,8,lidar,6.1,244,-1.9,6.1,0.89,yes,
+142263535,"Edificio 27. ""Pabellón Juan José González Badillo"" (Centro de Investigación de Rendimiento Físico y Deportivo)",7,lidar,6.8,1248,-0.2,5.3,0.9,university,
+142263536,Edificio 47. Servicios Centrales de Investigación II,13,lidar,12.8,601,-0.2,12.5,0.88,university,
+142263537,Edificio 21. Servicios Centrales de Investigación I,9,lidar,8.9,1382,-0.1,4.9,0.89,university,
+142276198,Edificio 37. Pabellón Multiusos Semidescubierto,7,manual,6.5,684,-0.5,5.3,0.63,university,
+191918052,Escuela Técnica Superior de Ingeniería Agronómica,15,lidar,14.6,1665,-0.4,14.3,0.92,university,
+191918053,,4,lidar,4.5,1372,0.5,4.4,0.78,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+191918054,Edificio 35 Torre (mirador),63,manual,63.6,64,0.6,52.7,0.83,yes,
+321893434,,3.4,defecto,3.5,662,0.1,3.3,0.91,roof,"sin dato LiDAR 2010; techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+553042591,,3,lidar,3.2,497,0.2,3.0,0.85,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+555489157,,3.5,lidar,7.9,57,4.4,7.9,1.0,roof,"difiere > 3 m; techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+555489158,,2.9,lidar,5.5,46,2.6,3.6,0.96,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+555489167,,4,lidar,3.4,75,-0.6,3.4,0.95,yes,
+555538609,,5,lidar,4.8,201,-0.2,4.8,0.69,greenhouse,
+555538618,,6,lidar,6.9,37,0.9,6.3,0.88,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1372454314,,4,lidar,4.1,141,0.1,4.0,0.75,university,
+1373541633,Edificio 52. Servicios Centrales de Investigación III,10.5,defecto,,0,,,0.0,university,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); sin clase 6 en 2020 (70 % de los puntos de la huella son suelo: probable edificio posterior a 2020)"
+1373541634,Edificio 51. Nave dotacional de investigación,10.5,defecto,5.3,110,-5.2,5.1,0.9,university,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); difiere > 3 m"
+1373541635,"Edificio 23. ""Fausto Elhuyar y de Suvisa"" (laboratorios docentes)",12,lidar,12.7,1101,0.7,12.0,0.73,university,
+1373541636,Edificio 34. Biblioteca E.T.S.I.A.,10.5,defecto,11.3,11,0.8,11.3,0.11,university,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); cobertura baja (11 %): dato poco fiable"
+1373541637,"Edificio 32. ""Rosario Valpuesta"" (Rectorado)",8,lidar,8.3,891,0.3,8.2,0.58,university,
+1373541638,"Edificio 31. ""Leandro Fernández de Moratín"" (Paraninfo)",9,lidar,9.0,536,0.0,7.9,0.65,university,
+1373541639,,7,manual,7.0,3223,0.0,6.9,0.87,university,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541640,Edificio 1. Cafetería,6,lidar,6.2,498,0.2,6.0,0.77,university,
+1373541641,"Edificio 4. ""Zenón de Somodevilla, Marqués de la Ensenada""",8,lidar,8.2,590,0.2,8.1,0.87,university,
+1373541642,,4,lidar,4.3,135,0.3,4.3,0.81,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541643,"Edificio 3. ""José Moñino, Conde de Floridablanca""",16,lidar,16.2,891,0.2,8.8,0.83,university,
+1373541644,"Edificio 6. ""Manuel José de Ayala""",17,lidar,16.5,1103,-0.5,9.0,0.83,university,
+1373541645,,7,lidar,7.8,55,0.8,7.6,0.71,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541646,,8,lidar,7.8,39,-0.2,7.6,0.8,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541647,,4,lidar,4.2,162,0.2,4.2,0.89,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541648,,4,lidar,4.4,136,0.4,4.3,0.9,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541649,"Edificio 5. José María Blanco White""",8,lidar,8.0,538,0.0,7.9,0.87,university,
+1373541650,"Edificio 8. ""Félix de Azara""",8,lidar,8.6,540,0.6,7.9,0.82,university,
+1373541651,"Edificio 7. ""Pedro Rodríguez Campomanes""",16,lidar,16.3,930,0.3,16.2,0.86,university,
+1373541652,"Edificio 10. ""Francisco de Goya y Lucientes""",17,lidar,16.4,1094,-0.6,16.2,0.82,university,
+1373541653,,7,lidar,7.7,62,0.7,7.3,0.9,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541654,,8,lidar,7.7,54,-0.3,7.3,0.93,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541655,"Edificio 9. ""Francisco de Miranda""",8,lidar,8.3,547,0.3,8.2,0.89,university,
+1373541656,"Edificio 12. ""Alejandro Malaspina""",8,lidar,8.2,591,0.2,8.1,0.91,university,
+1373541657,,4,lidar,4.3,141,0.3,4.3,0.84,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541658,,4,lidar,4.3,147,0.3,4.2,0.91,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541659,"Edificio 11. ""Pedro Pablo Abarca de Bolea, Conde de Aranda""",16,lidar,16.4,868,0.4,16.4,0.81,university,
+1373541660,,4,lidar,4.4,165,0.4,4.4,0.92,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541661,"Edificio 14. ""Gaspar Melchor de Jovellanos y Ramírez""",17,lidar,16.5,1111,-0.5,16.4,0.84,university,
+1373541662,,4,lidar,4.4,153,0.4,4.4,0.87,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541663,"Edificio 13. ""Francisco José de Caldas""",8,lidar,8.2,523,0.2,8.2,0.84,university,
+1373541664,"Edificio 16. ""José Cadalso y Vázquez""",9,lidar,9.1,519,0.1,8.3,0.8,university,
+1373541665,Edificio 15. Residencia de estudiantes,17,lidar,17.4,452,0.4,17.3,0.59,dormitory,
+1373541666,"Edificio 18. ""José Celestino Mutis""",12,lidar,11.8,654,-0.2,11.7,0.71,university,
+1373541667,"Edificio 17. ""José Celestino Mutis""",11,lidar,10.7,566,-0.3,10.6,0.74,university,
+1373541668,,7,lidar,7.5,69,0.5,7.2,0.9,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541669,,7,lidar,7.6,48,0.6,7.3,0.94,roof,"techo: altura_actual = altura_m si > 1 m, si no base_m + 0,4 (cota de la cubierta); altura_2020 = cota de cubierta sobre el suelo"
+1373541670,Edificio 53. Centro de Excelencia en Genómica y Análisis de la Biodiversidad (C.E.G.A.B.),10.5,defecto,4.3,8,-6.2,3.2,0.03,university,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); difiere > 3 m; cobertura baja (3 %): dato poco fiable"
+1373674172,,11,lidar,3.9,17,-7.1,3.8,0.74,yes,difiere > 3 m
+1373674189,,10.5,defecto,,0,,,0.0,yes,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); sin clase 6 en 2020 (7 % de los puntos de la huella son suelo: revisar)"
+1373674192,"Edificio 36B. ""Jorge Juan Santacilica"" (E.T.S.I.A.)",10.5,defecto,,0,,,0.0,university,"sin dato LiDAR 2010; altura_actual = plantas x 3,5 (sin altura); sin clase 6 en 2020 (52 % de los puntos de la huella son suelo: probable edificio posterior a 2020)"

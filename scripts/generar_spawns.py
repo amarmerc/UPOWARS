@@ -15,6 +15,13 @@ Ademas calcula "test_pasillo" (puntos para el test de Godot): un rayo horizontal
 que cruza el pasillo cubierto central de lado a lado entre una pareja de edificios y un
 rayo vertical hacia la losa.
 
+Relieve: y = altura(x, z) + 0,1 con el mismo Terreno que generar_blockout.py (mismas opciones --mdt,
+--terreno, --paso-terreno, --paso-grueso, --buffer-fino, --suavizado-m; defectos en terreno.py). Todos los rayos de test van a 1,5 m SOBRE EL TERRENO en cada
+extremo; si el rayo recto tocaria el terreno (loma intermedia) se trocea en tramos ("tramos": lista de
+[desde, hasta]) con los puntos de corte tambien a 1,5 m sobre el terreno. Tambien escribe "test_terreno"
+(5 puntos libres con cotas distintas: la y esperada del terreno) y "test_subida" (tramo de maxima pendiente
+para que el test haga subir al jugador).
+
 Salidas: game/data/spawns.json y export/spawns_preview.png.
 Uso: uv run python scripts/generar_spawns.py [--entrada data/raw/osm_upo.json]
 """
@@ -26,11 +33,13 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import shapely
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points, polylabel, unary_union
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generar_blockout as gb  # noqa: E402
+import terreno as ter  # noqa: E402
 
 Y_SPAWN = 0.1
 DIST_EDIF_MIN = 3.0       # a huellas de edificio
@@ -42,6 +51,8 @@ DIST_PILAR_MIN = 1.0
 ID_PASILLO_CENTRAL = 1373541639   # techo del eje central (edificios 1 a 18)
 PAREJA_TEST = (8, 9)
 ID_TUNEL_37 = 142276198
+ALT_RAYO = 1.5            # altura de los rayos de test sobre el terreno
+LIBRE_RAYO = 0.4          # holgura minima entre un rayo y el terreno
 
 EDIFICIOS = [  # id, nombre visible, numero de edificio
     ("biblioteca", "Biblioteca (Edificio 25)", 25),
@@ -78,6 +89,9 @@ class Contexto:
                     barreras.append(l)
         self.barreras = unary_union(barreras) if barreras else None
         self.tertiary = geo["caminos"]["tertiary"].intersection(self.zona_valida)
+
+    def pilares_dist(self, geom):
+        return geom.distance(self.pilares) if self.pilares is not None else 99.0
 
     def libre(self, p):
         if not self.zona_valida.contains(p):
@@ -184,7 +198,7 @@ def spawn_aparcamiento(ctx):
     return p, yaw_hacia(p.x, p.y, centro.x, centro.y), {"aparcamiento": nombre, "area_m2": round(poly.area)}
 
 
-def test_pasillo(ctx):
+def test_pasillo(ctx, T):
     """Cruza el pasillo central (techo) de lado a lado, perpendicular a su eje, en un punto
     libre de edificios, vallas y pilares cercano al punto medio entre los edificios de PAREJA_TEST."""
     techo = next(e for e in ctx.edificios if e["id"] == ID_PASILLO_CENTRAL)
@@ -225,12 +239,42 @@ def test_pasillo(ctx):
     if mejor is None:
         raise SystemExit("No hay seccion libre del pasillo central para el test de rayos")
     _, a2, b2, m, ancho = mejor
-    g = lambda p, y: [round(p[0], 2), y, round(-p[1], 2)]   # plano local -> juego
+    hm = float(T.altura(m[0], -m[1]))
+    g = lambda p, y: [round(p[0], 2), round(y, 3), round(-p[1], 2)]   # plano local -> juego
     return {"descripcion": f"pasillo central (techo {ID_PASILLO_CENTRAL}) entre los edificios {PAREJA_TEST[0]} y {PAREJA_TEST[1]}",
-            "rayo_horizontal": {"desde": g(a2, 1.5), "hasta": g(b2, 1.5)},
-            "rayo_vertical": {"desde": g(m, 1.5), "hasta": g(m, 30.0), "techo_y_min": round(techo["altura"] - gb.GROSOR_TECHO, 2),
-                              "techo_y_max": round(techo["altura"], 2)},
+            "rayo_horizontal": rayo_sobre_terreno(T, (a2[0], -a2[1]), (b2[0], -b2[1])),
+            "rayo_vertical": {"desde": g(m, hm + ALT_RAYO), "hasta": g(m, hm + 30.0),
+                              "techo_y_min": round(hm + techo["altura"] - gb.GROSOR_TECHO, 3),
+                              "techo_y_max": round(hm + techo["altura"], 3)},
             "ancho_pasillo_m": round(ancho, 1)}
+
+
+def rayo_sobre_terreno(T, p0, p1):
+    """Rayo entre dos puntos (x, z de juego) a ALT_RAYO m sobre el terreno en cada extremo. Si el segmento recto
+    queda a menos de LIBRE_RAYO m del terreno en algun punto, se trocea en los tramos rectos mas largos posibles
+    cuyos puntos de corte estan tambien a ALT_RAYO m sobre el terreno. Devuelve {"desde", "hasta", "tramos"}."""
+    L = math.dist(p0, p1)
+    n = max(2, int(math.ceil(L / 0.5)) + 1)
+    xs, zs = np.linspace(p0[0], p1[0], n), np.linspace(p0[1], p1[1], n)
+    hs = T.altura(xs, zs) + ALT_RAYO
+
+    def ok(i, j):
+        if j == i + 1:
+            return True
+        t = np.arange(i, j + 1)
+        yr = hs[i] + (hs[j] - hs[i]) * (t - i) / (j - i)
+        return bool((yr - (hs[t] - ALT_RAYO) >= LIBRE_RAYO).all())
+
+    pts, i = [0], 0
+    while i < n - 1:
+        j = n - 1
+        while not ok(i, j):
+            j -= 1
+        pts.append(j)
+        i = j
+    P = lambda k: [round(float(xs[k]), 2), round(float(hs[k]), 3), round(float(zs[k]), 2)]
+    tramos = [[P(a), P(b)] for a, b in zip(pts[:-1], pts[1:])]
+    return {"desde": P(0), "hasta": P(n - 1), "tramos": tramos}
 
 
 def dibujar(ax, spawns):
@@ -245,7 +289,7 @@ def dibujar(ax, spawns):
                     bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="black", alpha=0.9))
 
 
-def test_paso_22_24(geo):
+def test_paso_22_24(geo, T):
     """Rayo horizontal a 1,5 m por el eje de la franja abierta entre los edificios 22 y 24
     (paso '22-24' de pasos.csv), de oeste a este y de extremo a extremo; no debe chocar con nada."""
     p = next((q for q in geo["pasos"] if q["id"] == "22-24"), None)
@@ -254,11 +298,10 @@ def test_paso_22_24(geo):
     (x1, y1), (x2, y2) = p["seg"].coords
     return {"descripcion": "franja abierta entre los edificios 22 y 24: rayo a 1,5 m por el eje, de oeste a este",
             "ancho_m": p["ancho"],
-            "rayo_horizontal": {"desde": [round(x1, 2), 1.5, round(-y1, 2)],
-                                "hasta": [round(x2, 2), 1.5, round(-y2, 2)]}}
+            "rayo_horizontal": rayo_sobre_terreno(T, (x1, -y1), (x2, -y2))}
 
 
-def test_pasillo_pilares(ctx):
+def test_pasillo_pilares(ctx, T):
     """Tramo recto de ~30 m por el centro del pasillo central (paralelo a uno de sus bordes largos,
     a 4-6 m de el): un rayo a 1,5 m por ahi no debe chocar (sin pilares interiores)."""
     techo = next(e for e in ctx.edificios if e["id"] == ID_PASILLO_CENTRAL)
@@ -289,23 +332,97 @@ def test_pasillo_pilares(ctx):
                             mejor = (d, p0, p1)
     if mejor is None:
         raise SystemExit("No hay tramo recto de 30 m libre en el pasillo central para test_pasillo_pilares")
-    g = lambda q, y: [round(q[0], 2), y, round(-q[1], 2)]
     return {"descripcion": f"tramo recto de 30 m por el centro del pasillo central ({ID_PASILLO_CENTRAL}), sin pilares interiores",
-            "rayo_horizontal": {"desde": g(mejor[1], 1.5), "hasta": g(mejor[2], 1.5)},
+            "rayo_horizontal": rayo_sobre_terreno(T, (mejor[1][0], -mejor[1][1]), (mejor[2][0], -mejor[2][1])),
             "dist_min_pilar_m": round(mejor[0], 1)}
 
 
-def test_tunel_37(ctx):
+def test_tunel_37(ctx, T):
     """Edificio 37 (tunel_z): rayo a 1,5 m de norte a sur por su centro (debe pasar) y de oeste a
     este (debe chocar con la pared)."""
     e = next(e for e in ctx.edificios if e["id"] == ID_TUNEL_37)
     poly = e["poly"]
     c = poly.centroid
     x0, y0, x1, y1 = poly.bounds
-    g = lambda x, y: [round(x, 2), 1.5, round(-y, 2)]
+    g = lambda x, y: (round(x, 2), round(-y, 2))
     return {"descripcion": "Edificio 37 (tunel_z): rayo N-S por el centro (libre) y rayo O-E (choca con pared)",
-            "rayo_norte_sur": {"desde": g(c.x, y1 + 2.0), "hasta": g(c.x, y0 - 2.0)},
-            "rayo_oeste_este": {"desde": g(x0 - 2.0, c.y), "hasta": g(x1 + 2.0, c.y)}}
+            "rayo_norte_sur": rayo_sobre_terreno(T, g(c.x, y1 + 2.0), g(c.x, y0 - 2.0)),
+            "rayo_oeste_este": rayo_sobre_terreno(T, g(x0 - 2.0, c.y), g(x1 + 2.0, c.y))}
+
+
+def test_terreno(ctx, T):
+    """5 puntos libres (sin edificio, techo ni pilar a mano) con cotas distintas: la mas alta, la mas baja y
+    los cuartiles 25/50/75 de las cotas de los puntos libres del campus (rejilla de 5 m). Para cada uno, la
+    y esperada del terreno (un rayo vertical debe chocar con terreno-col a +-0,3 m de ella)."""
+    techos = unary_union([e["poly"] for e in ctx.edificios if e["forma"] == "techo"])
+    x0, y0, x1, y1 = ctx.campus.bounds
+    cand = []
+    for x in np.arange(x0, x1, 5.0):
+        for y in np.arange(y0, y1, 5.0):
+            p = Point(x, y)
+            if ctx.campus.contains(p) and ctx.libre(p) and techos.distance(p) > 3.0:
+                cand.append((float(T.altura(x, -y)), x, y))
+    cand.sort()
+    idx = {"bajo": 0, "p25": len(cand) // 4, "p50": len(cand) // 2, "p75": 3 * len(cand) // 4, "alto": len(cand) - 1}
+    pts = [{"nombre": k, "pos": [round(cand[i][1], 2), round(cand[i][0], 3), round(-cand[i][2], 2)]}
+           for k, i in idx.items()]
+    return {"descripcion": "5 puntos libres con cotas distintas: y esperada del terreno", "puntos": pts}
+
+
+PEND_LOCAL_MAX_GRADOS = 35.0   # test_subida: pendiente local maxima admitida a lo largo del tramo (floor_max_angle = 45)
+
+
+def pend_local_max(T, a, b, paso=0.5, lateral=0.5):
+    """Pendiente local maxima (grados) del terreno a lo largo del segmento a-b (plano este-norte), muestreado cada
+    `paso` m en el eje y en dos carriles a +-`lateral` m (el jugador es una capsula, no un punto). Con un MDT de 1 m
+    hay taludes y muros de contencion: la media del tramo puede ser caminable y un escalon intermedio no."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    d = b - a
+    L = float(np.hypot(*d))
+    u, nrm = d / L, np.array([-d[1], d[0]]) / L
+    t = np.linspace(0.0, L, int(round(L / paso)) + 1)
+    peor = 0.0
+    for off in (-lateral, 0.0, lateral):
+        P = a[None, :] + t[:, None] * u[None, :] + off * nrm[None, :]
+        h = T.altura(P[:, 0], -P[:, 1])
+        peor = max(peor, float(np.abs(np.diff(h)).max() / (t[1] - t[0])))
+    return math.degrees(math.atan(peor))
+
+
+def test_subida(ctx, T, longitud=12.0):
+    """Tramo recto de `longitud` m, libre de obstaculos, con la mayor pendiente media del campus (y pendiente local
+    <= PEND_LOCAL_MAX_GRADOS en todo el tramo): el test hace
+    caminar al jugador cuesta arriba desde `desde` (yaw hacia `hasta`) y comprueba que llega arriba."""
+    obst = unary_union([ctx.huellas] + ([ctx.barreras] if ctx.barreras is not None else []) +
+                       ([ctx.agua] if ctx.agua is not None else []))
+    x0, y0, x1, y1 = ctx.campus.bounds
+    mejor = None
+    xs, ys = np.arange(x0, x1, 6.0), np.arange(y0, y1, 6.0)
+    GX, GY = np.meshgrid(xs, ys, indexing="ij")
+    H0 = T.altura(GX, -GY)                          # alturas de todo el barrido de una vez (vectorizado)
+    ok0 = shapely.contains_xy(ctx.zona_valida, GX, GY)
+    cand = []                                       # (pendiente, ix, iy, ia)
+    for ia, ang in enumerate(range(0, 360, 45)):
+        QX, QY = GX + math.cos(math.radians(ang)) * longitud, GY + math.sin(math.radians(ang)) * longitud
+        H1 = T.altura(QX, -QY)
+        ok = ok0 & shapely.contains_xy(ctx.zona_valida, QX, QY) & (H1 > H0)
+        for ix, iy in zip(*np.nonzero(ok)):
+            cand.append(((H1[ix, iy] - H0[ix, iy]) / longitud, ix, iy, ia))
+    cand.sort(key=lambda c: (-c[0], c[1], c[2], c[3]))     # mayor pendiente; a igualdad, el primero del barrido
+    for pend, ix, iy, ia in cand:
+        x, y, ang = xs[ix], ys[iy], ia * 45
+        q = (x + math.cos(math.radians(ang)) * longitud, y + math.sin(math.radians(ang)) * longitud)
+        l = LineString([(x, y), q])
+        if l.distance(obst) > 2.0 and ctx.pilares_dist(l) > 1.0 and pend_local_max(T, (x, y), q) <= PEND_LOCAL_MAX_GRADOS:
+            mejor = (pend, (x, y), q, float(H0[ix, iy]), float(T.altura(q[0], -q[1])))
+            break
+    pend, a, b, h0, h1 = mejor
+    grados = math.degrees(math.atan(pend))
+    return {"descripcion": f"tramo de {longitud:g} m con la mayor pendiente media del campus ({grados:.1f} grados)",
+            "desde": [round(a[0], 2), round(h0 + Y_SPAWN, 3), round(-a[1], 2)],
+            "hasta": [round(b[0], 2), round(h1, 3), round(-b[1], 2)],
+            "yaw_deg": round(yaw_hacia(a[0], a[1], b[0], b[1]), 1), "longitud_m": longitud,
+            "pendiente_grados": round(grados, 2)}
 
 
 def main():
@@ -317,6 +434,7 @@ def main():
     ap.add_argument("--meta", default="export/upo_blockout_meta.json")
     ap.add_argument("--salida", default="game/data/spawns.json")
     ap.add_argument("--preview", default="export/spawns_preview.png")
+    ter.anadir_argumentos(ap)
     a = ap.parse_args()
 
     mapa = gb.Mapa(a.entrada)
@@ -329,7 +447,18 @@ def main():
                  if "tags" in w and mapa.cerrado(w)
                  and ("building" in w["tags"] or w["tags"].get("man_made") == "tower")]
     filas = gb.cargar_alturas(a.alturas, edificios)
-    _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas))
+    campus = gb.campus_local(mapa)
+    T = ter.crear(a, mapa.E0, mapa.N0, campus, gb.zona_fina(mapa, campus, a.buffer_fino))
+    mt = meta.get("terreno", {})
+    # la fuente y la cota de referencia deben coincidir con el blockout; tambien la malla (pasos y zona fina),
+    # porque las alturas de spawns y tests se calculan sobre la misma malla que la colision
+    dif = [k for k in ("fuente", "suavizado_m", "paso_fino_m", "paso_grueso_m", "zona_fina_m2") if mt.get(k) != T.info()[k]]
+    if abs(mt.get("cota_ref", 0.0) - T.cota_ref) > 1e-3:
+        dif.append("cota_ref")
+    if dif:
+        raise SystemExit(f"El terreno ({T.info()}) no coincide con {a.meta} ({mt}) en {dif}; "
+                         "usa las mismas opciones que generar_blockout.py o regenera el blockout")
+    _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas), T)
     ctx = Contexto(mapa, geo)
 
     cand = [("entrada", "Entrada principal", *spawn_entrada(ctx))]
@@ -340,23 +469,29 @@ def main():
     spawns = []
     for sid, nombre, p, yaw, info in cand:
         x, z = float(p.x), float(-p.y)       # plano local (este, norte) -> glTF (x, z = -norte)
-        spawns.append({"id": sid, "nombre": nombre, "pos": [round(x, 2), Y_SPAWN, round(z, 2)],
-                       "yaw_deg": round(yaw, 1), "info": info})
-        print(f"{sid:13s} {nombre:36s} pos=({x:8.2f}, {Y_SPAWN}, {z:8.2f}) yaw={yaw:7.1f}  {info}")
+        yt = float(T.altura(x, z))
+        spawns.append({"id": sid, "nombre": nombre, "pos": [round(x, 2), round(yt + Y_SPAWN, 3), round(z, 2)],
+                       "y_terreno": round(yt, 3), "yaw_deg": round(yaw, 1), "info": info})
+        print(f"{sid:13s} {nombre:36s} pos=({x:8.2f}, {yt + Y_SPAWN:7.3f}, {z:8.2f}) yaw={yaw:7.1f}  {info}")
 
     salida = Path(a.salida)
     salida.parent.mkdir(parents=True, exist_ok=True)
-    tp = test_pasillo(ctx)
+    tp = test_pasillo(ctx, T)
     print("test_pasillo:", json.dumps(tp, ensure_ascii=False))
-    tp3 = test_pasillo_pilares(ctx)
+    tp3 = test_pasillo_pilares(ctx, T)
     print("test_pasillo_pilares:", json.dumps(tp3, ensure_ascii=False))
-    tp4 = test_tunel_37(ctx)
+    tp4 = test_tunel_37(ctx, T)
     print("test_tunel_37:", json.dumps(tp4, ensure_ascii=False))
-    tp2 = test_paso_22_24(geo)
+    tp2 = test_paso_22_24(geo, T)
     print("test_paso_22_24:", json.dumps(tp2, ensure_ascii=False))
+    tt = test_terreno(ctx, T)
+    print("test_terreno:", json.dumps(tt, ensure_ascii=False))
+    ts = test_subida(ctx, T)
+    print("test_subida:", json.dumps(ts, ensure_ascii=False))
     salida.write_text(json.dumps({"ejes": meta["ejes_gltf"], "origen": meta["origen"], "spawns": spawns,
                                   "test_pasillo": tp, "test_paso_22_24": tp2,
-                                  "test_pasillo_pilares": tp3, "test_tunel_37": tp4},
+                                  "test_pasillo_pilares": tp3, "test_tunel_37": tp4,
+                                  "test_terreno": tt, "test_subida": ts, "terreno": mt},
                                  indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Escrito {salida}")
     gb.preview(Path(a.preview), geo, extra=lambda ax: dibujar(ax, spawns))
