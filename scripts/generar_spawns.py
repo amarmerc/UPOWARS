@@ -245,20 +245,16 @@ def dibujar(ax, spawns):
 
 
 def test_paso_22_24(geo):
-    """Rayos horizontales a 1,5 m a lo largo del eje de la franja abierta entre los edificios 22 y 24
-    (pasos '22-24*' de pasos.csv, de oeste a este). El eje no es recto (la fachada salta), asi que
-    hay un rayo por tramo, en orden; ninguno debe chocar con nada."""
-    tramos = [p for p in geo["pasos"] if p["id"].startswith("22-24")]
-    if not tramos:
-        raise SystemExit("No hay pasos 22-24 en pasos.csv para test_paso_22_24")
-    rayos = []
-    for p in sorted(tramos, key=lambda q: q["id"]):
-        (x1, y1), (x2, y2) = p["seg"].coords
-        rayos.append({"id": p["id"], "desde": [round(x1, 2), 1.5, round(-y1, 2)],
-                      "hasta": [round(x2, 2), 1.5, round(-y2, 2)]})
-    return {"descripcion": "franja abierta entre los edificios 22 y 24: un rayo a 1,5 m por tramo del eje, de oeste a este",
-            "rayos_horizontales": rayos,
-            "extremo_este": rayos[-1]["hasta"]}
+    """Rayo horizontal a 1,5 m por el eje de la franja abierta entre los edificios 22 y 24
+    (paso '22-24' de pasos.csv), de oeste a este y de extremo a extremo; no debe chocar con nada."""
+    p = next((q for q in geo["pasos"] if q["id"] == "22-24"), None)
+    if p is None:
+        raise SystemExit("No hay paso 22-24 en pasos.csv para test_paso_22_24")
+    (x1, y1), (x2, y2) = p["seg"].coords
+    return {"descripcion": "franja abierta entre los edificios 22 y 24: rayo a 1,5 m por el eje, de oeste a este",
+            "ancho_m": p["ancho"],
+            "rayo_horizontal": {"desde": [round(x1, 2), 1.5, round(-y1, 2)],
+                                "hasta": [round(x2, 2), 1.5, round(-y2, 2)]}}
 
 
 def main():

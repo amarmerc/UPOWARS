@@ -123,65 +123,19 @@
     "ancho_pasillo_m": 11.2
   },
   "test_paso_22_24": {
-    "descripcion": "franja abierta entre los edificios 22 y 24: un rayo a 1,5 m por tramo del eje, de oeste a este",
-    "rayos_horizontales": [
-      {
-        "id": "22-24a",
-        "desde": [
-          76.61,
-          1.5,
-          -309.35
-        ],
-        "hasta": [
-          77.07,
-          1.5,
-          -304.1
-        ]
-      },
-      {
-        "id": "22-24b",
-        "desde": [
-          77.07,
-          1.5,
-          -304.1
-        ],
-        "hasta": [
-          94.02,
-          1.5,
-          -305.39
-        ]
-      },
-      {
-        "id": "22-24c",
-        "desde": [
-          93.02,
-          1.5,
-          -305.31
-        ],
-        "hasta": [
-          92.62,
-          1.5,
-          -309.56
-        ]
-      },
-      {
-        "id": "22-24d",
-        "desde": [
-          92.62,
-          1.5,
-          -309.56
-        ],
-        "hasta": [
-          116.5,
-          1.5,
-          -311.58
-        ]
-      }
-    ],
-    "extremo_este": [
-      116.5,
-      1.5,
-      -311.58
-    ]
+    "descripcion": "franja abierta entre los edificios 22 y 24: rayo a 1,5 m por el eje, de oeste a este",
+    "ancho_m": 5.0,
+    "rayo_horizontal": {
+      "desde": [
+        74.0,
+        1.5,
+        -307.0
+      ],
+      "hasta": [
+        118.0,
+        1.5,
+        -310.5
+      ]
+    }
   }
 }

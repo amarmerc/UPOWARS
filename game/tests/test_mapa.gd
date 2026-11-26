@@ -109,22 +109,19 @@ func _ejecutar() -> void:
 				not vhit.is_empty() and yv >= float(rv["techo_y_min"]) - 0.05 and yv <= float(rv["techo_y_max"]) + 0.05,
 				"y=%.2f esperado [%.2f, %.2f]" % [yv, rv["techo_y_min"], rv["techo_y_max"]])
 
-	# f) franja abierta entre los edificios 22 y 24: rayos horizontales a 1,5 m a lo largo del eje
-	#    (un rayo por tramo, de oeste a este) sin chocar hasta el extremo este
+	# f) franja abierta entre los edificios 22 y 24: rayo horizontal a 1,5 m por el eje, de oeste
+	#    a este y de extremo a extremo, sin chocar
 	var tp2: Dictionary = (datos as Dictionary).get("test_paso_22_24", {})
 	comprobar("f0) datos test_paso_22_24 presentes", not tp2.is_empty())
 	if not tp2.is_empty():
-		var ee: Array = tp2["extremo_este"]
-		for ry: Dictionary in tp2["rayos_horizontales"]:
-			var rd: Array = ry["desde"]
-			var rh2: Array = ry["hasta"]
-			var q2 := PhysicsRayQueryParameters3D.create(Vector3(rd[0], rd[1], rd[2]), Vector3(rh2[0], rh2[1], rh2[2]))
-			q2.exclude = [jugador.get_rid()]
-			var h2: Dictionary = espacio.intersect_ray(q2)
-			comprobar("f1) rayo a 1,5 m por el tramo %s de la franja 22-24 no choca" % ry["id"], h2.is_empty(),
-					"choca en %s" % str(h2.get("position", "nada")))
-		var ult: Array = (tp2["rayos_horizontales"] as Array).back()["hasta"]
-		comprobar("f2) el último tramo llega al extremo este", ult == ee, "extremo=%s" % str(ee))
+		var rf: Dictionary = tp2["rayo_horizontal"]
+		var fd: Array = rf["desde"]
+		var fh: Array = rf["hasta"]
+		var qf := PhysicsRayQueryParameters3D.create(Vector3(fd[0], fd[1], fd[2]), Vector3(fh[0], fh[1], fh[2]))
+		qf.exclude = [jugador.get_rid()]
+		var hf: Dictionary = espacio.intersect_ray(qf)
+		comprobar("f1) rayo a 1,5 m por el eje de la franja 22-24 llega al extremo este sin chocar", hf.is_empty(),
+				"choca en %s" % str(hf.get("position", "nada")))
 
 	# g) cerramiento de las pistas de pádel
 	# (Godot quita el sufijo -col del nombre del nodo y le añade un StaticBody3D hijo: padel-col -> "padel")
