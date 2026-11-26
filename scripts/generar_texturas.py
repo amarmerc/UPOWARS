@@ -75,6 +75,20 @@ def baldosa(rng):
     return img
 
 
+def baldosa_clara(rng):
+    """Baldosa casi blanca (pavimento de los pasillos cubiertos): losetas de 0,5 m (tesela de 4 m), juntas finas grises."""
+    n = 8
+    t = N // n
+    tono = rng.uniform(-0.025, 0.025, (n, n))
+    idx = np.arange(N) // t
+    base = 0.97 + tono[idx[:, None], idx[None, :]]
+    img = mezcla(np.array([1.0, 1.0, 0.99]), (ruido(rng, 2.0), 0.05), (grano(rng), 0.05))
+    img *= base[..., None]
+    loc = np.arange(N) % t
+    junta = (loc[:, None] < 1) | (loc[None, :] < 1)
+    return np.where(junta[..., None], np.array([0.72, 0.72, 0.71]) * (0.95 + 0.1 * grano(rng))[..., None], img)
+
+
 def cesped(rng):
     img = mezcla((0.27, 0.42, 0.15), (ruido(rng, 3.0), 0.55), (ruido(rng, 1.2), 0.35), (grano(rng), 0.25))
     # briznas: pequenos trazos mas claros y mas oscuros
@@ -138,7 +152,7 @@ def campo(rng):
 
 TEXTURAS = {
     "asfalto": asfalto, "baldosa": baldosa, "cesped": cesped, "albero": albero, "hormigon": hormigon,
-    "aparcamiento": aparcamiento, "pista": pista, "agua": agua, "campo": campo,
+    "aparcamiento": aparcamiento, "pista": pista, "agua": agua, "campo": campo, "baldosa_clara": baldosa_clara,
 }
 
 

@@ -158,8 +158,9 @@ class Terreno:
         o.extension = (float(xs[0]), float(xs[-1]), float(zs[0]), float(zs[-1]))
         return o
 
-    def altura_raster(self, x, z):
-        """y de juego (cota - cota_ref) interpolando bilinealmente el raster limpio; fuera de el se repite el borde."""
+    def altura_base(self, x, z):
+        """y de juego (cota - cota_ref) interpolando bilinealmente el raster limpio SIN suelos aplanados; fuera de el se
+        repite el borde."""
         x = np.asarray(x, dtype=float)
         z = np.asarray(z, dtype=float)
         if self.es_plano:
@@ -174,6 +175,63 @@ class Terreno:
         c = (a[i0, j0] * (1 - tx) * (1 - tz) + a[i0, j0 + 1] * tx * (1 - tz)
              + a[i0 + 1, j0] * (1 - tx) * tz + a[i0 + 1, j0 + 1] * tx * tz)
         return c - self.cota_ref
+
+    # ------------------------------------------------------------------ suelos aplanados (pasillos)
+    def anadir_suelo(self, zona, plano, abierto=None, transicion_m=2.0):
+        """Aplana el terreno dentro de `zona` (shapely, plano local x / norte) al plano y = a x + b norte + c (cota de
+        juego; `plano` puede ser tambien una funcion f(x, norte) -> y, p. ej. la rampa de una escalera). Los suelos se aplican en el orden de registro: el ultimo gana donde se solapan. Se aplica en altura_raster(), o sea ANTES de mallar: todos los nodos de la malla (y por tanto la
+        colision y altura()) ven el suelo aplanado. Fuera de `zona` y solo dentro de `abierto` (geometria o None = en
+        ningun sitio) el raster original se funde con el plano en `transicion_m` (smoothstep); en el resto de
+        la frontera el escalon queda tal cual (lo tapan los muros de generar_blockout.preparar_suelos)."""
+        if self.es_plano:
+            return
+        shapely.prepare(zona)
+        if abierto is not None:
+            shapely.prepare(abierto)
+        x0, y0, x1, y1 = zona.buffer(transicion_m).bounds
+        if not hasattr(self, "_suelos"):
+            self._suelos = []
+        if not callable(plano):
+            plano = tuple(float(v) for v in plano)
+        self._suelos.append({"zona": zona, "plano": plano, "abierto": abierto,
+                             "trans": float(transicion_m), "bbox": (x0, y0, x1, y1)})
+
+    def altura_raster(self, x, z):
+        """altura_base() + suelos aplanados (ver anadir_suelo). Nodos de la malla = esta funcion."""
+        c = self.altura_base(x, z)
+        suelos = getattr(self, "_suelos", None)
+        if not suelos:
+            return c
+        x = np.asarray(x, dtype=float)
+        z = np.asarray(z, dtype=float)
+        x, z = np.broadcast_arrays(x, z)
+        forma = x.shape
+        xf, nf = x.ravel(), -z.ravel()
+        c = np.array(c, dtype=float).ravel()
+        for s in suelos:
+            x0, y0, x1, y1 = s["bbox"]
+            idx = np.nonzero((xf >= x0) & (xf <= x1) & (nf >= y0) & (nf <= y1))[0]
+            if not len(idx):
+                continue
+            px, pn = xf[idx], nf[idx]
+            if callable(s["plano"]):
+                plano = np.asarray(s["plano"](px, pn), float)
+            else:
+                a, b, cc = s["plano"]
+                plano = a * px + b * pn + cc
+            dentro = shapely.contains_xy(s["zona"], px, pn)
+            c[idx[dentro]] = plano[dentro]
+            fuera = ~dentro
+            if s["abierto"] is not None and fuera.any():
+                k = np.nonzero(fuera)[0]
+                ok = shapely.contains_xy(s["abierto"], px[k], pn[k])
+                k = k[ok]
+                if len(k):
+                    d = shapely.distance(s["zona"], shapely.points(px[k], pn[k]))
+                    w = np.clip(1.0 - d / s["trans"], 0.0, 1.0)
+                    w = w * w * (3 - 2 * w)
+                    c[idx[k]] = c[idx[k]] * (1 - w) + plano[k] * w
+        return c.reshape(forma)
 
     # ------------------------------------------------------------------ malla de resolucion variable
     # La malla exportada se compone de BLOQUES de paso_bloque x paso_bloque m alineados con el origen:

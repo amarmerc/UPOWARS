@@ -5,7 +5,8 @@ extends Node3D
 
 
 func _ready() -> void:
-	var limite: Node = find_child("limite", true, false)
-	if limite is MeshInstance3D:
-		(limite as MeshInstance3D).visible = false  # la colisión (StaticBody3D hijo) se mantiene
+	for nombre: String in ["limite", "escaleras_rampa"]:   # mallas invisibles: la colisión (StaticBody3D hijo) se mantiene
+		var oculto: Node = find_child(nombre, true, false)
+		if oculto is MeshInstance3D:
+			(oculto as MeshInstance3D).visible = false
 	Materiales.aplicar(self)

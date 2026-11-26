@@ -99,6 +99,8 @@ class Contexto:
                 l = mapa.linea(w)
                 if l is not None:
                     barreras.append(l)
+        for info in geo.get("suelos", {}).values():      # muros laterales de los pasillos con suelo aplanado
+            barreras.extend(LineString([a, b]) for a, b, _, _ in info["muros"])
         self.barreras = unary_union(barreras) if barreras else None
         self.tertiary = geo["caminos"]["tertiary"].intersection(self.zona_valida)
 
@@ -403,6 +405,219 @@ def test_marquesinas(ctx, T):
     return res
 
 
+ID_PUENTE = gb.ID_PUENTE_18          # marquesina diagonal del 18: puente macizo sobre el cauce
+CAUCE_REF = (-12.0, 250.0)           # (este, norte) aproximado del cruce del cauce (zanjas NO y SE)
+
+
+def _unit(v):
+    v = np.asarray(v, float)
+    return v / np.linalg.norm(v)
+
+
+def test_suelos(ctx, T, geo):
+    """10 puntos del suelo aplanado de cada pasillo con suelo=plano o eje: libres de pilares y edificios (>1 m), a >= 1,5 m del
+    borde de la huella y fuera del solape con otros suelos; repartidos a lo largo del eje largo. El test de Godot lanza un
+    rayo vertical y compara la y del terreno con el plano (tolerancia 0,05 m). Plano en y de juego: y = a x + bz z + c."""
+    suelos = geo["suelos"]
+    volu = unary_union([e["poly"] for e in ctx.edificios if e["forma"] == "volumen"])
+    res = {}
+    for wid, info in suelos.items():
+        otras = [i["zona"] for k, i in suelos.items() if k != wid]
+        interior = info["huella"].buffer(-1.5)
+        if otras:
+            interior = interior.difference(unary_union(otras).buffer(2.0))
+        for d_ in geo.get("escaleras", []):
+            interior = interior.difference(d_["rect"].buffer(4.0))
+        px, py = gb._muestras_xy(interior, 1.0)
+        pts = shapely.points(px, py)
+        ok = shapely.distance(volu, pts) > 1.0
+        if ctx.pilares is not None:
+            ok &= shapely.distance(ctx.pilares, pts) > 1.0
+        px, py = px[ok], py[ok]
+        if info["modo"] == "eje":       # abscisa a lo largo del eje geodesico
+            sp = gb._proyectar_eje(info["eje"], info["cum"], px, py)
+        else:
+            cs = list(info["huella"].minimum_rotated_rectangle.exterior.coords)
+            l0, l1 = (cs[0], cs[1]) if math.dist(cs[0], cs[1]) > math.dist(cs[1], cs[2]) else (cs[1], cs[2])
+            u = _unit((l1[0] - l0[0], l1[1] - l0[1]))
+            sp = (px - l0[0]) * u[0] + (py - l0[1]) * u[1]
+        lo, hi = np.quantile(sp, 0.03), np.quantile(sp, 0.97)
+        elegidos = [int(np.argmin(np.abs(sp - t))) for t in np.linspace(lo, hi, 10)]
+        ye = info["y"](px[elegidos], py[elegidos])
+        res[str(wid)] = {"id": wid, "modo": info["modo"],
+                         "plano": None if info["plano"] is None else [round(info["plano"][0], 6), round(-info["plano"][1], 6), round(info["plano"][2], 4)],
+                         "puntos": [[round(float(px[k]), 2), round(-float(py[k]), 2)] for k in elegidos],
+                         "pendiente_grados": round(info["pendiente_grados"], 2), "tolerancia_m": 0.05,
+                         "y_esperada": [round(float(v), 3) for v in ye]}
+        if info["modo"] == "eje":       # 5 secciones transversales: izquierda y derecha a 1,5 m del eje, misma cota
+            P, cum = info["eje"], info["cum"]
+            secc = []
+            for f in np.linspace(0.12, 0.9, 12):
+                s0 = f * cum[-1]
+                k = int(np.searchsorted(cum, s0))
+                k = min(max(k, 1), len(P) - 2)
+                t = _unit(P[k + 1] - P[k - 1])
+                nrm = np.array([-t[1], t[0]])
+                pl, pr = P[k] + 1.5 * nrm, P[k] - 1.5 * nrm
+                if not (info["huella"].buffer(-0.4).contains(Point(*pl)) and info["huella"].buffer(-0.4).contains(Point(*pr))):
+                    continue
+                if ctx.pilares is not None and (ctx.pilares.distance(Point(*pl)) < 0.8 or ctx.pilares.distance(Point(*pr)) < 0.8):
+                    continue
+                if any(Point(*q).distance(d_["rect"]) < 4.0 for d_ in geo.get("escaleras", []) for q in (pl, pr)):
+                    continue
+                secc.append({"izq": [round(float(pl[0]), 2), round(-float(pl[1]), 2)],
+                             "der": [round(float(pr[0]), 2), round(-float(pr[1]), 2)]})
+            res[str(wid)]["secciones"] = secc[:5] if len(secc) >= 5 else secc
+    return res
+
+
+def _juego(x, n, y):
+    """(x, norte, y) del plano local -> [x, y, z] del juego."""
+    return [round(float(x), 2), round(float(y), 3), round(-float(n), 2)]
+
+
+def test_puente(ctx, T, geo):
+    """Cruce del cauce por la marquesina 553042591 (puente macizo). Las zanjas NO y SE del cauce flanquean la marquesina
+    (el LiDAR no ve el cauce bajo su cubierta: el terreno aplanado la convierte en un macizo). Datos para el test:
+    (1) un rayo horizontal a 0,5 m sobre la cubierta desde el eje hacia fuera que debe chocar con el pretil (muros_suelo) en la
+        estacion del eje con mas desnivel hacia el lado NO (a < 60 m de CAUCE_REF);
+    (2) un rayo horizontal a 1 m sobre el fondo desde la zanja NO hasta la SE (por debajo de la cubierta del puente) que
+        debe chocar con el macizo (muros_suelo o talud del terreno, a menos de 2,5 m de la zona aplanada)."""
+    info = geo["suelos"][ID_PUENTE]
+    deck = info["y"]
+    zona = info["zona"]
+    eje, L = gb.eje_geodesico(info["huella"], _inicio_techo(geo, info))
+    nw = _unit((-0.78, 0.62))
+    muros_geom = unary_union([LineString([p, q]) for p, q, _, _ in info["muros"]]) if info["muros"] else None
+    est = []       # estaciones: (i, p, n, d[no, se], bordes, desnivel[no, se])
+    for i in range(1, len(eje) - 1):
+        p = np.array(eje[i])
+        if math.dist(p, CAUCE_REF) > 60:
+            continue
+        t = _unit(np.array(eje[i + 1]) - np.array(eje[i - 1]))
+        n = np.array([-t[1], t[0]])
+        if n @ nw < 0:
+            n = -n                                       # n apunta al lado NO
+        d, drops, bordes = [], [], []
+        for sg in (1, -1):
+            cruce = LineString([tuple(p), tuple(p + sg * n * 30)]).intersection(zona.boundary)
+            pts_c = [q for q in (cruce.geoms if hasattr(cruce, "geoms") else [cruce]) if not q.is_empty]
+            if not pts_c:
+                break
+            q = min(pts_c, key=lambda g_: g_.distance(Point(*p)))
+            dd = q.distance(Point(*p))
+            ext = p + sg * n * (dd + 3.0)
+            d.append(dd)
+            bordes.append(p + sg * n * dd)
+            drops.append(deck(*p) - float(T.altura(ext[0], -ext[1])))
+        if len(d) < 2:
+            continue
+        lin = LineString([tuple(p), tuple(p + n * (d[0] + 3.0)), tuple(p - n * (d[1] + 3.0))])
+        if ctx.pilares is not None and lin.distance(ctx.pilares) < 0.8:
+            continue
+        est.append((i, p, n, d, bordes, drops))
+    if not est:
+        raise SystemExit("test_puente: no hay estaciones libres de pilares cerca del cauce")
+    muro_en = lambda q: muros_geom is not None and Point(*q).distance(muros_geom) < 0.6
+    cand_no = [e for e in est if muro_en(e[4][0]) and e[5][0] >= 2.0]
+    if not cand_no:
+        raise SystemExit("test_puente: sin muro en el lado NO del puente")
+    e_no = max(cand_no, key=lambda e: e[5][0])
+    yd = lambda e: float(deck(*e[1]))
+    # rayo bajo: del fondo de la zanja NO (oeste del cruce) al fondo de la SE (este), en el punto del fondo mas cercano a la
+    # zona aplanada, a 1 m sobre el fondo mas alto
+    cx, cn = CAUCE_REF
+    g = np.arange(-45.0, 45.01, 1.0)
+    GX, GN = np.meshgrid(cx + g, cn + g)
+    GY = T.altura(GX, -GN)
+    fuera = ~shapely.contains_xy(zona.buffer(1.5), GX.ravel(), GN.ravel()).reshape(GX.shape)
+    dz = shapely.distance(zona, shapely.points(GX.ravel(), GN.ravel())).reshape(GX.shape)
+    cerca = np.hypot(GX - cx, GN - cn) < 35
+
+    def fondo(mascara):
+        m = mascara & fuera & cerca
+        fmin = GY[m].min()
+        cand = m & (GY < fmin + 0.7)
+        return np.unravel_index(np.argmin(np.where(cand, dz, np.inf)), GY.shape)
+    ia, ib = fondo(GX < cx - 6), fondo(GX > cx + 4)
+    pa_, pb_ = np.array([GX[ia], GN[ia]]), np.array([GX[ib], GN[ib]])
+    y_bajo = float(max(GY[ia], GY[ib]) + 1.0)
+    linea_b = LineString([tuple(pa_), tuple(pb_)])
+    inter = linea_b.intersection(zona.buffer(2.5))
+    if inter.is_empty:
+        raise SystemExit("test_puente: la recta zanja NO - zanja SE no cruza la zona aplanada del puente")
+    cs_ = [q for g_ in (inter.geoms if hasattr(inter, "geoms") else [inter]) for q in g_.coords]
+    d_ent, d_sal = min(linea_b.project(Point(q)) for q in cs_), max(linea_b.project(Point(q)) for q in cs_)
+    res = {"descripcion": "puente macizo 553042591 sobre el cauce (zanjas NO y SE)",
+           "centro": _juego(cx, cn, float(deck(cx, cn))),
+           "rayo_pretil_no": {"desde": _juego(*e_no[1], yd(e_no) + 0.5),
+                              "hasta": _juego(*(e_no[1] + e_no[2] * (e_no[3][0] + 3.0)), yd(e_no) + 0.5),
+                              "dist_esperada_m": round(e_no[3][0], 2), "desnivel_m": round(e_no[5][0], 2)},
+           "rayo_bajo": {"desde": _juego(pa_[0], pa_[1], y_bajo), "hasta": _juego(pb_[0], pb_[1], y_bajo),
+                         "fondo_no_y": round(float(GY[ia]), 2), "fondo_se_y": round(float(GY[ib]), 2),
+                         "cubierta_y": round(yd(e_no), 2), "dist_entrada_zona_m": round(d_ent, 2),
+                         "dist_salida_zona_m": round(d_sal, 2)}}
+    # vistas para captura.gd (la zanja NO mira hacia el macizo del puente)
+    i = e_no[0]
+    atras = eje[max(i - 8, 0)]
+    adelante = eje[min(i + 10, len(eje) - 1)]
+    res["capturas"] = {
+        "puente_cauce": {"desde": _juego(atras[0], atras[1], deck(*atras)),
+                         "hacia": _juego(adelante[0], adelante[1], deck(*adelante) + 1.2)},
+        "zanja_macizo": {"desde": _juego(pa_[0], pa_[1], float(GY[ia])),
+                         "hacia": _juego(e_no[4][0][0], e_no[4][0][1], yd(e_no) - 0.5)}}
+    return res
+
+
+def _inicio_techo(geo, info):
+    """Punto de partida de la linea central de la marquesina: el pie de la escalera si la hay, si no su primer vertice."""
+    if geo.get("escaleras"):
+        return tuple(geo["escaleras"][0]["b"])
+    return tuple(info["huella"].exterior.coords[0])
+
+
+def test_recorrido(ctx, T, geo):
+    """Recorrido a pie: por el pasillo central hasta su final, escalera abajo, la marquesina 553042591 de punta a punta y
+    vuelta (la marquesina hacia atras y la escalera arriba hasta el pasillo central). `ida` y `vuelta`: puntos de paso
+    [x, y, z] por el centro de cada tramo (a >= 1,2 m de los bordes); el test los recorre andando."""
+    suelos = geo["suelos"]
+    info = suelos[ID_PUENTE]
+    central = suelos[gb.ID_PASILLO_CENTRAL]
+    esc = geo["escaleras"][0]
+    top, bot, t = esc["a"], esc["b"], esc["t"]
+    zona_c = central["huella"].intersection(Point(*top).buffer(45.0))
+    eje_c, _ = gb.eje_geodesico(zona_c, tuple(top))
+    inicio = eje_c[min(range(len(eje_c)), key=lambda k: abs(2.0 * k - 20.0))]
+    tramo1, _ = gb.eje_geodesico(zona_c.buffer(-1.2), inicio, camino=True, fin=tuple(top - t * 3.5))   # llega por el eje
+    tramo3, L3 = gb.eje_geodesico(info["huella"].buffer(-1.2), tuple(bot), camino=True)
+    sub = lambda l: l[::2] + ([l[-1]] if (len(l) - 1) % 2 else [])
+    mid = (top + bot) / 2
+    pasos = [tuple(top - t * 2.0), tuple(top), tuple(mid), tuple(bot), tuple(bot + t * 1.5)]
+    ida_xy = sub(tramo1) + pasos + sub(tramo3)
+    vuelta_xy = sub(tramo3)[::-1] + [pasos[4], pasos[3], pasos[2], pasos[1], pasos[0]]
+    lista = lambda pts: [[round(x, 2), round(float(T.altura(x, -y)), 3), round(-y, 2)] for x, y in pts]
+    ida, vuelta = lista(ida_xy), lista(vuelta_xy)
+    # vistas para captura.gd
+    q40 = eje_c[min(range(len(eje_c)), key=lambda k: abs(2.0 * k - 40.0))]
+    yt = float(T.h(*top))
+    k12 = min(range(len(tramo3)), key=lambda k: abs(2.0 * k - 12.0))
+    k40 = min(range(len(tramo3)), key=lambda k: abs(2.0 * k - 40.0))
+    p12, p40 = tramo3[k12], tramo3[k40]
+    arriba = top - t * 1.0
+    caps = {
+        "pasillo_central_18": {"desde": _juego(q40[0], q40[1], float(T.altura(q40[0], -q40[1]))),
+                               "hacia": _juego(top[0], top[1], yt + 1.0)},
+        "escalera_arriba": {"desde": _juego(arriba[0], arriba[1], yt),
+                            "hacia": _juego(*(bot + t * 3.0), esc["y2"] + 0.2)},
+        "marquesina_baja": {"desde": _juego(p12[0], p12[1], float(T.altura(p12[0], -p12[1]))),
+                            "hacia": _juego(p40[0], p40[1], float(T.altura(p40[0], -p40[1])) + 1.2)}}
+    return {"descripcion": "pasillo central -> escalera abajo -> marquesina 553042591 de punta a punta -> vuelta y escalera arriba",
+            "ida": ida, "vuelta": vuelta, "longitud_marquesina_m": round(L3, 1),
+            "escalera": {"id": esc["id"], "y_arriba": round(esc["y1"], 3), "y_abajo": round(esc["y2"], 3),
+                         "peldanos": esc["peldanos"], "angulo_grados": round(esc["angulo"], 1)},
+            "capturas": caps}
+
+
 def rayo_sobre_terreno(T, p0, p1):
     """Rayo entre dos puntos (x, z de juego) a ALT_RAYO m sobre el terreno en cada extremo. Si el segmento recto
     queda a menos de LIBRE_RAYO m del terreno en algun punto, se trocea en los tramos rectos mas largos posibles
@@ -585,6 +800,7 @@ def main():
     ap.add_argument("--alturas", default="data/alturas.csv")
     ap.add_argument("--pasos", default="data/pasos.csv")
     ap.add_argument("--pistas", default="data/pistas.csv")
+    ap.add_argument("--escaleras", default="data/escaleras.csv")
     ap.add_argument("--meta", default="export/upo_blockout_meta.json")
     ap.add_argument("--salida", default="game/data/spawns.json")
     ap.add_argument("--preview", default="export/spawns_preview.png")
@@ -603,7 +819,7 @@ def main():
                  and ("building" in w["tags"] or w["tags"].get("man_made") == "tower")]
     filas = gb.cargar_alturas(a.alturas, edificios)
     campus = gb.campus_local(mapa)
-    T = ter.crear(a, mapa.E0, mapa.N0, campus, gb.zona_fina(mapa, campus, a.buffer_fino))
+    T = ter.crear(a, mapa.E0, mapa.N0, campus, gb.zona_fina(mapa, campus, a.buffer_fino, gb.ids_suelo(filas)))
     mt = meta.get("terreno", {})
     # la fuente y la cota de referencia deben coincidir con el blockout; tambien la malla (pasos y zona fina),
     # porque las alturas de spawns y tests se calculan sobre la misma malla que la colision
@@ -613,6 +829,9 @@ def main():
     if dif:
         raise SystemExit(f"El terreno ({T.info()}) no coincide con {a.meta} ({mt}) en {dif}; "
                          "usa las mismas opciones que generar_blockout.py o regenera el blockout")
+    escs = gb.cargar_escaleras(a.escaleras)
+    gb.preparar_suelos(mapa, filas, T, gb.huecos_escaleras(escs))     # mismo terreno aplanado que el blockout
+    gb.preparar_escaleras(T, escs)
     _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas), T,
                             gb.Lidar(a.mdt, gb.NDSM_DEFECTO, mapa.E0, mapa.N0))
     ctx = Contexto(mapa, geo)
@@ -654,6 +873,12 @@ def main():
     print("test_paso_22_24:", json.dumps(tp2, ensure_ascii=False))
     tm = test_marquesinas(ctx, T)
     print("test_marquesinas:", json.dumps(tm, ensure_ascii=False))
+    tsu = test_suelos(ctx, T, geo)
+    print("test_suelos:", json.dumps({k: {**v, "y_esperada": "..."} for k, v in tsu.items()}, ensure_ascii=False))
+    tpu = test_puente(ctx, T, geo)
+    print("test_puente:", json.dumps(tpu, ensure_ascii=False))
+    tre = test_recorrido(ctx, T, geo)
+    print("test_recorrido:", json.dumps({**tre, "ida": f"{len(tre['ida'])} puntos", "vuelta": f"{len(tre['vuelta'])} puntos"}, ensure_ascii=False))
     tt = test_terreno(ctx, T)
     print("test_terreno:", json.dumps(tt, ensure_ascii=False))
     ts = test_subida(ctx, T)
@@ -666,6 +891,7 @@ def main():
                                   "test_pasillo": tp, "test_paso_22_24": tp2,
                                   "test_pasillo_pilares": tp3, "test_tunel_37": tp4, "test_marquesinas": tm,
                                   "test_terreno": tt, "test_subida": ts, "terreno": mt,
+                                  "test_suelos": tsu, "test_puente": tpu, "test_recorrido": tre,
                                   "n_arboles": len(props["arboles"]), "n_coches": len(props["coches"]),
                                   "n_coches_parking": props["stats"].get("coches_parking", 0),
                                   "n_coches_carretera": props["stats"].get("coches_carretera", 0),

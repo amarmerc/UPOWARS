@@ -24,7 +24,7 @@
     "suavizado_m": 1.0,
     "paso_fino_m": 1.0,
     "paso_grueso_m": 4.0,
-    "zona_fina_m2": 107904,
+    "zona_fina_m2": 108688,
     "cota_ref": 15.5111,
     "cota_min_campus": 9.95,
     "cota_max_campus": 26.61,
@@ -42,10 +42,11 @@
   "recuentos": {
     "edificios": 72,
     "edificios_partidos": 2,
-    "losas_plano": 20,
+    "losas_plano": 19,
+    "losas_eje": 1,
     "losas_inclinado": 1,
     "edificios_excluidos": 1,
-    "pilares": 407,
+    "pilares": 406,
     "techos": 20,
     "caminos_tertiary": 30,
     "caminos_trunk_link": 1,
@@ -57,6 +58,10 @@
     "caminos_footway": 14,
     "caminos_track": 1,
     "caminos_steps": 7,
+    "suelos_pasillo": 2,
+    "muros_suelo_m": 245,
+    "escaleras": 1,
+    "peldanos": 15,
     "zonas_verde": 61,
     "zonas_agua": 8,
     "zonas_pista": 9,
@@ -77,7 +82,7 @@
     "coches_carretera": 15,
     "sin_arboles": false,
     "sin_coches": false,
-    "huella": "236946423a399125",
+    "huella": "429426c0d8b807d0",
     "arboles": 1856,
     "coches": 1406,
     "por_parking": {
@@ -156,8 +161,8 @@
     }
   },
   "verificacion": {
-    "nodos": 126,
-    "triangulos": 1170428,
+    "nodos": 131,
+    "triangulos": 1189283,
     "bounds": [
       [
         -2768.0,
@@ -172,7 +177,7 @@
     ],
     "edificios": 92,
     "no_watertight": [],
-    "triangulos_terreno": 415004,
+    "triangulos_terreno": 416406,
     "triangulos_arboles": 193024,
     "triangulos_coches": 230584
   }

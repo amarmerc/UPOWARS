@@ -43,6 +43,40 @@ func describir(r: Dictionary) -> String:
 	return "nada" if r.is_empty() else "%s en %s" % [dueno(r), str(r["position"])]
 
 
+## Camina por los puntos de paso `wps` ([x, y, z]) desde el indice `desde`: gira hacia cada uno y avanza (mover_adelante debe estar
+## pulsado). Atascado = 3 s sin acercarse al punto. Devuelve {"idx", "atascado", "frames", "y_min", "y_max"}.
+func caminar(jugador: Jugador, wps: Array, desde: int) -> Dictionary:
+	var idx: int = desde
+	var atascado: bool = false
+	var mejor: float = INF
+	var sin_progreso: int = 0
+	var frames: int = 0
+	var y_min: float = INF
+	var y_max: float = -INF
+	while idx < wps.size() and frames < 14000:
+		var pos3: Vector3 = jugador.global_position
+		var dv := Vector2(float(wps[idx][0]) - pos3.x, float(wps[idx][2]) - pos3.z)
+		if dv.length() < 1.2:
+			idx += 1
+			mejor = INF
+			sin_progreso = 0
+			continue
+		jugador.rotation.y = atan2(-dv.x, -dv.y)
+		await physics_frame
+		frames += 1
+		y_min = minf(y_min, jugador.global_position.y)
+		y_max = maxf(y_max, jugador.global_position.y)
+		if dv.length() < mejor - 0.02:
+			mejor = dv.length()
+			sin_progreso = 0
+		else:
+			sin_progreso += 1
+			if sin_progreso > 180:
+				atascado = true
+				break
+	return {"idx": idx, "atascado": atascado, "frames": frames, "y_min": y_min, "y_max": y_max}
+
+
 func esperar_fisica(n: int) -> void:
 	for i in n:
 		await physics_frame
@@ -306,6 +340,105 @@ func _ejecutar() -> void:
 		comprobar("k6) rayo horizontal por el centro de la copa (a 75 % de la altura) no choca con nada", rcp.is_empty(),
 				"choca en %s" % describir(rcp))
 
+	# p) suelos de pasillo: pasillo central y marquesina 553042591 (puente macizo sobre el cauce)
+	var tsu: Dictionary = datos.get("test_suelos", {})
+	comprobar("p1-0) datos test_suelos de 2 pasillos", tsu.size() == 2)
+	for clave: String in tsu:
+		var ds: Dictionary = tsu[clave]
+		var ye: Array = ds["y_esperada"]
+		var desv_max: float = 0.0
+		var todos_terreno: bool = true
+		var n_pts: int = 0
+		for ip in (ds["puntos"] as Array).size():
+			var pt: Array = ds["puntos"][ip]
+			var yp: float = float(ye[ip])
+			var qs := PhysicsRayQueryParameters3D.create(Vector3(pt[0], yp + 0.8, pt[1]), Vector3(pt[0], yp - 1.5, pt[1]))
+			qs.exclude = [jugador.get_rid()]
+			var rs: Dictionary = espacio.intersect_ray(qs)
+			n_pts += 1
+			if rs.is_empty() or dueno(rs) != "terreno":
+				todos_terreno = false
+				desv_max = INF
+			else:
+				desv_max = maxf(desv_max, absf((rs["position"] as Vector3).y - yp))
+		comprobar("p1) %s (suelo=%s): 10 puntos del suelo a < %.2f m de su %s (pendiente media %.2f grados)" % [clave, ds["modo"], ds["tolerancia_m"], "plano" if ds["modo"] == "plano" else "perfil suelo(s) del eje", ds["pendiente_grados"]],
+				n_pts == 10 and todos_terreno and desv_max < float(ds["tolerancia_m"]),
+				"puntos=%d desviacion_max=%.4f m" % [n_pts, desv_max])
+		if ds.has("secciones"):
+			var secs: Array = ds["secciones"]
+			var dif_max: float = 0.0
+			for sc: Dictionary in secs:
+				var ys2: Array[float] = []
+				for lado: String in ["izq", "der"]:
+					var pl2: Array = sc[lado]
+					var qs2 := PhysicsRayQueryParameters3D.create(Vector3(pl2[0], 40.0, pl2[1]), Vector3(pl2[0], -40.0, pl2[1]))
+					qs2.exclude = [jugador.get_rid()]
+					# el rayo parte por encima de la losa: se ignora lo que no sea terreno (losa, pilares)
+					var arriba: float = 40.0
+					var rs2: Dictionary = {}
+					for intento in 4:
+						rs2 = espacio.intersect_ray(qs2)
+						if rs2.is_empty() or dueno(rs2) == "terreno":
+							break
+						qs2.exclude.append(rs2["collider"].get_rid())
+					ys2.append((rs2["position"] as Vector3).y if not rs2.is_empty() else NAN)
+				dif_max = maxf(dif_max, absf(ys2[0] - ys2[1]))
+			comprobar("p1b) %s: en %d secciones transversales la cota del borde izquierdo y la del derecho (a 1,5 m del eje) difiere < 0,05 m" % [clave, secs.size()],
+					secs.size() >= 5 and dif_max < 0.05, "diferencia_max=%.4f m" % dif_max)
+	var tpu: Dictionary = datos.get("test_puente", {})
+	comprobar("p2-0) datos test_puente presentes", not tpu.is_empty())
+	if not tpu.is_empty():
+		for lado: String in ["no"]:
+			var rr: Dictionary = tpu["rayo_pretil_" + lado]
+			var dd: Array = rr["desde"]
+			var hh: Array = rr["hasta"]
+			var qp := PhysicsRayQueryParameters3D.create(Vector3(dd[0], dd[1], dd[2]), Vector3(hh[0], hh[1], hh[2]))
+			qp.exclude = [jugador.get_rid()]
+			var rp: Dictionary = espacio.intersect_ray(qp)
+			var dh: float = Vector2((rp["position"] as Vector3).x - dd[0], (rp["position"] as Vector3).z - dd[2]).length() if not rp.is_empty() else NAN
+			comprobar("p2) rayo horizontal a 0,5 m sobre el puente hacia el lado %s choca con el pretil/muro (a %.1f m)" % [lado.to_upper(), rr["dist_esperada_m"]],
+					not rp.is_empty() and dueno(rp).begins_with("muros_suelo") and absf(dh - float(rr["dist_esperada_m"])) < 0.6,
+					"choca en %s a %.2f m (desnivel exterior %.1f m)" % [describir(rp), dh, rr["desnivel_m"]])
+		var rb: Dictionary = tpu["rayo_bajo"]
+		var bd: Array = rb["desde"]
+		var bh: Array = rb["hasta"]
+		var qb := PhysicsRayQueryParameters3D.create(Vector3(bd[0], bd[1], bd[2]), Vector3(bh[0], bh[1], bh[2]))
+		qb.exclude = [jugador.get_rid()]
+		var rbh: Dictionary = espacio.intersect_ray(qb)
+		var db: float = Vector2((rbh["position"] as Vector3).x - bd[0], (rbh["position"] as Vector3).z - bd[2]).length() if not rbh.is_empty() else NAN
+		comprobar("p2b) rayo horizontal por debajo del puente (de la zanja NO a la SE, %.1f m bajo la cubierta) choca con el macizo" % (float(rb["cubierta_y"]) - float(bd[1])),
+				not rbh.is_empty() and (dueno(rbh) == "terreno" or dueno(rbh).begins_with("muros_suelo"))
+				and db >= float(rb["dist_entrada_zona_m"]) - 0.2 and db <= float(rb["dist_salida_zona_m"]) + 0.2,
+				"choca en %s a %.2f m (zona aplanada entre %.2f y %.2f m)" % [describir(rbh), db, rb["dist_entrada_zona_m"], rb["dist_salida_zona_m"]])
+	var tre: Dictionary = datos.get("test_recorrido", {})
+	comprobar("p3-0) datos test_recorrido (ida y vuelta)", tre.has("ida") and (tre["ida"] as Array).size() >= 10 and tre.has("vuelta"))
+	if tre.has("ida"):
+		var ida: Array = tre["ida"]
+		var vuelta: Array = tre["vuelta"]
+		var w0: Array = ida[0]
+		jugador.teletransportar(Vector3(w0[0], float(w0[1]) + 0.3, w0[2]), 0.0)
+		jugador.activo = true
+		await esperar_fisica(30)
+		Input.action_press("mover_adelante")
+		var r1: Dictionary = await caminar(jugador, ida, 1)
+		var y_fin_ida: float = jugador.global_position.y
+		var r2: Dictionary = await caminar(jugador, vuelta, 0)
+		Input.action_release("mover_adelante")
+		await esperar_fisica(20)
+		var esc: Dictionary = tre["escalera"]
+		var wl: Array = vuelta[vuelta.size() - 1]
+		var dfin: float = Vector2(jugador.global_position.x - float(wl[0]), jugador.global_position.z - float(wl[2])).length()
+		var wi: Array = ida[ida.size() - 1]
+		comprobar("p3) ida: pasillo central, escalera de %d peldaños (%.1f m de desnivel) abajo y %.0f m de marquesina 553042591 sin atascarse"
+				% [esc["peldanos"], float(esc["y_arriba"]) - float(esc["y_abajo"]), tre["longitud_marquesina_m"]],
+				int(r1["idx"]) >= ida.size() and not bool(r1["atascado"]) and absf(y_fin_ida - float(wi[1])) < 0.6,
+				"puntos=%d/%d frames=%d y=[%.2f, %.2f] y_final=%.2f (esperada %.2f) %s" % [r1["idx"], ida.size(), r1["frames"], r1["y_min"], r1["y_max"], y_fin_ida, float(wi[1]), str(ida[mini(int(r1["idx"]), ida.size() - 1)])])
+		comprobar("p3b) vuelta: marquesina hacia atrás y escalera arriba hasta el pasillo central sin atascarse",
+				int(r2["idx"]) >= vuelta.size() and not bool(r2["atascado"]) and dfin < 2.0
+				and absf(jugador.global_position.y - float(esc["y_arriba"])) < 0.8 and jugador.is_on_floor(),
+				"puntos=%d/%d frames=%d dist_final=%.2f y_final=%.2f (arriba %.2f) pos=%s" % [r2["idx"], vuelta.size(), r2["frames"], dfin, jugador.global_position.y, float(esc["y_arriba"]), str(jugador.global_position)])
+		jugador.activo = false
+
 	# m) materiales procedurales y bordes del campus
 	var mat_asfalto: Material = null
 	var mat_edif: Material = null
@@ -326,6 +459,26 @@ func _ejecutar() -> void:
 	comprobar("m1b) suelo triplanar y edificio con ShaderMaterial de fachada",
 			mat_suelo is StandardMaterial3D and (mat_suelo as StandardMaterial3D).uv1_triplanar
 			and mat_edif is ShaderMaterial)
+	# n) estilos de fachada: 25 biblioteca, 32 ladrillo_rectorado, 45 policarbonato (ShaderMaterial distintos)
+	var esperados: Dictionary = {"142262877": "biblioteca", "1373541637": "ladrillo_rectorado", "142258873": "policarbonato"}
+	var vistos: Array[String] = []
+	var murosv: Array = []
+	var n1_ok: bool = true
+	for id: String in esperados:
+		var nodo_e: MeshInstance3D = null
+		for h: Node in mapa.find_children("edif_%s_*" % id, "MeshInstance3D", true, false):
+			nodo_e = h as MeshInstance3D
+		var me: Material = nodo_e.get_surface_override_material(0) if nodo_e != null else null
+		var estilo_e: String = String(me.get_meta("estilo", "")) if me != null else ""
+		n1_ok = n1_ok and me is ShaderMaterial and estilo_e == esperados[id] and not vistos.has(estilo_e) 				and nodo_e.get_instance_shader_parameter("y_cubierta") < 500.0 				and (nodo_e.get_instance_shader_parameter("eje_principal") as Vector2).length() > 0.99
+		vistos.append(estilo_e)
+		if me is ShaderMaterial:
+			murosv.append((me as ShaderMaterial).get_shader_parameter("color_muro"))
+	comprobar("n1) edificios 25, 32 y 45 tienen ShaderMaterial con estilo distinto (biblioteca, rectorado, policarbonato)",
+			n1_ok and murosv.size() == 3 and murosv[0] != murosv[1] and murosv[1] != murosv[2], "estilos=%s" % str(vistos))
+	var est_json: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/estilos.json"))
+	comprobar("n2) existe game/data/estilos.json con >= 70 entradas", est_json is Dictionary and (est_json as Dictionary).size() >= 70,
+			"entradas=%d" % ((est_json as Dictionary).size() if est_json is Dictionary else 0))
 	var valla: Node = mapa.find_child("valla_perimetral", true, false)
 	comprobar("m2) existe valla_perimetral (sin colision)",
 			valla is MeshInstance3D and valla.find_children("*", "StaticBody3D", true, false).is_empty())

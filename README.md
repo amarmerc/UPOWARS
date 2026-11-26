@@ -63,6 +63,33 @@ uv run python scripts/generar_spawns.py   --mdt data/raw/mdt_upo.tif --paso-terr
 descarte de atípicos, huecos por TIN) y escribe `data/raw/mdt_lidar_1m.tif`, además de `export/lidar_resumen.json` y
 `export/terreno_lidar_preview.png`. Después, regenerar blockout y spawns.
 
+### Suelo de pasillos (columna `suelo` de `data/alturas.csv`) y escaleras (`data/escaleras.csv`)
+
+Vacio = el suelo es el terreno. `suelo=plano` (techos con pasillo bajo ellos: el pasillo central `1373541639` y la marquesina
+diagonal del 18 `553042591`) convierte el terreno bajo la huella en un pavimento blanco y recto:
+
+- Plano: ajuste robusto LIBRE (residuos > 0,5 m fuera) a las cotas del MDT de 1 m dentro de la huella encogida 0,5 m (sin
+  edificios volumen).
+- El terreno se aplana a ese plano en `Terreno.altura_raster()` (antes de mallar: colision y `altura()` coinciden) dentro de
+  huella + 1,5 m; donde se solapan dos zonas manda el pasillo central. Fuera, transicion suave de 2 m solo donde el exterior esta
+  a menos de 0,5 m del plano; donde queda mas de 0,5 m por debajo se levanta un muro de hormigon (0,3 m, con colision, nodo
+  `muros_suelo-col`) desde la cota exterior - 0,5 m hasta plano + 1,0 m (pretil), y donde queda mas de 0,5 m por encima, un muro
+  de contencion hasta la cota exterior. Resultado: un macizo por el que se anda y bajo el que no se puede pasar (la marquesina del
+  18 cruza asi el cauce).
+- Malla `suelo_pasillos` (+2 cm, material `pavimento_blanco`, baldosa casi blanca, sin colision) sobre la huella.
+- Losa: si la losa `inclinado` del LiDAR deja < 2,4 m sobre el suelo en algun punto, se usa una losa paralela al suelo con
+  galibo 3,0 m. Los pilares parten del suelo aplanado.
+
+`data/escaleras.csv` (id, x1, z1, x2, z2, ancho, notas; coordenadas de juego, (x1, z1) arriba y (x2, z2) abajo): cada fila genera una
+escalera de peldaños de 0,17 x 0,30 m (nodo `escaleras`, sin colision, material `pavimento_blanco`), una rampa lisa de colision
+(`escaleras_rampa-col`, invisible; ademas el terreno bajo ella se aplana a la misma rampa), muros laterales con barandilla
+(`escaleras_muros-col`) y recorta los muros de los pasillos en su arranque. Las cotas de arriba y abajo son las del suelo resuelto
+en cada extremo. Fila `18-bajada`: del final del pasillo central (~14,5 m s.n.m.) al arranque de la marquesina 553042591 (~12,0 m).
+
+`generar_spawns.py` escribe los datos de `test_suelos`, `test_puente` y `test_recorrido` (puntos del suelo sobre su plano, rayos
+contra el pretil y el macizo, recorrido a pie ida y vuelta por la escalera y la marquesina). `scripts/zoom_zona_hundida.py`
+dibuja la zona entre el 18 y el 24 (`export/zoom_pasillo_hundido.png`) y mide las zanjas del MDT.
+
 Cómo se apoya cada elemento (`scripts/terreno.py` ofrece `Terreno.altura(x, z)`, que devuelve la altura de la malla
 exportada, de modo que spawns, caminos y colisión coinciden):
 

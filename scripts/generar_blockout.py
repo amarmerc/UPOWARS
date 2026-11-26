@@ -10,6 +10,7 @@ export/preview.png, export/perfil_pasillo.png, export/zoom_22_24.png y data/altu
 filas nuevas; columna `fuente`: defecto|osm|lidar|manual; columna `forma`: volumen|techo).
 forma=tunel_z|tunel_x: losa + paredes de 0,3 m en los lados paralelos al eje; columna `pilares`: perimetro|todos|ninguno.
 forma=techo: losa de 0,4 m (cara superior a la altura de cubierta) sobre pilares de 0,4x0,4 m.
+Columna `estilo` (opcional; vacia = por defecto segun nombre/osm_id): estilo de fachada; se exporta resuelto a game/data/estilos.json.
 forma=excluir: el edificio se omite del todo (sin malla ni colision; tampoco cuenta en generar_spawns.py).
 Columna `nivel` (techos y tuneles): plano = losa horizontal a la cota constante `cota_abs` (m s.n.m. de la cara
 superior; si esta vacia, mediana de mdt+ndsm LiDAR bajo la huella encogida 1 m); inclinado = plano de minimos
@@ -82,10 +83,24 @@ FALDON_PASO = 4.0            # paso de los vertices a lo largo del borde (= bloq
 FALDON_ANILLOS = (0.0, 8.0, 24.0, 60.0, 120.0, 250.0, 500.0, 900.0, 1400.0, 2000.0)
 FALDON_CAIDA = 0.004         # m de descenso por m de distancia al borde (8 m a 2 km)
 CAMPOS_CSV = ["osm_id", "nombre", "building", "forma", "plantas", "altura_m", "base_m", "notas", "fuente", "pilares",
-              "nivel", "cota_abs"]
+              "nivel", "cota_abs", "estilo", "suelo"]
+SUELOS = ("", "plano", "eje")                  # columna `suelo` de los techos: vacio = terreno, plano = pavimento aplanado a un plano, eje = cota solo funcion de la distancia a lo largo del eje (pasillos curvos)
+GALIBO_EJE_MIN, GALIBO_EJE_MAX = 2.5, 3.0      # suelo=eje: galibo de la losa = mediana LiDAR acotada
+SUELO_BORDE_M = 1.5          # la zona aplanada excede la huella 1,5 m (> diagonal de una celda de 1 m: el suelo de la huella es exacto)
+SUELO_TRANSICION_M = 2.0     # transicion suave hacia fuera (solo donde el exterior esta a < SUELO_UMBRAL_M del plano)
+SUELO_UMBRAL_M = 0.5
+SUELO_RESIDUO_M = 0.5        # ajuste robusto: se descartan residuos > 0,5 m
+SUELO_PAVIMENTO_Y = 0.02     # malla `suelo_pasillos` 2 cm sobre el suelo aplanado
+MURO_SUELO_GROSOR = 0.3
+MURO_SUELO_PRETIL = 1.0      # el muro llega hasta plano + 1,0 m
+MURO_SUELO_ENTERRADO = 0.5   # y baja hasta cota exterior - 0,5 m
+GALIBO_MIN_M = 2.4           # si la losa del LiDAR deja < 2,4 m sobre el suelo, losa paralela al suelo
+GALIBO_PARALELA_M = 3.0
+ESTILOS_JSON = "game/data/estilos.json"
 FORMAS = ("volumen", "techo", "tunel_z", "tunel_x", "excluir")   # excluir: el edificio se omite (sin malla ni colision)
 NIVELES = ("plano", "inclinado", "terreno")   # columna `nivel` de techos y tuneles; ver calcular_losa
 ID_PASILLO_CENTRAL = 1373541639               # techo del eje central: nivel por defecto inclinado
+ID_PUENTE_18 = 553042591                      # marquesina diagonal del 18: puente macizo sobre el cauce (suelo=plano, nivel=inclinado)
 NDSM_DEFECTO = "data/raw/ndsm_edif_lidar_1m.tif"   # altura de la clase edificacion sobre el MDT (LiDAR 2020, 1 m)
 NDSM_MIN_M = 2.0             # pixeles de cubierta: ndsm >= 2 m
 LOSA_MIN_PIXELES = 10        # con menos pixeles se usa el terreno + la altura de la fila
@@ -132,6 +147,7 @@ COLORES = {
     "cristal_padel": (150, 205, 255, int(0.35 * 255)),
     "valla_metal": (95, 100, 105, 255), "valla_malla": (140, 145, 150, int(0.30 * 255)),
     "campo": (125, 105, 70, 255),
+    "pavimento_blanco": (232, 230, 224, 255),   # #E8E6E0
 }
 COLORES.update(veg.COLORES_MATERIAL)
 COLORES.update(coc.COLORES_MATERIAL)
@@ -352,9 +368,10 @@ EDIF_PASILLO = 1373541639
 HW_ZONA_FINA = ("steps", "footway", "path", "pedestrian")
 
 
-def zona_fina(mapa, campus, buffer_m):
+def zona_fina(mapa, campus, buffer_m, ids_extra=()):
     """Geometria (x, norte local) donde la malla del terreno usa el paso fino: `buffer_m` alrededor de los
-    highway=steps/footway/path/pedestrian, los barrier=retaining_wall y el pasillo central. None si buffer_m <= 0."""
+    highway=steps/footway/path/pedestrian, los barrier=retaining_wall, el pasillo central y los techos con suelo=plano
+    (`ids_extra`, ver ids_suelo). None si buffer_m <= 0."""
     if buffer_m <= 0:
         return None
     gs = []
@@ -364,9 +381,10 @@ def zona_fina(mapa, campus, buffer_m):
             l = mapa.linea(w)
             if l is not None:
                 gs.append(l)
-    w = mapa.ways.get(EDIF_PASILLO)
-    if w is not None and mapa.cerrado(w):
-        gs.extend(validos(mapa.poligono(w)))
+    for wid in {EDIF_PASILLO, *ids_extra}:
+        w = mapa.ways.get(wid)
+        if w is not None and mapa.cerrado(w):
+            gs.extend(validos(mapa.poligono(w)))
     if not gs:
         return None
     return unary_union([g.buffer(buffer_m) for g in gs]).intersection(campus.buffer(MARGEN_CAMINOS))
@@ -493,6 +511,42 @@ def modo_pilares(fila):
 
 def forma_defecto(building):
     return "techo" if building == "roof" else "volumen"
+
+
+# ---------------------------------------------------------------- estilos de fachada
+# Columna `estilo` de alturas.csv (vacia = defecto). Los estilos los define game/scripts/materiales.gd.
+ESTILOS_EJE = ("eje_pastel_verde", "eje_pastel_rosa", "eje_pastel_malva")
+ESTILOS_POR_NUM = {"31": "ladrillo_rectorado", "32": "ladrillo_rectorado", "35": "ladrillo_torre",
+                   "25": "biblioteca", "22": "rosa_24", "23": "rosa_24", "24": "rosa_24", "45": "policarbonato"}
+ESTILOS_VALIDOS = set(ESTILOS_EJE) | set(ESTILOS_POR_NUM.values())
+
+
+def estilo_defecto(osm_id, nombre):
+    """Estilo por defecto: por numero de edificio (nombre `Edificio N`, tolera typos), por nombre
+    (Rectorado/Paraninfo) o, en el resto, eje pastel segun osm_id mod 3."""
+    m = RX_NUM_EDIF.match(nombre or "")
+    n = m.group(1) if m else ""
+    if n in ESTILOS_POR_NUM:
+        return ESTILOS_POR_NUM[n]
+    if re.search(r"rectorado|paraninfo", nombre or "", re.I):
+        return "ladrillo_rectorado"
+    if n.isdigit() and 1 <= int(n) <= 18:
+        return ESTILOS_EJE[int(n) % 3]
+    return ESTILOS_EJE[int(osm_id) % 3]
+
+
+def estilo_de(fila):
+    e = (fila.get("estilo") or "").strip().lower()
+    return e if e in ESTILOS_VALIDOS else estilo_defecto(fila["osm_id"], fila.get("nombre"))
+
+
+def exportar_estilos(filas, ruta=ESTILOS_JSON):
+    """game/data/estilos.json: osm_id -> estilo resuelto (explicito o por defecto) de todas las filas."""
+    est = {str(k): estilo_de(f) for k, f in filas.items()}
+    Path(ruta).parent.mkdir(parents=True, exist_ok=True)
+    Path(ruta).write_text(json.dumps(est, indent=1, sort_keys=True), encoding="utf-8")
+    print(f"{ruta}: {len(est)} estilos {dict(Counter(est.values()))}")
+    return est
 
 
 def forma_de(fila):
@@ -657,6 +711,11 @@ def calcular_losa(wid, fila, huella, top_rel, T, lidar, hx, hy):
 
 def anotar_losa(fila, losa, T):
     """Escribe nivel / cota_abs / notas calculados en la fila del CSV solo si el usuario no los relleno."""
+    if losa["nivel"] == "eje":
+        nota = re.sub(r"(; )?losa (plana|inclinada|sobre el eje)[^;]*$", "", fila.get("notas") or "").strip()
+        txt = f"losa sobre el eje: {losa['origen']}"
+        fila["notas"] = f"{nota}; {txt}" if nota else txt
+        return
     if not (fila.get("nivel") or "").strip():
         fila["nivel"] = losa["nivel"]
     if losa["nivel"] == "plano" and not (fila.get("cota_abs") or "").strip():
@@ -670,6 +729,457 @@ def anotar_losa(fila, losa, T):
                    f"cara superior a {c + T.cota_ref:.2f} m s.n.m. en el origen ({losa['origen']})")
         nota = re.sub(r"(; )?losa (plana|inclinada)[^;]*$", "", fila.get("notas") or "").strip()
         fila["notas"] = f"{nota}; {txt}" if nota else txt
+
+
+# ---------------------------------------------------------------- suelos de pasillo (columna `suelo`)
+def suelo_de(fila):
+    v = (fila.get("suelo") or "").strip().lower()
+    return v if v in SUELOS else ""
+
+
+def ids_suelo(filas):
+    """osm_id (int) de los techos con suelo=plano o eje: primero el pasillo central (el que manda donde se solapan), despues el resto."""
+    ids = [int(k) for k, f in filas.items() if suelo_de(f)]
+    return sorted(ids, key=lambda i: (i != ID_PASILLO_CENTRAL, i))
+
+
+def _ajuste_suelo(px, pn, z):
+    """Plano y = a x + b norte + c por minimos cuadrados robusto: se descartan residuos > 1,5, 1,0 y luego > SUELO_RESIDUO_M
+    (hasta 5 pasadas; asi un tramo en rampa o escalon no arrastra el plano). Devuelve (a, b, c, usados, rms)."""
+    ox, on = px.mean(), pn.mean()
+    usar = np.ones(len(px), bool)
+    for umbral in (1.5, 1.0, SUELO_RESIDUO_M, SUELO_RESIDUO_M, SUELO_RESIDUO_M):
+        A = np.column_stack([px - ox, pn - on, np.ones_like(px)])
+        coef = np.linalg.lstsq(A[usar], z[usar], rcond=None)[0]
+        a, b, c = float(coef[0]), float(coef[1]), float(coef[2] - coef[0] * ox - coef[1] * on)
+        nuevo = np.abs(a * px + b * pn + c - z) <= umbral
+        if nuevo.sum() < 10:
+            break
+        usar = nuevo
+    res = a * px + b * pn + c - z
+    return a, b, c, int(usar.sum()), float(np.sqrt(np.mean(res[usar] ** 2)))
+
+
+def _proyectar_eje(P, cum, x, n):
+    """Distancia s a lo largo de la polilinea P (con abscisas acumuladas cum) del punto de P mas cercano a cada (x, n)."""
+    x = np.asarray(x, float)
+    n = np.asarray(n, float)
+    forma = np.broadcast(x, n).shape
+    q = np.column_stack([np.broadcast_to(x, forma).ravel(), np.broadcast_to(n, forma).ravel()])
+    A, B = P[:-1], P[1:]
+    d = B - A
+    L2 = np.maximum((d ** 2).sum(1), 1e-12)
+    largo = np.sqrt(L2)
+    out = np.empty(len(q))
+    for i0 in range(0, len(q), 20000):
+        c = q[i0:i0 + 20000]
+        t = np.clip(((c[:, None, :] - A[None]) * d[None]).sum(2) / L2[None], 0.0, 1.0)
+        pt = A[None] + t[..., None] * d[None]
+        k = np.argmin(((c[:, None, :] - pt) ** 2).sum(2), axis=1)
+        idx = np.arange(len(c))
+        out[i0:i0 + 20000] = cum[k] + t[idx, k] * largo[k]
+    return out.reshape(forma)
+
+
+def _hat(s, kn):
+    """Matriz (N, K) de pesos de la interpolacion lineal entre los nudos kn (creciente)."""
+    A = np.zeros((len(s), len(kn)))
+    j = np.clip(np.searchsorted(kn, s, side="right") - 1, 0, len(kn) - 2)
+    t = np.clip((s - kn[j]) / (kn[j + 1] - kn[j]), 0.0, 1.0)
+    A[np.arange(len(s)), j] = 1 - t
+    A[np.arange(len(s)), j + 1] = t
+    return A
+
+
+def _ajuste_tramos(s, z, L):
+    """Perfil longitudinal z(s), lineal a tramos continuo (sin escalones) con 1, 2 o 3 tramos: ajuste robusto (descarta
+    residuos > 1,5, 1,0 y 0,5 m) y busqueda de los nudos cada 5 m; se pasa a mas tramos solo si el rms baja >= 0,08 m y
+    >= 25 %. Devuelve (nudos_s, nudos_z, rms, usados)."""
+    def ajustar(kn):
+        A = _hat(s, kn)
+        usar = np.ones(len(s), bool)
+        for um in (1.5, 1.0, SUELO_RESIDUO_M, SUELO_RESIDUO_M, SUELO_RESIDUO_M):
+            v = np.linalg.lstsq(A[usar], z[usar], rcond=None)[0]
+            nuevo = np.abs(A @ v - z) <= um
+            if nuevo.sum() < 20:
+                break
+            usar = nuevo
+        r = A @ v - z
+        return v, float(np.sqrt(np.mean(r[usar] ** 2))), int(usar.sum()), kn
+    cand = np.arange(10.0, L - 9.0, 5.0)
+    opciones = {1: [np.array([0.0, L])],
+                2: [np.array([0.0, c, L]) for c in cand],
+                3: [np.array([0.0, c1, c2, L]) for c1 in cand for c2 in cand if c2 - c1 >= 20.0]}
+    elegido = None
+    for k in (1, 2, 3):
+        if not opciones[k]:
+            break
+        mejor = min((ajustar(kn) for kn in opciones[k]), key=lambda r: r[1])
+        if elegido is None or elegido[1] - mejor[1] >= max(0.08, 0.25 * elegido[1]):
+            elegido = mejor
+        else:
+            break
+    v, rms, n, kn = elegido
+    return kn, v, rms, n
+
+
+def _suelo_y(info, x, n):
+    """Cota de juego del suelo aplanado de `info` en (x, norte): plano o perfil a lo largo del eje."""
+    return info["y"](x, n)
+
+
+def _anillos_muestreados(zona, paso=1.0):
+    """Puntos (N, 2) cada ~`paso` m de cada anillo (exterior e interiores) de la zona."""
+    out = []
+    for pol in validos(zona):
+        for anillo in [pol.exterior, *pol.interiors]:
+            n = max(int(round(anillo.length / paso)), 4)
+            d = np.linspace(0.0, anillo.length, n, endpoint=False)
+            out.append(shapely.get_coordinates(shapely.line_interpolate_point(anillo, d)))
+    return out
+
+
+def preparar_suelos(mapa, filas, T, huecos=None):
+    """Aplana el terreno T bajo los techos con suelo=plano (ANTES de mallar: Terreno.anadir_suelo) y devuelve (y guarda
+    en T.suelos) {osm_id: info}.
+
+    Plano de cada techo: ajuste robusto LIBRE (descarta residuos > 0,5 m) a las cotas del MDT (T.altura_base: raster de 1 m)
+    en una rejilla de 1 m dentro de la huella encogida 0,5 m, sin los edificios volumen. Zona aplanada = huella +
+    SUELO_BORDE_M. Donde se solapan dos zonas manda la del pasillo central (se registra la ultima en el terreno). Fuera de la
+    zona: transicion suave de SUELO_TRANSICION_M donde el exterior esta a menos de 0,5 m del plano; donde queda mas de 0,5 m
+    por debajo -> muro vertical de 0,3 m desde la cota exterior - 0,5 hasta plano + 1,0 (pretil); mas de 0,5 m por encima
+    -> muro de contencion desde plano - 0,5 hasta la cota exterior. `huecos` (shapely, plano local): en ellos no hay muro
+    (arranque de escaleras). info: plano (a, b, c: y = a x + b norte + c), huella, zona, prioridad (mayor = manda),
+    muros [(a_xy, b_xy, y_bajo, y_alto)], long_muros_m y estadisticas del ajuste."""
+    T.suelos = {}
+    ids = [i for i in ids_suelo(filas) if i in mapa.ways and mapa.cerrado(mapa.ways[i])]
+    if T.es_plano or not ids:
+        return T.suelos
+    vols = []
+    for wid, w in mapa.ways.items():
+        if "building" in w.get("tags", {}) and mapa.cerrado(w) and str(wid) in filas \
+                and forma_de(filas[str(wid)]) == "volumen":
+            vols.extend(validos(mapa.poligono(w)))
+    bloq = unary_union(vols).buffer(0.5)
+    for prio, wid in enumerate(reversed(ids)):          # el primero de ids (pasillo central) tiene la mayor prioridad
+        huella = unary_union(validos(mapa.poligono(mapa.ways[wid])))
+        px, pn = _muestras_xy(huella.buffer(-0.5), 1.0)
+        libre = ~shapely.contains_xy(bloq, px, pn)
+        px, pn = px[libre], pn[libre]
+        z = T.altura_base(px, -pn)
+        modo = suelo_de(filas[str(wid)])
+        info = {"id": wid, "modo": modo, "huella": huella, "zona": huella.buffer(SUELO_BORDE_M), "prioridad": prio,
+                "n_px": len(px)}
+        if modo == "eje":
+            # cota = f(s), s = distancia a lo largo del eje geodesico (desde el extremo mas cercano al otro pasillo)
+            otros = [h_ for h_ in (mapa.poligono(mapa.ways[i]) for i in ids if i != wid) if h_ is not None]
+            ref_pt = unary_union(otros).centroid if otros else None
+            vert = list(huella.exterior.coords) if huella.geom_type == "Polygon" else \
+                [q for g_ in huella.geoms for q in g_.exterior.coords]
+            ini = min(vert, key=lambda q: math.dist(q, (ref_pt.x, ref_pt.y)) if ref_pt is not None else q[0])
+            pts, _ = eje_geodesico(huella, ini)
+            P = np.array(pts)
+            cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(P, axis=0).T))])
+            sm = _proyectar_eje(P, cum, px, pn)
+            kn, kz, rms, n_usados = _ajuste_tramos(sm, z, float(cum[-1]))
+            info["y"] = lambda x, n, P=P, cum=cum, kn=kn, kz=kz: np.interp(_proyectar_eje(P, cum, x, n), kn, kz)
+            res = np.interp(sm, kn, kz) - z
+            info.update(eje=P, cum=cum, nudos_s=kn, nudos_y=kz, plano=None,
+                        pendiente_grados=math.degrees(math.atan(abs(kz[-1] - kz[0]) / cum[-1])))
+        else:
+            a, b, c, n_usados, rms = _ajuste_suelo(px, pn, z)
+            res = a * px + b * pn + c - z
+            info["y"] = lambda x, n, a=a, b=b, c=c: a * np.asarray(x) + b * np.asarray(n) + c
+            info.update(plano=(a, b, c), pendiente_grados=math.degrees(math.atan(math.hypot(a, b))))
+        info.update(n_usados=n_usados, rms=rms, res_max=float(np.abs(res).max()))
+        T.suelos[wid] = info
+    # muros y zonas de transicion
+    for wid, info in T.suelos.items():
+        zona = info["zona"]
+        mias = [o for o in T.suelos.values() if o is not info]
+        manda = [o["zona"] for o in mias if o["prioridad"] > info["prioridad"]]
+        manda = unary_union(manda).buffer(-0.2) if manda else None
+        debajo = [o for o in mias if o["prioridad"] < info["prioridad"]]
+
+        def ext_h(x, n, debajo=debajo):
+            """cota exterior: la del suelo de menor prioridad si el punto cae en su zona, si no el terreno original."""
+            h = T.altura_base(x, -n)
+            for o in debajo:
+                m = shapely.contains_xy(o["zona"], x, n)
+                if m.any():
+                    h = np.where(m, o["y"](x, n), h)
+            return h
+        muros, abierto, largo = [], [], 0.0
+        for P in _anillos_muestreados(zona, 1.0):
+            n = len(P)
+            t = np.roll(P, -1, axis=0) - np.roll(P, 1, axis=0)
+            t /= np.maximum(np.linalg.norm(t, axis=1, keepdims=True), 1e-9)
+            nor = np.column_stack([t[:, 1], -t[:, 0]])
+            dentro = shapely.contains_xy(zona, P[:, 0] + 0.3 * nor[:, 0], P[:, 1] + 0.3 * nor[:, 1])
+            nor[dentro] *= -1                                    # normal hacia fuera de la zona
+            hp = info["y"](P[:, 0], P[:, 1])
+            alt = {d: ext_h(P[:, 0] + d * nor[:, 0], P[:, 1] + d * nor[:, 1]) for d in (0.4, 1.0, 2.0)}
+            dif = alt[1.0] - hp
+            abajo, arriba = dif < -SUELO_UMBRAL_M, dif > SUELO_UMBRAL_M
+            interno = shapely.contains_xy(bloq, P[:, 0], P[:, 1])
+            if manda is not None and not manda.is_empty:
+                interno |= shapely.contains_xy(manda, P[:, 0], P[:, 1])
+            if huecos is not None and not huecos.is_empty:
+                interno |= shapely.contains_xy(huecos, P[:, 0], P[:, 1])
+            pared = (abajo | arriba) & ~interno
+            pared |= np.roll(pared, 1) & np.roll(pared, -1)      # cierra huecos de 1 muestra
+            pared &= ~interno
+            ybajo = np.where(abajo, np.minimum(np.minimum(alt[0.4], alt[1.0]), alt[2.0]) - MURO_SUELO_ENTERRADO,
+                             hp - MURO_SUELO_ENTERRADO)
+            yalto = np.where(arriba, np.maximum(alt[0.4], alt[1.0]), hp + MURO_SUELO_PRETIL)
+            ybajo = np.minimum(ybajo, hp - MURO_SUELO_ENTERRADO)
+            yalto = np.maximum(yalto, hp + 0.3)
+            for i in range(n):
+                j = (i + 1) % n
+                if pared[i] and pared[j]:
+                    muros.append((P[i], P[j], float(min(ybajo[i], ybajo[j])), float(max(yalto[i], yalto[j]))))
+                    largo += float(np.linalg.norm(P[j] - P[i]))
+            ok = ~pared & ~interno
+            abierto.extend(shapely.points(P[ok]).tolist() if ok.any() else [])
+        info["muros"] = muros
+        info["long_muros_m"] = largo
+        info["abierto"] = unary_union([q.buffer(SUELO_TRANSICION_M + 0.5) for q in abierto]) if abierto else None
+    # el terreno ya ve el plano: se registra DESPUES de calcular los muros (que usan altura_base); el de mayor
+    # prioridad el ultimo (gana en el solape)
+    for info in sorted(T.suelos.values(), key=lambda i: i["prioridad"]):
+        T.anadir_suelo(info["zona"], info["plano"] if info["plano"] is not None else info["y"], info["abierto"], SUELO_TRANSICION_M)
+    return T.suelos
+
+
+def _hexaedros(lista):
+    """Mesh de solidos de 8 vertices: lista de (xy (4, 2) antihorario visto desde arriba, z_bajo (4,), z_alto (4,))."""
+    N = len(lista)
+    v = np.zeros((N, 8, 3))
+    for k, (xy, zb, zt) in enumerate(lista):
+        v[k, :4, :2], v[k, 4:, :2] = xy, xy
+        v[k, :4, 2], v[k, 4:, 2] = zb, zt
+    f0 = np.array([[0, 2, 1], [0, 3, 2], [4, 5, 6], [4, 6, 7]]
+                  + [[i, (i + 1) % 4, (i + 1) % 4 + 4] for i in range(4)]
+                  + [[i, (i + 1) % 4 + 4, i + 4] for i in range(4)])
+    f = (f0[None] + (np.arange(N) * 8)[:, None, None]).reshape(-1, 3)
+    return trimesh.Trimesh(v.reshape(-1, 3), f, process=False)
+
+
+def _caja_segmento(a, b, grosor, y0, y1, ext=0.15):
+    """Caja vertical sobre el segmento a-b de `grosor` m (centrada en el, prolongada `ext` m por cada extremo)."""
+    t = (b - a) / max(np.linalg.norm(b - a), 1e-9)
+    n = np.array([-t[1], t[0]]) * grosor / 2
+    a2, b2 = a - t * ext, b + t * ext
+    return np.array([a2 - n, b2 - n, b2 + n, a2 + n]), np.full(4, y0), np.full(4, y1)
+
+
+def malla_muros_suelo(suelos):
+    """Muros verticales de hormigon (0,3 m) de todos los suelos: una caja por segmento de 1 m (se prolonga 0,15 m por
+    cada extremo para cerrar esquinas). Mesh local (x, norte, z) o None."""
+    cajas = [_caja_segmento(a, b, MURO_SUELO_GROSOR, y0, y1)
+             for info in suelos.values() for a, b, y0, y1 in info["muros"]]
+    return _hexaedros(cajas) if cajas else None
+
+
+# ---------------------------------------------------------------- escaleras (data/escaleras.csv)
+CAMPOS_ESCALERAS = ["id", "x1", "z1", "x2", "z2", "ancho", "notas"]
+PELDANO_ALTO = 0.17
+PELDANO_HUELLA = 0.30
+ESCALERA_ANCHO_DEFECTO = 3.0
+ESCALERA_MURO_GROSOR = 0.2
+ESCALERA_MURO_ALTO = 1.0      # barandilla (muro) 1 m sobre la rampa
+ESCALERA_HUECO_M = 0.6        # el muro lateral de los pasillos se recorta a 0,6 m de la escalera
+
+
+def cargar_escaleras(ruta):
+    """Filas de data/escaleras.csv: id, x1, z1 (arriba), x2, z2 (abajo) en coordenadas de juego (x = este, z = -norte), ancho
+    (m, 3 por defecto) y notas. Devuelve [{id, x1, n1, x2, n2, ancho, notas}] (n = -z: norte local)."""
+    ruta = Path(ruta)
+    out = []
+    if not ruta.exists():
+        return out
+    with open(ruta, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            try:
+                x1, z1, x2, z2 = (float(str(r[k]).replace(",", ".")) for k in ("x1", "z1", "x2", "z2"))
+            except (KeyError, ValueError):
+                print(f"AVISO: fila de escaleras invalida: {r}", file=sys.stderr)
+                continue
+            ancho = num(r.get("ancho")) or ESCALERA_ANCHO_DEFECTO
+            out.append({"id": (r.get("id") or "").strip(), "x1": x1, "n1": -z1, "x2": x2, "n2": -z2, "ancho": ancho,
+                        "notas": r.get("notas") or ""})
+    return out
+
+
+def _rect_escalera(e, margen=0.0):
+    """Rectangulo (x, norte) de la escalera `e` (con `margen` en los cuatro lados)."""
+    a, b = np.array([e["x1"], e["n1"]]), np.array([e["x2"], e["n2"]])
+    t = (b - a) / np.linalg.norm(b - a)
+    n = np.array([-t[1], t[0]])
+    w = e["ancho"] / 2 + margen
+    a2, b2 = a - t * margen, b + t * margen
+    return Polygon([tuple(a2 - n * w), tuple(b2 - n * w), tuple(b2 + n * w), tuple(a2 + n * w)])
+
+
+def huecos_escaleras(escs):
+    """Zona (x, norte) donde se recortan los muros laterales de los pasillos: el rectangulo de cada escalera + 0,6 m."""
+    gs = [_rect_escalera(e, ESCALERA_HUECO_M) for e in escs]
+    return unary_union(gs) if gs else None
+
+
+def _cota_suelo(T, p):
+    """Cota de juego del suelo resuelto en el punto p (x, norte): el plano del pasillo cuya huella lo contiene (manda el de mayor
+    prioridad; en el solape de zonas el terreno ya muestra el de mayor prioridad aunque el punto sea de otro pasillo), si no
+    la del terreno."""
+    pt = Point(float(p[0]), float(p[1]))
+    donde = [i for i in getattr(T, "suelos", {}).values() if i["huella"].contains(pt)]
+    if donde:
+        return float(max(donde, key=lambda i: i["prioridad"])["y"](p[0], p[1]))
+    return float(T.h(p[0], p[1]))
+
+
+def preparar_escaleras(T, escs):
+    """Calcula las escaleras (cota de arriba y de abajo = suelo resuelto en cada extremo, T.altura) y las registra en el
+    terreno como RAMPA lisa (suelo inclinado f(s), plano horizontal fuera de los extremos), de modo que la colision del
+    terreno es la rampa. Devuelve y guarda en T.escaleras la lista de dicts: id, a/b (x, norte) arriba/abajo, y1, y2, ancho,
+    peldanos (N), alto (m), huella (m), longitud_m, angulo (grados), rect, t (vector unitario hacia abajo)."""
+    T.escaleras = []
+    if T.es_plano:
+        return T.escaleras
+    for e in escs:
+        a, b = np.array([e["x1"], e["n1"]]), np.array([e["x2"], e["n2"]])
+        L = float(np.linalg.norm(b - a))
+        y1, y2 = _cota_suelo(T, a), _cota_suelo(T, b)
+        dy = y1 - y2
+        if dy < 0.3 or L < 0.5:
+            print(f"AVISO: escalera {e['id']}: desnivel {dy:.2f} m sobre {L:.2f} m: se ignora", file=sys.stderr)
+            continue
+        N = max(1, round(dy / PELDANO_ALTO))
+        t = (b - a) / L
+        d = dict(e, a=a, b=b, y1=y1, y2=y2, longitud_m=L, peldanos=N, alto=dy / N, huella=L / N, t=t,
+                 angulo=math.degrees(math.atan2(dy, L)), rect=_rect_escalera(e))
+
+        def rampa(x, n, a=a, t=t, L=L, y1=y1, dy=dy):
+            s = np.clip((np.asarray(x) - a[0]) * t[0] + (np.asarray(n) - a[1]) * t[1], 0.0, L)
+            return y1 - s * dy / L
+        d["rampa"] = rampa
+        T.escaleras.append(d)
+    for d in T.escaleras:    # despues de leer todos los extremos (los registros modifican el terreno)
+        T.anadir_suelo(d["rect"].buffer(SUELO_BORDE_M), d["rampa"], None, SUELO_TRANSICION_M)
+    return T.escaleras
+
+
+def mallas_escaleras(escs):
+    """(peldanos, rampa, muros) de las escaleras: peldanos = cajas macizas de N peldanos (sin colision; su cara superior
+    sigue la rampa +-media contrahuella), rampa = prisma inclinado liso de 0,3 m (la colision; invisible), muros = muros
+    laterales de 0,2 m con barandilla (1 m sobre la rampa). Cada uno es un Trimesh en (x, norte, z) o None."""
+    pel, ram, mur = [], [], []
+    for d in escs:
+        a, t, L, w, N, h, y1, dy = d["a"], d["t"], d["longitud_m"], d["ancho"], d["peldanos"], d["alto"], d["y1"], d["y1"] - d["y2"]
+        r = L / N
+        n = np.array([-t[1], t[0]])
+        for k in range(N):
+            s0, s1 = k * r, (k + 1) * r
+            xy = np.array([a + t * s0 - n * w / 2, a + t * s1 - n * w / 2, a + t * s1 + n * w / 2, a + t * s0 + n * w / 2])
+            top = y1 - (k + 0.5) * h
+            base = y1 - s1 * dy / L - 0.1
+            pel.append((xy, np.full(4, base), np.full(4, top)))
+        xy = np.array([a - n * w / 2, a + t * L - n * w / 2, a + t * L + n * w / 2, a + n * w / 2])
+        zt = np.array([y1, d["y2"], d["y2"], y1])
+        ram.append((xy, zt - 0.3, zt))
+        for sg in (-1, 1):                                  # muros laterales a cada lado, por peldano
+            for k in range(N):
+                s0, s1 = k * r, (k + 1) * r
+                c0, c1 = a + t * s0 + n * sg * (w / 2 + ESCALERA_MURO_GROSOR / 2), a + t * s1 + n * sg * (w / 2 + ESCALERA_MURO_GROSOR / 2)
+                ya, yb = y1 - s0 * dy / L, y1 - s1 * dy / L
+                xyk, _, _ = _caja_segmento(c0, c1, ESCALERA_MURO_GROSOR, 0.0, 0.0, ext=0.02)
+                mur.append((xyk, np.full(4, yb - 0.6), np.full(4, ya + ESCALERA_MURO_ALTO)))
+    return (_hexaedros(pel) if pel else None, _hexaedros(ram) if ram else None, _hexaedros(mur) if mur else None)
+
+
+def eje_geodesico(poly, inicio, paso=0.5, tramo=2.0, camino=False, fin=None):
+    """Linea central aproximada [(x, norte)] de una banda larga y estrecha (puede ser curva): distancia geodesica por
+    una rejilla de `paso` m dentro de `poly` desde el pixel mas cercano a `inicio`; cada `tramo` m de distancia, el
+    centroide de los pixeles de esa franja. Devuelve (puntos, distancia_geodesica_total). Con camino=True devuelve en cambio
+    el camino mas corto (cada `tramo` m) desde `inicio` hasta el pixel mas lejano (o el mas cercano a `fin`), que siempre
+    queda dentro de `poly`."""
+    import heapq
+    x0, y0, x1, y1 = poly.bounds
+    xs, ys = np.arange(x0 + paso / 2, x1, paso), np.arange(y0 + paso / 2, y1, paso)
+    X, Y = np.meshgrid(xs, ys)
+    dentro = shapely.contains_xy(poly, X.ravel(), Y.ravel()).reshape(X.shape)
+    idx = np.argwhere(dentro)
+    k0 = idx[np.argmin(np.hypot(X[dentro] - inicio[0], Y[dentro] - inicio[1]))]
+    dist = np.full(X.shape, np.inf)
+    previo = {}
+    dist[tuple(k0)] = 0.0
+    cola = [(0.0, int(k0[0]), int(k0[1]))]
+    vec = [(di, dj, math.hypot(di, dj) * paso) for di in (-1, 0, 1) for dj in (-1, 0, 1) if (di or dj)]
+    while cola:
+        d, i, j = heapq.heappop(cola)
+        if d > dist[i, j]:
+            continue
+        for di, dj, w in vec:
+            a, b = i + di, j + dj
+            if 0 <= a < X.shape[0] and 0 <= b < X.shape[1] and dentro[a, b] and d + w < dist[a, b]:
+                dist[a, b] = d + w
+                previo[(a, b)] = (i, j)
+                heapq.heappush(cola, (d + w, a, b))
+    lejos = dist[dentro & np.isfinite(dist)].max()
+    if camino:
+        if fin is None:
+            k = np.unravel_index(np.argmax(np.where(np.isfinite(dist), dist, -1.0)), dist.shape)
+        else:
+            k = np.unravel_index(np.argmin(np.where(np.isfinite(dist), np.hypot(X - fin[0], Y - fin[1]), np.inf)), dist.shape)
+        ruta = [(int(k[0]), int(k[1]))]
+        while ruta[-1] in previo:
+            ruta.append(previo[ruta[-1]])
+        ruta = ruta[::-1]
+        paso_px = max(1, int(round(tramo / paso)))
+        sel = ruta[::paso_px] + ([ruta[-1]] if (len(ruta) - 1) % paso_px else [])
+        return [(float(X[i, j]), float(Y[i, j])) for i, j in sel], float(dist[k])
+    pts = []
+    for d0 in np.arange(0.0, lejos + tramo, tramo):
+        m = dentro & (np.abs(dist - d0) <= tramo / 2)
+        if m.any():
+            pts.append((float(X[m].mean()), float(Y[m].mean())))
+    return pts, float(lejos)
+
+
+def losa_eje(info, huella, lidar, T, grosor):
+    """Losa de un pasillo con suelo=eje: cara inferior = suelo(s) + galibo, sin inclinacion lateral. galibo = mediana LiDAR
+    (mdt + ndsm - suelo - grosor) acotada entre GALIBO_EJE_MIN y GALIBO_EJE_MAX."""
+    px, py, pz = lidar.pixeles(huella)
+    g_med = float(np.median(pz - T.cota_ref - info["y"](px, py) - grosor)) if len(px) >= LOSA_MIN_PIXELES else GALIBO_EJE_MAX
+    g = float(np.clip(g_med, GALIBO_EJE_MIN, GALIBO_EJE_MAX))
+    ftop = lambda x, y, g=g: info["y"](x, y) + g + grosor
+    return {"nivel": "eje", "plano": None, "cota_abs": None, "n_px": len(px), "ftop": ftop, "galibo": (g, g, g),
+            "galibo_lidar": (g_med, g_med, g_med),
+            "origen": f"siguiendo el suelo(s) del eje + galibo {g:.2f} m (mediana lidar {g_med:.2f} m, {len(px)} px)"}
+
+
+def losa_sobre_suelo(losa, suelo, huella, grosor):
+    """Galibo de la losa inclinada sobre el suelo aplanado: si la losa del LiDAR deja < GALIBO_MIN_M en algun punto de
+    la huella, se sustituye por una losa paralela al suelo con galibo max(GALIBO_PARALELA_M, mediana del galibo
+    LiDAR si es holgado). Anota losa['galibo'] = (min, mediana, max) y losa['galibo_lidar']."""
+    if losa["plano"] is None or losa["nivel"] != "inclinado" or suelo is None or suelo.get("plano") is None:
+        return losa
+    px, pn = _muestras_xy(huella, 1.0)
+    sa, sb, sc = suelo["plano"]
+    a, b, c = losa["plano"]
+    gal = (a * px + b * pn + c - grosor) - (sa * px + sb * pn + sc)
+    losa["galibo_lidar"] = (float(gal.min()), float(np.median(gal)), float(gal.max()))
+    if gal.min() < GALIBO_MIN_M:
+        med = float(np.median(gal))
+        g = max(GALIBO_PARALELA_M, med if med > GALIBO_MIN_M + 1.0 else 0.0)
+        losa["plano"] = (sa, sb, sc + g + grosor)
+        losa["origen"] = (f"paralela al suelo, galibo {g:.1f} m (el ajuste lidar daba un galibo minimo de "
+                          f"{gal.min():.2f} m < {GALIBO_MIN_M} m)")
+        losa["galibo"] = (g, g, g)
+        losa["n_px"] = 0
+    else:
+        losa["galibo"] = losa["galibo_lidar"]
+    return losa
 
 
 # ---------------------------------------------------------------- pistas de padel
@@ -940,9 +1450,16 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
             if huella is not None:
                 px_, py_ = _muestras_xy(huella)
                 losa = calcular_losa(wid, fila, huella, top, T, lidar, px_, py_)
+                suelo_i = getattr(T, "suelos", {}).get(wid)
+                if suelo_i is not None and suelo_i["modo"] == "eje":
+                    losa = losa_eje(suelo_i, huella, lidar, T, grosor)
+                elif suelo_i is not None:
+                    losa_sobre_suelo(losa, suelo_i, huella, grosor)
                 anotar_losa(fila, losa, T)
                 plano_ = losa["plano"]
-                if plano_ is None:      # sigue el terreno
+                if losa.get("ftop") is not None:
+                    ftop = losa["ftop"]
+                elif plano_ is None:      # sigue el terreno
                     ftop = lambda x, y, top=top: T.h(x, y) + top
                 else:
                     ftop = lambda x, y, p=plano_: p[0] * np.asarray(x) + p[1] * np.asarray(y) + p[2]
@@ -993,6 +1510,8 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
             techos.append((info, es_roof))
 
     # Pilares de los techos
+    escaleras = getattr(T, "escaleras", [])
+    hueco_esc = unary_union([_rect_escalera(d, 0.8) for d in escaleras]) if escaleras else None
     volumenes = unary_union([e["poly"] for e in edif_info if e["forma"] == "volumen"])
     for info, es_roof in techos:
         poly = info["poly"]
@@ -1003,6 +1522,8 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
         if modo == "ninguno":
             continue
         centros = pilares_techo(poly, 0.0, volumenes, modo)
+        if hueco_esc is not None:      # sin pilares en la escalera
+            centros = [c_ for c_ in centros if not hueco_esc.contains(Point(*c_))]
         m, centros = malla_pilares(centros, info["losa"]["bot"], T)
         if m is not None:
             piezas.append((f"pilares_{info['id']}_{slug(info['nombre'])}-col", m, "pilar"))
@@ -1022,14 +1543,41 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
             continue
         por_tipo.setdefault(hw, []).append(l.buffer(ANCHO_CAMINO[hw] / 2, cap_style="flat", join_style="round"))
     caminos_geom = {}
+    suelos = getattr(T, "suelos", {})
+    geom_pav = None
+    if suelos:   # pavimento blanco de los pasillos: huellas con suelo=plano menos los edificios volumen
+        geom_pav = unary_union([i["huella"] for i in suelos.values()]).difference(volumenes)
     for hw, bufs in por_tipo.items():
         g = unary_union(bufs).intersection(zona_caminos)
+        if geom_pav is not None and not geom_pav.is_empty:
+            g = g.difference(geom_pav)     # los caminos (+3 cm) taparian el pavimento (+2 cm)
         caminos_geom[hw] = g
         m = plano_drapeado(g, T, 0.03)
         if m is not None:
             clave = "camino_asfalto" if hw in ASFALTO else "camino_peatonal"
             piezas.append((f"caminos_{hw}", m, clave))
             stats["caminos_" + hw] = len(bufs)
+
+    # Suelo de los pasillos: pavimento blanco (sin colision: la da el terreno aplanado) y muros laterales (con colision)
+    if geom_pav is not None and not geom_pav.is_empty:
+        m = plano_drapeado(geom_pav, T, SUELO_PAVIMENTO_Y)
+        if m is not None:
+            piezas.append(("suelo_pasillos", m, "pavimento_blanco"))
+        mm = malla_muros_suelo(suelos)
+        if mm is not None:
+            piezas.append(("muros_suelo-col", mm, "muros"))
+        stats["suelos_pasillo"] = len(suelos)
+        stats["muros_suelo_m"] = round(sum(i["long_muros_m"] for i in suelos.values()))
+
+    # Escaleras: peldanos visibles (sin colision), rampa lisa invisible (colision) y muros laterales
+    if escaleras:
+        m_pel, m_ram, m_mur = mallas_escaleras(escaleras)
+        for nombre, m_, clave in (("escaleras", m_pel, "pavimento_blanco"), ("escaleras_rampa-col", m_ram, "pavimento_blanco"),
+                                  ("escaleras_muros-col", m_mur, "muros")):
+            if m_ is not None:
+                piezas.append((nombre, m_, clave))
+        stats["escaleras"] = len(escaleras)
+        stats["peldanos"] = sum(d["peldanos"] for d in escaleras)
 
     # Zonas
     zonas_geom = {}
@@ -1100,7 +1648,7 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
 
     return piezas, stats, {"campus": campus, "edificios": edif_info, "caminos": caminos_geom,
                            "zonas": zonas_geom, "suelo": caja_suelo, "pasos": list(pasos), "pistas": pistas_info,
-                           "terreno": T}
+                           "terreno": T, "suelos": suelos, "escaleras": escaleras}
 
 
 # ---------------------------------------------------------------- bordes del campus
@@ -1621,6 +2169,125 @@ def perfil_pasillo(ruta, glb, geo, edif_id=1373541639):
     print(f"Perfil: {ruta}")
 
 
+def perfil_pasillo_18(ruta, geo, T, centro=(-12.0, 250.0), id_puente=ID_PUENTE_18):
+    """Perfiles del puente macizo (marquesina `id_puente`, suelo=plano): longitudinal por su linea central y transversal en el
+    cruce del cauce (la estacion con mas desnivel hacia el lado NO a < 40 m de `centro`). Terreno original (MDT 1 m, sin
+    aplanar), suelo nuevo (la malla de terreno aplanada), pavimento, muros y losa; todo en cota s.n.m. Calculado con las
+    mismas funciones que la malla (T.h, losa top/bot)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+    info = geo["suelos"].get(id_puente)
+    e = next((q for q in geo["edificios"] if q["id"] == id_puente), None)
+    if info is None or e is None:
+        return
+    ref = T.cota_ref
+    esc = (geo.get("escaleras") or [None])[0]
+    if esc is not None:      # ruta: 20 m de pasillo central -> escalera -> linea central de la marquesina
+        top, bot, tt = esc["a"], esc["b"], esc["t"]
+        zc = geo["suelos"][ID_PASILLO_CENTRAL]["huella"].intersection(Point(*top).buffer(45.0))
+        eje_c, _ = eje_geodesico(zc, tuple(top))
+        ini = eje_c[min(range(len(eje_c)), key=lambda k: abs(2.0 * k - 20.0))]
+        t1, _ = eje_geodesico(zc.buffer(-1.2), ini, camino=True, fin=tuple(top - tt * 3.5))
+        t3, _ = eje_geodesico(info["huella"].buffer(-1.2), tuple(bot), camino=True)
+        P = np.array(t1 + [tuple(top - tt * 2.0), tuple(top), tuple(bot)] + t3)
+        Proof = np.array(t3)
+    else:
+        eje, _ = eje_geodesico(info["huella"], info["huella"].exterior.coords[0])
+        P = Proof = np.array(eje)
+    s = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(P, axis=0).T))])
+    orig = lambda x, n: T.altura_base(x, -np.asarray(n)) + ref
+    fig = plt.figure(figsize=(18, 11), dpi=100)
+    ax = fig.add_subplot(2, 1, 1)
+    ax.fill_between(s, orig(P[:, 0], P[:, 1]), 5, color="#e6dcc3", zorder=0)
+    ax.plot(s, orig(P[:, 0], P[:, 1]), color="#7a5c2e", lw=1.6, label="terreno original (MDT 1 m, bajo la linea central)", zorder=2)
+    ax.plot(s, T.h(P[:, 0], P[:, 1]) + ref, color="#1b7837", lw=2.2, label="suelo nuevo (terreno aplanado al plano)", zorder=4)
+    ax.plot(s, T.h(P[:, 0], P[:, 1]) + ref + SUELO_PAVIMENTO_Y, color="#e8e6e0", lw=1.0, label="pavimento blanco (+2 cm)", zorder=5)
+    bot, top = e["losa"]["bot"](P[:, 0], P[:, 1]) + ref, e["losa"]["top"](P[:, 0], P[:, 1]) + ref
+    ax.fill_between(s, bot, top, color="#555860", zorder=3, label="losa (cara inferior a superior)")
+    for pil in e["pilares"]:
+        q = np.array(pil)
+        k = int(np.argmin(np.hypot(P[:, 0] - q[0], P[:, 1] - q[1])))
+        if math.dist(P[k], q) < 4.0:
+            ax.plot([s[k], s[k]], [T.h(q[0], q[1]) + ref, e["losa"]["bot"](q[0], q[1]) + ref], color="#b03030", lw=1.6, zorder=3)
+    primero = True
+    for a_, b_, y0, y1 in info["muros"]:
+        m = (a_ + b_) / 2
+        k = int(np.argmin(np.hypot(P[:, 0] - m[0], P[:, 1] - m[1])))
+        if math.dist(P[k], m) < 6.5:
+            ax.vlines(s[k], y0 + ref, y1 + ref, color="#c07a2a", lw=1.2, alpha=0.55, zorder=6,
+                      label="muros laterales (proyectados)" if primero else None)
+            primero = False
+    if esc is not None:
+        k0 = int(np.argmin(np.hypot(P[:, 0] - esc["a"][0], P[:, 1] - esc["a"][1])))
+        N_, h_ = esc["peldanos"], esc["alto"]
+        sx, sy = [s[k0]], [esc["y1"] + ref]
+        for k in range(N_):
+            sx += [s[k0] + k * esc["huella"], s[k0] + (k + 1) * esc["huella"]]
+            sy += [esc["y1"] + ref - (k + 0.5) * h_] * 2
+        sx.append(s[k0] + esc["longitud_m"])
+        sy.append(esc["y2"] + ref)
+        ax.plot(sx, sy, color="#e08a00", lw=2.0, zorder=7, label=f"escalera {esc['id']}: {N_} peldaños de {h_:.2f} x {esc['huella']:.2f} m")
+    ax.set_xlabel("distancia a lo largo de la ruta: pasillo central, escalera y linea central de la marquesina (m)")
+    ax.set_ylabel("cota s.n.m. (m)")
+    ax.set_ylim(min(orig(P[:, 0], P[:, 1]).min(), T.h(P[:, 0], P[:, 1]).min() + ref) - 1.0, top.max() + 1.5)
+    gal = e["losa"].get("galibo")
+    ax.set_title(f"Marquesina {id_puente} (puente macizo) y escalera de bajada: perfil longitudinal; plano del suelo {info['pendiente_grados']:.2f} grados, "
+                 f"galibo {'%.1f-%.1f m' % (gal[0], gal[2]) if gal else '?'}; muros {info['long_muros_m']:.0f} m")
+    ax.grid(alpha=0.3)
+    ax.legend(loc="upper left", fontsize=8)
+    # transversal en el cruce del cauce
+    nw = np.array([-0.78, 0.62]) / math.hypot(0.78, 0.62)
+    mejor = None
+    for i in range(1, len(Proof) - 1):
+        if math.dist(Proof[i], centro) > 40:
+            continue
+        t = Proof[i + 1] - Proof[i - 1]
+        t /= np.linalg.norm(t)
+        n = np.array([-t[1], t[0]])
+        if n @ nw < 0:
+            n = -n
+        q7 = Proof[i] + n * 7.0
+        h = float(T.h(*Proof[i])) - float(T.altura_base(q7[0], -q7[1]))
+        if mejor is None or h > mejor[0]:
+            mejor = (h, i, n)
+    ax2 = fig.add_subplot(2, 1, 2)
+    if mejor is not None:
+        _, i, n = mejor
+        p0 = Proof[i]
+        o = np.arange(-16.0, 16.01, 0.25)
+        Q = p0[None, :] + o[:, None] * n[None, :]
+        ax2.fill_between(o, orig(Q[:, 0], Q[:, 1]), 5, color="#e6dcc3", zorder=0)
+        ax2.plot(o, orig(Q[:, 0], Q[:, 1]), color="#7a5c2e", lw=1.6, label="terreno original (MDT 1 m)", zorder=2)
+        ax2.plot(o, T.h(Q[:, 0], Q[:, 1]) + ref, color="#1b7837", lw=2.2, label="suelo nuevo / terreno final", zorder=4)
+        dentro = shapely.contains_xy(info["huella"], Q[:, 0], Q[:, 1])
+        if dentro.any():
+            ax2.fill_between(o[dentro], e["losa"]["bot"](Q[dentro, 0], Q[dentro, 1]) + ref,
+                             e["losa"]["top"](Q[dentro, 0], Q[dentro, 1]) + ref, color="#555860", zorder=3, label="losa")
+        primero = True
+        for a_, b_, y0, y1 in info["muros"]:
+            m = (a_ + b_) / 2
+            q = m - p0
+            if abs(q @ np.array([-n[1], n[0]])) < 1.0:       # a menos de 1 m del plano transversal
+                x_ = float(q @ n)
+                ax2.add_patch(Rectangle((x_ - MURO_SUELO_GROSOR / 2, y0 + ref), MURO_SUELO_GROSOR, y1 - y0, color="#c07a2a", zorder=6,
+                                        label="muros laterales (0,3 m, con pretil)" if primero else None))
+                primero = False
+        ax2.set_xlabel("distancia al eje del puente (m); + = lado NO (zanja NO) ; - = lado SE")
+        ax2.set_ylabel("cota s.n.m. (m)")
+        ax2.set_xlim(-16, 16)
+        ax2.set_ylim(orig(Q[:, 0], Q[:, 1]).min() - 0.8, e["losa"]["top"](*p0) + ref + 1.5)
+        ax2.set_title(f"Seccion transversal en el cruce del cauce, en ({p0[0]:.0f}, {p0[1]:.0f}) (este, norte): desnivel exterior NO a 7 m {mejor[0]:.1f} m")
+        ax2.grid(alpha=0.3)
+        h2, l2 = ax2.get_legend_handles_labels()
+        ax2.legend(dict(zip(l2, h2)).values(), dict(zip(l2, h2)).keys(), loc="upper right", fontsize=8)
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Perfil: {ruta}")
+
+
 def perfil_marquesinas(ruta, glb, geo, larga=321893434, corta=555538618):
     """Perfiles de la marquesina larga (18-24) y de la corta (medidos sobre el .glb): terreno, losa y pilares; la
     corta lleva la cara inferior de la larga como referencia (deben coincidir)."""
@@ -1758,8 +2425,11 @@ def main():
     ap.add_argument("--alturas", default="data/alturas.csv")
     ap.add_argument("--pasos", default="data/pasos.csv")
     ap.add_argument("--pistas", default="data/pistas.csv")
+    ap.add_argument("--escaleras", default="data/escaleras.csv")
     ap.add_argument("--salida", default="export/upo_blockout.glb")
     ap.add_argument("--sin-preview", action="store_true")
+    ap.add_argument("--solo-estilos", action="store_true",
+                    help="solo reescribe el CSV y game/data/estilos.json (sin regenerar el .glb)")
     ap.add_argument("--copiar-godot", action=argparse.BooleanOptionalAction, default=True,
                     help="copia el .glb a game/assets/mapa/ (--no-copiar-godot lo desactiva)")
     ter.anadir_argumentos(ap)
@@ -1771,10 +2441,23 @@ def main():
                  if "tags" in w and mapa.cerrado(w)
                  and ("building" in w["tags"] or w["tags"].get("man_made") == "tower")]
     filas = cargar_alturas(a.alturas, edificios)
+    exportar_estilos(filas)
+    if a.solo_estilos:
+        return
     pasos = cargar_pasos(a.pasos)
     campus = campus_local(mapa)
-    T = ter.crear(a, mapa.E0, mapa.N0, campus, zona_fina(mapa, campus, a.buffer_fino))
+    T = ter.crear(a, mapa.E0, mapa.N0, campus, zona_fina(mapa, campus, a.buffer_fino, ids_suelo(filas)))
     print(f"Terreno: {T.info()}")
+    escs = cargar_escaleras(a.escaleras)
+    for wid, i in preparar_suelos(mapa, filas, T, huecos_escaleras(escs)).items():
+        forma_ = (f"plano a={i['plano'][0]:.5f} b={i['plano'][1]:.5f} c={i['plano'][2]:.3f}" if i["plano"] is not None else
+                  "eje: " + " / ".join(f"s={a_:.0f} m: {b_ + T.cota_ref:.2f} m s.n.m." for a_, b_ in zip(i["nudos_s"], i["nudos_y"])))
+        print(f"Suelo {wid}: {forma_} (pendiente "
+              f"{i['pendiente_grados']:.2f} grados, {i['n_usados']}/{i['n_px']} puntos, rms {i['rms']:.2f} m, "
+              f"residuo max {i['res_max']:.2f} m), muros {i['long_muros_m']:.0f} m")
+    for d in preparar_escaleras(T, escs):
+        print(f"Escalera {d['id']}: arriba y={d['y1']:.2f} abajo y={d['y2']:.2f} (desnivel {d['y1'] - d['y2']:.2f} m) en "
+              f"{d['longitud_m']:.2f} m, {d['peldanos']} peldanos de {d['alto']:.3f} x {d['huella']:.3f} m, {d['angulo']:.1f} grados")
     lidar = Lidar(a.mdt, NDSM_DEFECTO, mapa.E0, mapa.N0)
     piezas, stats, geo = construir(mapa, filas, pasos, cargar_pistas(a.pistas), T, lidar)
     guardar_alturas(a.alturas, filas)    # nivel / cota_abs / notas de las losas calculados
@@ -1842,6 +2525,7 @@ def main():
         zoom_tunel(salida.with_name("zoom_37.png"), geo, 142276198)
         if not T.es_plano:
             perfil_pasillo(salida.with_name("perfil_pasillo.png"), salida, geo)
+            perfil_pasillo_18(salida.with_name("perfil_pasillo_18.png"), geo, T)
             perfil_marquesinas(salida.with_name("perfil_marquesinas.png"), salida, geo)
             perfil_escaleras(salida.with_name("perfil_escaleras.png"), salida, mapa, T, mapa.E0, mapa.N0, campus)
 

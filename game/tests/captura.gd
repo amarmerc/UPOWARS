@@ -9,12 +9,38 @@ const VISTAS := [
 	["eje_central", "eje_central", 0.0, 0.0, 1.7],
 	["aparcamiento", "aparcamiento", 0.0, -8.0, 1.7],
 	["fachada_biblioteca", "biblioteca", 0.0, 5.0, 1.7],
+	# fachadas: [nombre, "edif", osm_id, "larga"|"testero", lado (+1/-1), distancia a la fachada, desplazamiento a lo largo, altura mirada, altura_ojo]
+	["fachada_rectorado", "edif", "1373541637", "larga", 1, 35.0, 10.0, 6.0, 1.7],
+	["fachada_torre", "edif", "191918054", "larga", -1, 60.0, 0.0, 30.0, 1.7],
+	["fachada_eje", "edif", "1373541644", "testero", -1, 45.0, 12.0, 6.0, 1.7],
+	["fachada_eje_larga", "edif", "1373541644", "larga", 1, 30.0, 0.0, 6.0, 1.7],
+	["fachada_24", "edif", "142262880", "larga", 1, 30.0, 30.0, 6.0, 1.7],
+	["fachada_45", "edif", "142258873", "larga", 1, 12.0, 0.0, 3.0, 1.7],
+	["fachada_45b", "edif", "142258873", "testero", 1, 20.0, 0.0, 3.0, 1.7],
+	["fachada_rectorado_cerca", "edif", "1373541637", "larga", 1, 6.0, 15.0, 3.0, 1.7],
+	["fachada_torre_cerca", "edif", "191918054", "larga", -1, 18.0, 0.0, 14.0, 1.7],
+	["fachada_biblioteca_cerca", "edif", "142262877", "larga", 1, 6.0, 30.0, 2.5, 1.7],
 	# borde: [nombre, "valla", dirección hacia fuera]: la cámara se coloca 6 m por dentro del poste más extremo en esa dirección
 	["borde_oeste", "valla", Vector3(-1, 0, 0)],
 	["borde_este", "valla", Vector3(1, 0, 0)],
 	["borde_sur", "valla", Vector3(0, 0, 1)],
+	# desde spawns.json (generar_spawns.py): [nombre, "json", bloque, clave, altura_ojo]; el bloque lleva "capturas"
+	# {clave: {desde [x, y, z] (suelo), hacia [x, y, z]}}
+	["pasillo_central_18", "json", "test_recorrido", "pasillo_central_18", 1.7],
+	["escalera_arriba", "json", "test_recorrido", "escalera_arriba", 1.7],
+	["marquesina_baja", "json", "test_recorrido", "marquesina_baja", 1.7],
+	["puente_cauce", "json", "test_puente", "puente_cauce", 1.7],
+	["zanja_macizo", "json", "test_puente", "zanja_macizo", 1.7],
 	["aerea", Vector3(0.0, 0.0, 0.0), 20.0, -22.0, 140.0],
 ]
+
+
+## y del terreno bajo (x, z), ignorando edificios y demas cuerpos (el rayo vertical cae por encima de los tejados).
+func y_terreno(espacio: PhysicsDirectSpaceState3D, x: float, z: float, excluir: Array[RID]) -> float:
+	var q := PhysicsRayQueryParameters3D.create(Vector3(x, 300, z), Vector3(x, -300, z))
+	q.exclude = excluir
+	var r: Dictionary = espacio.intersect_ray(q)
+	return (r["position"] as Vector3).y if not r.is_empty() else 0.0
 
 
 func _init() -> void:
@@ -39,6 +65,10 @@ func _ejecutar() -> void:
 	main.add_child(cam)
 	cam.make_current()
 	var espacio: PhysicsDirectSpaceState3D = (main as Node3D).get_world_3d().direct_space_state
+	var no_terreno: Array[RID] = []
+	for h: Node in main.find_children("*", "StaticBody3D", true, false):
+		if h.get_parent().name != "terreno":
+			no_terreno.append((h as StaticBody3D).get_rid())
 	var spawns: Dictionary = {}
 	for s: Dictionary in main.spawns:
 		spawns[s["id"]] = s
@@ -61,6 +91,69 @@ func _ejecutar() -> void:
 			pos.y = (r2["position"] as Vector3).y if not r2.is_empty() else 0.0
 			yaw = rad_to_deg(atan2(-dir.x, -dir.z))
 			pitch = 2.0
+		elif v[1] is String and v[1] == "edif":
+			var mi: MeshInstance3D = main.find_children("edif_%s_*" % v[2], "MeshInstance3D", true, false)[0]
+			var e: Vector2 = mi.get_instance_shader_parameter("eje_principal")
+			var ex: Vector4 = mi.get_instance_shader_parameter("ext_eje")
+			var pe := Vector2(-e.y, e.x)
+			var c: Vector2 = e * (ex.x + ex.y) * 0.5 + pe * (ex.z + ex.w) * 0.5
+			var lado: float = float(v[4])
+			var cara: Vector2
+			var normal: Vector2
+			var tang: Vector2
+			if v[3] == "larga":
+				normal = pe * lado
+				tang = e
+				cara = c + normal * (ex.w - ex.z) * 0.5
+			else:
+				normal = e * lado
+				tang = pe
+				cara = c + normal * (ex.y - ex.x) * 0.5
+			var punto: Vector2 = cara + tang * float(v[6])
+			# la huella no es un rectangulo: el punto de la pared real es el primer choque del rayo contra ese edificio
+			var solo: Array[RID] = []
+			for h: Node in main.find_children("*", "StaticBody3D", true, false):
+				if not h.get_parent().name.begins_with("edif_%s_" % v[2]):
+					solo.append((h as StaticBody3D).get_rid())
+			var y_c: float = y_terreno(espacio, punto.x, punto.y, no_terreno) + 2.0
+			var o3 := Vector3(punto.x + normal.x * 150.0, y_c, punto.y + normal.y * 150.0)
+			var q6 := PhysicsRayQueryParameters3D.create(o3, Vector3(punto.x - normal.x * 150.0, y_c, punto.y - normal.y * 150.0))
+			q6.exclude = solo
+			var r6: Dictionary = espacio.intersect_ray(q6)
+			if not r6.is_empty():
+				punto = Vector2((r6["position"] as Vector3).x, (r6["position"] as Vector3).z)
+			var desde: Vector2 = punto + normal * float(v[5])
+			ojo = float(v[8])
+			pos = Vector3(desde.x, 0.0, desde.y)
+			pos.y = y_terreno(espacio, pos.x, pos.z, no_terreno)
+			var yh2: float = pos.y + float(v[7])
+			yaw = rad_to_deg(atan2(-(punto.x - desde.x), -(punto.y - desde.y)))
+			pitch = rad_to_deg(atan2(yh2 - (pos.y + ojo), desde.distance_to(punto)))
+			print(v[0], " cam=", pos, " yaw=", yaw)
+		elif v[1] is String and v[1] == "json":
+			var datos_j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/spawns.json"))
+			var cj: Dictionary = (datos_j[v[2]] as Dictionary)["capturas"][v[3]]
+			var dj: Array = cj["desde"]
+			var hj: Array = cj["hacia"]
+			ojo = float(v[4])
+			pos = Vector3(dj[0], dj[1], dj[2])
+			var dxz: float = Vector2(float(hj[0]) - float(dj[0]), float(hj[2]) - float(dj[2])).length()
+			yaw = rad_to_deg(atan2(-(float(hj[0]) - float(dj[0])), -(float(hj[2]) - float(dj[2]))))
+			pitch = rad_to_deg(atan2(float(hj[1]) - (float(dj[1]) + ojo), dxz))
+			print(v[0], " cam=", pos, " yaw=", yaw, " pitch=", pitch)
+		elif v[1] is String and v[1] == "mira":
+			var d: Vector2 = v[2]
+			var h: Vector2 = v[3]
+			ojo = float(v[5])
+			pos = Vector3(d.x, 0.0, d.y)
+			var q3 := PhysicsRayQueryParameters3D.create(Vector3(pos.x, 200, pos.z), Vector3(pos.x, -200, pos.z))
+			var r3: Dictionary = espacio.intersect_ray(q3)
+			pos.y = (r3["position"] as Vector3).y if not r3.is_empty() else 0.0
+			var q4 := PhysicsRayQueryParameters3D.create(Vector3(h.x, 200, h.y), Vector3(h.x, -200, h.y))
+			var r4: Dictionary = espacio.intersect_ray(q4)
+			var yh: float = ((r4["position"] as Vector3).y if not r4.is_empty() else 0.0) + float(v[4])
+			yaw = rad_to_deg(atan2(-(h.x - d.x), -(h.y - d.y)))
+			pitch = rad_to_deg(atan2(yh - (pos.y + ojo), d.distance_to(h)))
 		elif v[1] is String:
 			pitch = float(v[3])
 			ojo = float(v[4])
