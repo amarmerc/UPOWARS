@@ -124,7 +124,7 @@ func _ejecutar() -> void:
 		q.exclude = [jugador.get_rid()]
 		q.transform = Transform3D(Basis.IDENTITY, pos + Vector3(0, 0.9 + 0.02, 0))
 		var choques: Array[Dictionary] = espacio.intersect_shape(q, 8)
-		comprobar("b2) cápsula libre en '%s'" % s["nombre"], choques.is_empty(),
+		comprobar("b2/k4) cápsula libre (sin árboles ni coches) en '%s'" % s["nombre"], choques.is_empty(),
 				"choques=%d" % choques.size())
 
 	# c) raycast horizontal desde el centro hacia +x (a 1,5 m sobre el terreno del origen, y_terreno del spawn
@@ -143,7 +143,7 @@ func _ejecutar() -> void:
 		await esperar_fisica(120)
 		var y: float = jugador.global_position.y
 		var yt: float = s["y_terreno"]
-		comprobar("d) jugador apoyado en '%s'" % s["nombre"],
+		comprobar("d/k4) jugador apoyado en '%s'" % s["nombre"],
 				jugador.is_on_floor() and absf(y - yt) <= TOL_TERRENO,
 				"y=%.3f y_terreno=%.3f on_floor=%s" % [y, yt, jugador.is_on_floor()])
 		jugador.activo = false
@@ -265,6 +265,46 @@ func _ejecutar() -> void:
 				llegado and yf >= float(b[1]) - 0.5,
 				"y_final=%.2f y_cima=%.2f llegado=%s" % [yf, b[1], llegado])
 		jugador.activo = false
+
+	# k) vegetación y coches
+	#    (Godot quita el sufijo -col: arboles_troncos-col -> "arboles_troncos", coches-col -> "coches")
+	var troncos: Node = mapa.find_child("arboles_troncos", true, false)
+	var copas: Array[Node] = mapa.find_children("arboles_copas*", "MeshInstance3D", true, false)
+	var n_coches_col: int = 0
+	var coches_mallas: int = 0
+	for h: Node in mapa.find_children("coches_*", "MeshInstance3D", true, false):
+		coches_mallas += 1
+		if not h.find_children("*", "StaticBody3D", true, false).is_empty():
+			n_coches_col += 1
+	comprobar("k1) existen arboles_troncos-col y coches-col (coches_<color>-col) con colisión",
+			troncos is MeshInstance3D and troncos.find_children("*", "StaticBody3D", true, false).size() > 0
+			and n_coches_col >= 3,
+			"nodos de coches con colisión=%d de %d" % [n_coches_col, coches_mallas])
+	var copas_con_col: int = 0
+	for c: Node in copas:
+		copas_con_col += c.find_children("*", "StaticBody3D", true, false).size()
+	comprobar("k1b) las copas (arboles_copas*) existen y NO tienen colisión", copas.size() >= 1 and copas_con_col == 0,
+			"nodos de copas=%d, cuerpos de colisión=%d" % [copas.size(), copas_con_col])
+	var n_arb: int = int(datos.get("n_arboles", 0))
+	var n_coc: int = int(datos.get("n_coches", 0))
+	comprobar("k2) árboles >= 100 y coches >= 50", n_arb >= 100 and n_coc >= 50,
+			"arboles=%d coches=%d (parking=%d, carretera=%d)" % [n_arb, n_coc, int(datos.get("n_coches_parking", 0)),
+			int(datos.get("n_coches_carretera", 0))])
+	var tc: Dictionary = datos.get("test_coche", {})
+	comprobar("k3-0) datos test_coche presentes", not tc.is_empty())
+	if not tc.is_empty():
+		var rc3: Dictionary = primer_choque(espacio, jugador, tc)
+		comprobar("k3) rayo horizontal a 0,8 m hacia el coche %d (%s) choca con él" % [int(tc["id"]), tc["origen"]],
+				dueno(rc3).begins_with("coches_"), "choca en %s" % describir(rc3))
+	var ta: Dictionary = datos.get("test_arbol", {})
+	comprobar("k5-0) datos test_arbol presentes", not ta.is_empty())
+	if not ta.is_empty():
+		var rt: Dictionary = primer_choque(espacio, jugador, ta["rayo_tronco"])
+		comprobar("k5) rayo horizontal a 1 m hacia un tronco choca con arboles_troncos", dueno(rt) == "arboles_troncos",
+				"choca en %s" % describir(rt))
+		var rcp: Dictionary = primer_choque(espacio, jugador, ta["rayo_copa"])
+		comprobar("k6) rayo horizontal por el centro de la copa (a 75 % de la altura) no choca con nada", rcp.is_empty(),
+				"choca en %s" % describir(rcp))
 
 	print("RESULTADO: %s (%d fallos)" % ["PASS" if fallos == 0 else "FAIL", fallos])
 	main.queue_free()

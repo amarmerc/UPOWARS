@@ -63,11 +63,101 @@
     "zonas_aparcamiento": 18,
     "muros-col": 31,
     "vallas-col": 1,
-    "pistas_padel": 2
+    "pistas_padel": 2,
+    "arboles_copas_detectadas": 3920,
+    "arboles_descartados": 2064,
+    "arboles_arboles": 1856,
+    "coches": 1406,
+    "coches_parking": 1391,
+    "coches_carretera": 15
+  },
+  "props": {
+    "semilla": 1,
+    "ocupacion": 0.55,
+    "coches_carretera": 15,
+    "sin_arboles": false,
+    "sin_coches": false,
+    "huella": "236946423a399125",
+    "arboles": 1856,
+    "coches": 1406,
+    "por_parking": {
+      "P3": {
+        "plazas": 136,
+        "coches": 76
+      },
+      "P10": {
+        "plazas": 248,
+        "coches": 137
+      },
+      "P9": {
+        "plazas": 46,
+        "coches": 21
+      },
+      "P5": {
+        "plazas": 104,
+        "coches": 51
+      },
+      "P6": {
+        "plazas": 134,
+        "coches": 74
+      },
+      "sin_nombre_142264531": {
+        "plazas": 13,
+        "coches": 9
+      },
+      "P7": {
+        "plazas": 58,
+        "coches": 38
+      },
+      "P8": {
+        "plazas": 89,
+        "coches": 54
+      },
+      "P14": {
+        "plazas": 81,
+        "coches": 40
+      },
+      "P16": {
+        "plazas": 35,
+        "coches": 19
+      },
+      "P15": {
+        "plazas": 175,
+        "coches": 97
+      },
+      "P12": {
+        "plazas": 183,
+        "coches": 97
+      },
+      "P1": {
+        "plazas": 184,
+        "coches": 106
+      },
+      "P11": {
+        "plazas": 690,
+        "coches": 381
+      },
+      "P2": {
+        "plazas": 194,
+        "coches": 107
+      },
+      "P4": {
+        "plazas": 84,
+        "coches": 42
+      },
+      "sin_nombre_1372454310": {
+        "plazas": 24,
+        "coches": 14
+      },
+      "P18": {
+        "plazas": 45,
+        "coches": 28
+      }
+    }
   },
   "verificacion": {
-    "nodos": 111,
-    "triangulos": 688632,
+    "nodos": 123,
+    "triangulos": 1112240,
     "bounds": [
       [
         -768.0,
@@ -82,6 +172,8 @@
     ],
     "edificios": 92,
     "no_watertight": [],
-    "triangulos_terreno": 415004
+    "triangulos_terreno": 415004,
+    "triangulos_arboles": 193024,
+    "triangulos_coches": 230584
   }
 }

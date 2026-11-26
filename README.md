@@ -86,6 +86,46 @@ Además de `export/preview.png` (con curvas de nivel cada 1 m, cota sobre el niv
 `generar_spawns.py` escribe y = terreno + 0,1 en los spawns y datos de test relativos al terreno (rayos a 1,5 m sobre
 él, troceados en tramos si el terreno estorbaría; ver su docstring).
 
+### Vegetación y coches
+
+`generar_blockout.py` añade (módulos `scripts/vegetacion.py`, `scripts/coches.py` y `scripts/entorno.py`, este último con los
+obstáculos comunes):
+
+- **Árboles** desde `data/raw/ndsm_veg_lidar_1m.tif`: nDSM suavizado (gauss 1 px), máximos locales en ventana de 5 m con
+  altura >= 3 m, separación mínima 3 m (se conserva el más alto), radio de copa = región conectada por encima del 50 % de la
+  altura (acotado por una regla altura-radio y a 1,5-7 m). Se descartan los troncos dentro de edificios (+1 m), sobre
+  caminos, aparcamientos, agua o pistas, a < 2 m de pilares y muros/vallas, a < 3 m de un spawn y fuera del muro límite.
+  Tronco = prisma de 8 lados hasta el 45 % de la altura (radio 0,15-0,3 m); copa = icosfera de 1 nivel escalada entre el
+  35 % y el 100 %. Nodos: `arboles_troncos-col` (con colisión) y `arboles_copas`, `arboles_copas_2`, `arboles_copas_3`
+  (sin colisión; uno por tono de verde, porque Godot no usa el color de vértice del glTF como albedo).
+- **Coches** (props estáticos con colisión): carrocería + habitáculo + cristales + 4 ruedas, 6 colores apagados. Nodos
+  `coches_<color>-col`, `coches_ruedas-col` (con colisión) y `coches_cristales`. Aparcamientos (todos los `amenity=parking`):
+  filas de plazas de 2,5 x 5 m en doble fila con pasillo de 6 m dentro del polígono con 1 m de margen (se elige la
+  orientación y fase con más plazas útiles), ocupación aleatoria; bajo marquesinas solo con >= 2,1 m de galibo; evitan
+  pilares (0,5 m), árboles, edificios, muros y spawns (5 m). Carreteras: coches aparcados en el borde de vías
+  service/residential (a la derecha del sentido de la vía) y alguno parado en una tertiary, separados >= 40 m y a >= 15 m
+  de cruces y rotondas. Cada coche se apoya en el terreno (centro = media de las 4 ruedas, inclinado según su plano) y no se
+  coloca donde el terreno se aparta > 25 cm de ese plano o supera 10 grados.
+- `export/coches.json`: posición (juego), `yaw_deg` (rotación Y de Godot), `pitch_deg`, `roll_deg`, color y origen
+  (`parking P11`, `carretera`...) de cada coche, por si se quieren editar.
+- Previews: `export/preview.png` dibuja las copas (círculos verdes) y los coches (rectángulos); `export/zoom_aparcamiento.png`
+  amplía el aparcamiento P11.
+
+Opciones (comunes a `generar_blockout.py` y `generar_spawns.py`; usa las mismas en los dos: `generar_spawns.py` reconstruye
+árboles y coches y aborta si no coinciden con el blockout):
+
+- `--sin-arboles`: no genera árboles. `--sin-coches`: no genera coches.
+- `--ocupacion F`: fracción de plazas ocupadas (0,55 por defecto).
+- `--coches-carretera N`: coches en carretera (15 por defecto).
+- `--semilla N`: semilla del azar (tonos, ocupación, colores, pequeñas variaciones de posición); misma semilla = mismo mapa (1).
+- `--altura-min-arbol M` (3) y `--sep-arboles M` (3): sube cualquiera de los dos para tener menos árboles.
+- `--ndsm-veg RUTA`: nDSM de vegetación (por defecto `data/raw/ndsm_veg_lidar_1m.tif`).
+
+Árboles y coches evitan los puntos de `game/data/spawns.json` si existe (lo leen antes de que `generar_spawns.py` lo
+reescriba), y `generar_spawns.py` mueve al punto libre más cercano cualquier spawn bloqueado por un tronco o un coche.
+`spawns.json` lleva además `n_arboles`, `n_coches`, `test_coche` y `test_arbol` para el test de Godot. Orden recomendado
+tras cambiar opciones o datos: `generar_blockout.py`, `generar_spawns.py`, import de Godot y test.
+
 `generar_blockout.py` copia el .glb a `game/assets/mapa/` salvo que se pase `--no-copiar-godot`.
 Después de regenerar el mapa conviene volver a ejecutar `generar_spawns.py` y reimportar en Godot
 (abrir el editor o `--import`). Los spawns usan las mismas coordenadas que el glb

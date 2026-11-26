@@ -28,6 +28,12 @@ Uso: uv run python scripts/generar_blockout.py [--entrada data/raw/osm_upo.json]
      [--mdt data/raw/mdt_lidar_1m.tif] [--terreno mdt|plano] [--paso-terreno 1] [--paso-grueso 4] [--buffer-fino 8]
      [--suavizado-m 1]   (los valores por defecto viven en scripts/terreno.py)
      [--no-copiar-godot]   (por defecto copia el .glb a game/assets/mapa/)
+     [--sin-arboles] [--sin-coches] [--ocupacion 0.55] [--coches-carretera 15] [--semilla 1]
+     [--altura-min-arbol 3] [--sep-arboles 3]
+
+Vegetacion y coches (scripts/vegetacion.py, coches.py, entorno.py): arboles low-poly desde el nDSM de vegetacion LiDAR
+(`arboles_troncos-col` con colision y `arboles_copas*` sin ella, uno por tono de verde) y coches estaticos
+(`coches_<color>-col` con colision, `coches_ruedas-col`, `coches_cristales`) en los aparcamientos y algunas carreteras; ademas export/coches.json. Evitan los spawns de game/data/spawns.json si existe.
 """
 import argparse
 import csv
@@ -50,10 +56,15 @@ from shapely.ops import linemerge, polygonize, unary_union
 from shapely.validation import make_valid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coches as coc  # noqa: E402
+import entorno as ent  # noqa: E402
 import terreno as ter  # noqa: E402
+import vegetacion as veg  # noqa: E402
 
 CAMPUS_ID = 39935092
 DESTINO_GODOT = "game/assets/mapa/upo_blockout.glb"
+SPAWNS_JSON = "game/data/spawns.json"
+NDSM_VEG_DEFECTO = "data/raw/ndsm_veg_lidar_1m.tif"   # altura de la vegetacion sobre el suelo (LiDAR 2020, 1 m)
 PLANTA_M = 3.5
 PLANTAS_DEFECTO = 3
 ALTURA_DEFECTO = PLANTAS_DEFECTO * PLANTA_M
@@ -110,6 +121,8 @@ COLORES = {
     "limite": (255, 60, 60, int(0.15 * 255)),
     "cristal_padel": (150, 205, 255, int(0.35 * 255)),
 }
+COLORES.update(veg.COLORES_MATERIAL)
+COLORES.update(coc.COLORES_MATERIAL)
 
 
 # ---------------------------------------------------------------- utilidades
@@ -1077,6 +1090,134 @@ def construir(mapa, filas, pasos=(), pistas=(), T=None, lidar=None):
                            "terreno": T}
 
 
+# ---------------------------------------------------------------- vegetacion y coches
+def anadir_argumentos_props(ap):
+    """Opciones de arboles y coches (las comparten generar_blockout.py y generar_spawns.py: usa las mismas)."""
+    ap.add_argument("--ndsm-veg", default=NDSM_VEG_DEFECTO, help="nDSM de vegetacion LiDAR de 1 m")
+    ap.add_argument("--sin-arboles", action="store_true", help="no genera arboles")
+    ap.add_argument("--sin-coches", action="store_true", help="no genera coches")
+    ap.add_argument("--ocupacion", type=float, default=0.55, help="fraccion de plazas de aparcamiento ocupadas (0.55)")
+    ap.add_argument("--coches-carretera", type=int, default=15, help="coches aparcados en carreteras (15)")
+    ap.add_argument("--semilla", type=int, default=1, help="semilla del azar (tonos, ocupacion, colores, jitter)")
+    ap.add_argument("--altura-min-arbol", type=float, default=veg.ALT_MIN_M, help="altura minima de un arbol (m)")
+    ap.add_argument("--sep-arboles", type=float, default=veg.SEP_MIN_M, help="separacion minima entre troncos (m)")
+
+
+def construir_props(mapa, geo, a, spawns_json=SPAWNS_JSON, spawns=None):
+    """Arboles y coches sobre el terreno de `geo`. `spawns`: lista de (x, norte) a evitar; por defecto los de
+    game/data/spawns.json (si no existe, ninguno). Devuelve dict con `entorno`, `arboles`, `coches`, `piezas`,
+    `stats` y `huella` (hash de las posiciones: generar_spawns.py comprueba que coincide con el blockout)."""
+    import hashlib
+    if spawns is None:
+        spawns = ent.leer_spawns(spawns_json)
+    entorno = ent.Entorno(mapa, geo, spawns, MARGEN_LIMITE)
+    piezas, stats, arboles, lista = [], {}, [], []
+    if not a.sin_arboles:
+        rng = np.random.default_rng([a.semilla, 1])
+        arboles, st = veg.generar_arboles(entorno, a.ndsm_veg, mapa.E0, mapa.N0, rng, a.altura_min_arbol, a.sep_arboles)
+        stats.update({"arboles_" + k: v for k, v in st.items()})
+        piezas.extend(veg.piezas_arboles(arboles))
+    if not a.sin_coches:
+        rng = np.random.default_rng([a.semilla, 2])
+        lista, st = coc.generar_coches(mapa, entorno, arboles, rng, a.ocupacion, a.coches_carretera)
+        stats.update(st)
+        piezas.extend(coc.piezas_coches(lista))
+    h = hashlib.sha1()
+    for t in arboles:
+        h.update(f"{t['x']:.2f},{t['y']:.2f},{t['h']:.1f};".encode())
+    for c in lista:
+        h.update(f"{c['pos']},{c['yaw_deg']};".encode())
+    return {"entorno": entorno, "arboles": arboles, "coches": lista, "piezas": piezas, "stats": stats,
+            "huella": h.hexdigest()[:16]}
+
+
+def dibujar_props(ax, props):
+    """Arboles (circulos verdes translucidos del radio de copa) y coches (rectangulos) en la vista cenital."""
+    from matplotlib.collections import PatchCollection
+    from matplotlib.patches import Circle, Polygon as MPoly
+    arb = props["arboles"]
+    if arb:
+        ax.add_collection(PatchCollection([Circle((t["x"], t["y"]), t["r_copa"]) for t in arb],
+                                          facecolor=(0.1, 0.5, 0.15, 0.35), edgecolor=(0.05, 0.3, 0.08, 0.6),
+                                          linewidth=0.3, zorder=3.5))
+    if props["coches"]:
+        rs = [coc.rect_coche(c) for c in props["coches"]]
+        cols = [tuple(v / 255 for v in coc.COLORES[c["color"]][0]) for c in props["coches"]]
+        ax.add_collection(PatchCollection([MPoly(np.asarray(r.exterior.coords)[:-1]) for r in rs], facecolor=cols,
+                                          edgecolor="black", linewidth=0.4, zorder=4.5))
+
+
+def zoom_aparcamiento(ruta, geo, mapa, props, nombre="P11", margen=12.0):
+    """Vista cenital ampliada de un aparcamiento (por `ref`) con sus coches y los arboles de alrededor."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import PathPatch
+    from matplotlib.path import Path as MPath
+    w = next((w for w in mapa.ways.values() if w.get("tags", {}).get("amenity") == "parking"
+              and coc._nombre_parking(w) == nombre), None)
+    if w is None:
+        print(f"AVISO: no hay aparcamiento {nombre}; no se genera {ruta}", file=sys.stderr)
+        return
+    poly = mapa.poligono(w)
+    x0, y0, x1, y1 = poly.buffer(margen).bounds
+    ventana = box(x0, y0, x1, y1)
+    fig, ax = plt.subplots(figsize=(15, 15 * (y1 - y0) / (x1 - x0)), dpi=100)
+    ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, fc="#e9e1cf", ec="none"))
+    col_z = {"verde": "#a8d08d", "agua": "#7fb2e0", "pista": "#d98a73", "aparcamiento": "#bdbdbd"}
+
+    def parche(g, **kw):
+        ps = []
+        for p in validos(g):
+            vs, cs = [], []
+            for anillo in [p.exterior, *p.interiors]:
+                c = np.asarray(anillo.coords)
+                vs.extend(c)
+                cs.extend([MPath.MOVETO] + [MPath.LINETO] * (len(c) - 2) + [MPath.CLOSEPOLY])
+            ps.append(PathPatch(MPath(vs, cs), **kw))
+        return ps
+
+    for cat, g in geo["zonas"].items():
+        for p in parche(g.intersection(ventana), fc=col_z[cat], ec="none", zorder=1):
+            ax.add_patch(p)
+    for hw, g in geo["caminos"].items():
+        for p in parche(g.intersection(ventana), fc="#555555" if hw in ASFALTO else "#b5b5b5", ec="none", zorder=2):
+            ax.add_patch(p)
+    for e in geo["edificios"]:
+        if e["poly"].intersects(ventana):
+            kw = dict(fc="#c8c8cd", ec="black", lw=0.8, zorder=3)
+            if e["forma"] == "techo":
+                kw.update(fc="#555860", alpha=0.5, hatch="//")
+            for p in parche(e["poly"], **kw):
+                ax.add_patch(p)
+            for px, py in e["pilares"]:
+                ax.plot(px, py, "s", color="#222222", ms=3, zorder=4)
+    for p in parche(poly, fc="none", ec="red", lw=1.5, ls="--", zorder=4):
+        ax.add_patch(p)
+    dibujar_props(ax, {**props,
+                       "arboles": [t for t in props["arboles"] if ventana.contains(Point(t["x"], t["y"]))],
+                       "coches": [c for c in props["coches"] if ventana.contains(Point(c["pos"][0], -c["pos"][2]))]})
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(y0, y1)
+    ax.set_aspect("equal")
+    ax.grid(alpha=0.25)
+    n_c = sum(1 for c in props["coches"] if c["origen"] == f"parking {nombre}")
+    ax.set_title(f"Aparcamiento {nombre}: {n_c} coches (norte arriba); verde = copas, rojo discontinuo = contorno OSM")
+    fig.tight_layout()
+    fig.savefig(ruta)
+    plt.close(fig)
+    print(f"Zoom: {ruta}")
+
+
+def guardar_coches(ruta, props, a):
+    Path(ruta).write_text(json.dumps(
+        {"ejes": "x=este, y=arriba, z=-norte (metros); yaw_deg = rotacion Y de Godot (0 = morro hacia -Z = norte); "
+                 "pitch/roll = inclinacion segun el terreno; pos = centro del coche a nivel del suelo",
+         "semilla": a.semilla, "ocupacion": a.ocupacion, "coches_carretera": a.coches_carretera,
+         "coches": props["coches"]}, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"Coches: {ruta}")
+
+
 # ---------------------------------------------------------------- preview
 def preview(ruta, geo, extra=None):
     import matplotlib
@@ -1523,11 +1664,14 @@ def verificar(ruta):
         print("   no watertight:", n)
     tri_terreno = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("terreno"))
     print(f"[verificacion] triangulos del terreno: {tri_terreno}")
+    tri_arboles = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("arboles"))
+    tri_coches = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("coches"))
+    print(f"[verificacion] triangulos de arboles: {tri_arboles} | de coches: {tri_coches}")
     mats = {sc.geometry[sc.graph[n][1]].visual.material.name for n in nombres}
     print(f"[verificacion] materiales distintos: {len(mats)} {sorted(mats)}")
     return {"nodos": len(nombres), "triangulos": tris, "bounds": b.tolist(),
             "edificios": len(edif), "no_watertight": malos + malos_l,
-            "triangulos_terreno": tri_terreno}
+            "triangulos_terreno": tri_terreno, "triangulos_arboles": tri_arboles, "triangulos_coches": tri_coches}
 
 
 def main():
@@ -1541,6 +1685,7 @@ def main():
     ap.add_argument("--copiar-godot", action=argparse.BooleanOptionalAction, default=True,
                     help="copia el .glb a game/assets/mapa/ (--no-copiar-godot lo desactiva)")
     ter.anadir_argumentos(ap)
+    anadir_argumentos_props(ap)
     a = ap.parse_args()
 
     mapa = Mapa(a.entrada)
@@ -1555,6 +1700,11 @@ def main():
     lidar = Lidar(a.mdt, NDSM_DEFECTO, mapa.E0, mapa.N0)
     piezas, stats, geo = construir(mapa, filas, pasos, cargar_pistas(a.pistas), T, lidar)
     guardar_alturas(a.alturas, filas)    # nivel / cota_abs / notas de las losas calculados
+
+    props = construir_props(mapa, geo, a)
+    print("Props:", {k: v for k, v in props["stats"].items() if k != "por_parking"})
+    stats.update({k: v for k, v in props["stats"].items() if k != "por_parking"})
+    piezas = piezas + props["piezas"]
 
     escena = trimesh.Scene()
     for nombre, mesh, clave in piezas:
@@ -1589,7 +1739,13 @@ def main():
                     "bbox_malla_m": bbox_malla,
                     "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"},
         "recuentos": dict(stats),
+        "props": {"semilla": a.semilla, "ocupacion": a.ocupacion, "coches_carretera": a.coches_carretera,
+                  "sin_arboles": a.sin_arboles, "sin_coches": a.sin_coches, "huella": props["huella"],
+                  "arboles": len(props["arboles"]), "coches": len(props["coches"]),
+                  "por_parking": props["stats"].get("por_parking", {})},
     }
+    if not a.sin_coches:
+        guardar_coches(salida.with_name("coches.json"), props, a)
     meta_ruta = salida.with_name(salida.stem + "_meta.json")
     meta_ruta.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Meta: {meta_ruta}")
@@ -1600,7 +1756,8 @@ def main():
     meta_ruta.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
 
     if not a.sin_preview:
-        preview(salida.with_name("preview.png"), geo)
+        preview(salida.with_name("preview.png"), geo, extra=lambda ax: dibujar_props(ax, props))
+        zoom_aparcamiento(salida.with_name("zoom_aparcamiento.png"), geo, mapa, props, "P11")
         zoom_paso(salida.with_name("zoom_22_24.png"), geo, mapa, "22-24")
         zoom_tunel(salida.with_name("zoom_37.png"), geo, 142276198)
         if not T.es_plano:

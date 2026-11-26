@@ -457,5 +457,58 @@
       592.0
     ],
     "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"
+  },
+  "n_arboles": 1856,
+  "n_coches": 1406,
+  "n_coches_parking": 1391,
+  "n_coches_carretera": 15,
+  "test_coche": {
+    "id": 1336,
+    "origen": "parking P4",
+    "color": "negro",
+    "desde": [
+      -190.45,
+      -2.774,
+      -144.07
+    ],
+    "hasta": [
+      -194.56,
+      -2.774,
+      -141.22
+    ]
+  },
+  "test_arbol": {
+    "descripcion": "arbol aislado en (234.5, 401.8), h=15.8 m: rayo al tronco (choca) y por la copa (no choca)",
+    "pos": [
+      234.47,
+      8.229,
+      401.79
+    ],
+    "altura_m": 15.77,
+    "r_copa_m": 4.03,
+    "rayo_tronco": {
+      "desde": [
+        234.47,
+        9.229,
+        398.79
+      ],
+      "hasta": [
+        234.47,
+        9.229,
+        401.79
+      ]
+    },
+    "rayo_copa": {
+      "desde": [
+        234.47,
+        20.053,
+        407.82
+      ],
+      "hasta": [
+        234.47,
+        20.053,
+        395.76
+      ]
+    }
   }
 }

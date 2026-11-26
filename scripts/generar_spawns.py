@@ -22,6 +22,12 @@ extremo; si el rayo recto tocaria el terreno (loma intermedia) se trocea en tram
 (5 puntos libres con cotas distintas: la y esperada del terreno) y "test_subida" (tramo de maxima pendiente
 para que el test haga subir al jugador).
 
+Arboles y coches (generar_blockout.py: vegetacion.py y coches.py): los props se reconstruyen aqui con las mismas
+opciones (--semilla, --ocupacion, --coches-carretera, --sin-arboles, ...; se comprueba que coinciden con el blockout) y
+ningun spawn puede quedar bloqueado por un tronco (r + 0,35 + 0,15 m) ni por un coche (0,5 m): si lo esta, se mueve
+al punto libre mas cercano. spawns.json lleva ademas "n_arboles", "n_coches" y "test_coche" (rayo horizontal a 0,8 m
+hacia un coche de un aparcamiento).
+
 Salidas: game/data/spawns.json y export/spawns_preview.png.
 Uso: uv run python scripts/generar_spawns.py [--entrada data/raw/osm_upo.json]
 """
@@ -38,6 +44,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points, polylabel, unary_union
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import coches as coc  # noqa: E402
 import generar_blockout as gb  # noqa: E402
 import terreno as ter  # noqa: E402
 
@@ -48,6 +55,9 @@ DIST_VALLA_MIN = 1.5      # a muros-col y vallas-col
 FACHADA_MIN, FACHADA_MAX = 5.0, 15.0
 DIST_FACHADA_IDEAL = 8.0
 DIST_PILAR_MIN = 1.0
+RADIO_JUGADOR = 0.35      # capsula del jugador
+HOLGURA_TRONCO = 0.15
+HOLGURA_COCHE = 0.5
 ID_PASILLO_CENTRAL = 1373541639   # techo del eje central (edificios 1 a 18)
 ID_MARQUESINA_LARGA = 321893434   # marquesina larga del 18 al 24 (building=roof, de oeste a este)
 ID_MARQUESINA_CORTA = 555538618   # marquesina corta que sale de la fachada sur del 24 y se une a la larga
@@ -123,6 +133,94 @@ def buscar_edificio(ctx, numero):
     if not c:
         raise SystemExit(f"No se encuentra el Edificio {numero} en el OSM/CSV")
     return max(c, key=lambda e: e["poly"].area)
+
+
+class Props:
+    """Troncos y coches contra los que se comprueba que un spawn queda libre."""
+
+    def __init__(self, props):
+        self.arboles = props["arboles"]
+        self.troncos = shapely.points([(t["x"], t["y"]) for t in self.arboles]) if self.arboles else np.zeros(0, object)
+        self.r_troncos = np.array([t["r_tronco"] for t in self.arboles])
+        self.rects = [coc.rect_coche(c) for c in props["coches"]]
+        self.arbol_coches = shapely.STRtree(self.rects) if self.rects else None
+        self.arbol_troncos = shapely.STRtree(self.troncos) if self.arboles else None
+
+    def bloqueado(self, p):
+        if self.arbol_troncos is not None:
+            for i in self.arbol_troncos.query(p.buffer(RADIO_JUGADOR + HOLGURA_TRONCO + 0.5)):
+                if self.troncos[i].distance(p) < self.r_troncos[i] + RADIO_JUGADOR + HOLGURA_TRONCO:
+                    return True
+        if self.arbol_coches is not None:
+            for i in self.arbol_coches.query(p.buffer(RADIO_JUGADOR + HOLGURA_COCHE)):
+                if self.rects[i].distance(p) < RADIO_JUGADOR + HOLGURA_COCHE:
+                    return True
+        return False
+
+
+def liberar(ctx, props, p):
+    """p si esta libre de troncos y coches; si no, el punto libre mas cercano (anillos de 0,5 m, hasta 25 m)."""
+    if not props.bloqueado(p):
+        return p, 0.0
+    for d in np.arange(0.5, 25.01, 0.5):
+        n = max(16, int(2 * math.pi * d / 0.5))
+        for k in range(n):
+            q = Point(p.x + d * math.cos(2 * math.pi * k / n), p.y + d * math.sin(2 * math.pi * k / n))
+            if ctx.libre(q) and not props.bloqueado(q):
+                return q, float(d)
+    raise SystemExit(f"No se encuentra un punto libre de arboles y coches junto a ({p.x:.1f}, {p.y:.1f})")
+
+
+def test_arbol(ctx, props, T):
+    """Un arbol aislado y llano para los tests de colision: rayo horizontal a ~1 m hacia el tronco (debe chocar con
+    arboles_troncos) y rayo horizontal por el centro de la copa (a ~75 % de la altura; no debe chocar: la copa no
+    tiene colision). Ambos sin nada mas cerca de 1,5 m (otros troncos, coches, edificios, vallas, pilares)."""
+    otros = props.troncos
+    mejor = None
+    for i, t in enumerate(props.arboles):
+        if not 6.0 <= t["h"] <= 16.0:
+            continue
+        c = Point(t["x"], t["y"])
+        yc = float(T.h(t["x"], t["y"]))
+        for k in range(8):
+            ang = k * math.pi / 4
+            u = (math.cos(ang), math.sin(ang))
+            ini = (t["x"] + 3.0 * u[0], t["y"] + 3.0 * u[1])
+            r = t["r_copa"] + 2.0
+            copa = LineString([(t["x"] - r * u[0], t["y"] - r * u[1]), (t["x"] + r * u[0], t["y"] + r * u[1])])
+            tronco = LineString([ini, (t["x"], t["y"])])
+            if not (ctx.zona_valida.contains(copa) and ctx.zona_valida.contains(tronco)):
+                continue
+            ok = True
+            for ln in (copa, tronco):
+                if ctx.huellas.distance(ln) < 1.5 or (ctx.barreras is not None and ctx.barreras.distance(ln) < 1.5)                         or (ctx.pilares is not None and ctx.pilares.distance(ln) < 1.5):
+                    ok = False
+                if any(props.rects[j].distance(ln) < 1.5 for j in props.arbol_coches.query(ln.buffer(1.5)))                         if props.arbol_coches is not None else False:
+                    ok = False
+                for j in props.arbol_troncos.query(ln.buffer(1.5)):
+                    if j != i and otros[j].distance(ln) < 1.5:
+                        ok = False
+            if not ok:
+                continue
+            ys = T.h(np.array([x for x, _ in copa.coords] + [ini[0]]), np.array([y for _, y in copa.coords] + [ini[1]]))
+            if float(np.abs(ys - yc).max()) > 0.3:
+                continue
+            score = float(np.abs(ys - yc).max())
+            if mejor is None or score < mejor[0]:
+                mejor = (score, i, ini, copa, yc)
+        if mejor is not None and mejor[0] < 0.05:
+            break
+    if mejor is None:
+        return None
+    _, i, ini, copa, yc = mejor
+    t = props.arboles[i]
+    g = lambda p, y: [round(p[0], 2), round(y, 3), round(-p[1], 2)]
+    (ax_, ay_), (bx_, by_) = copa.coords[0], copa.coords[1]
+    yk = yc + 0.75 * t["h"]
+    return {"descripcion": f"arbol aislado en ({t['x']:.1f}, {-t['y']:.1f}), h={t['h']:.1f} m: rayo al tronco (choca) y por la copa (no choca)",
+            "pos": g((t["x"], t["y"]), yc), "altura_m": round(t["h"], 2), "r_copa_m": round(t["r_copa"], 2),
+            "rayo_tronco": {"desde": g(ini, yc + 1.0), "hasta": g((t["x"], t["y"]), yc + 1.0)},
+            "rayo_copa": {"desde": g((ax_, ay_), yk), "hasta": g((bx_, by_), yk)}}
 
 
 def spawn_edificio(ctx, edif):
@@ -491,6 +589,7 @@ def main():
     ap.add_argument("--salida", default="game/data/spawns.json")
     ap.add_argument("--preview", default="export/spawns_preview.png")
     ter.anadir_argumentos(ap)
+    gb.anadir_argumentos_props(ap)
     a = ap.parse_args()
 
     mapa = gb.Mapa(a.entrada)
@@ -517,6 +616,14 @@ def main():
     _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas), T,
                             gb.Lidar(a.mdt, gb.NDSM_DEFECTO, mapa.E0, mapa.N0))
     ctx = Contexto(mapa, geo)
+    # arboles y coches: mismas opciones y mismos spawns de entrada que el blockout (spawns.json aun sin reescribir)
+    props = gb.construir_props(mapa, geo, a, a.salida)
+    mp = meta.get("props", {})
+    if mp.get("huella") != props["huella"]:
+        raise SystemExit(f"Los arboles/coches de estas opciones (huella {props['huella']}) no coinciden con "
+                         f"{a.meta} ({mp.get('huella')}): usa las mismas opciones o regenera el blockout")
+    print(f"Props: {len(props['arboles'])} arboles, {len(props['coches'])} coches")
+    obstaculos = Props(props)
 
     cand = [("entrada", "Entrada principal", *spawn_entrada(ctx))]
     for sid, nombre, num in EDIFICIOS:
@@ -525,6 +632,10 @@ def main():
 
     spawns = []
     for sid, nombre, p, yaw, info in cand:
+        p, movido = liberar(ctx, obstaculos, p)
+        if movido:
+            info = {**info, "movido_m": round(movido, 1), "motivo": "bloqueado por un arbol o un coche"}
+            print(f"AVISO: spawn {sid} movido {movido:.1f} m (arbol o coche)")
         x, z = float(p.x), float(-p.y)       # plano local (este, norte) -> glTF (x, z = -norte)
         yt = float(T.altura(x, z))
         spawns.append({"id": sid, "nombre": nombre, "pos": [round(x, 2), round(yt + Y_SPAWN, 3), round(z, 2)],
@@ -547,13 +658,21 @@ def main():
     print("test_terreno:", json.dumps(tt, ensure_ascii=False))
     ts = test_subida(ctx, T)
     print("test_subida:", json.dumps(ts, ensure_ascii=False))
+    tc = coc.candidato_test(props["coches"], T, props["entorno"]) if props["coches"] else None
+    print("test_coche:", json.dumps(tc, ensure_ascii=False))
+    ta = test_arbol(ctx, obstaculos, T) if props["arboles"] else None
+    print("test_arbol:", json.dumps(ta, ensure_ascii=False))
     salida.write_text(json.dumps({"ejes": meta["ejes_gltf"], "origen": meta["origen"], "spawns": spawns,
                                   "test_pasillo": tp, "test_paso_22_24": tp2,
                                   "test_pasillo_pilares": tp3, "test_tunel_37": tp4, "test_marquesinas": tm,
-                                  "test_terreno": tt, "test_subida": ts, "terreno": mt},
+                                  "test_terreno": tt, "test_subida": ts, "terreno": mt,
+                                  "n_arboles": len(props["arboles"]), "n_coches": len(props["coches"]),
+                                  "n_coches_parking": props["stats"].get("coches_parking", 0),
+                                  "n_coches_carretera": props["stats"].get("coches_carretera", 0),
+                                  "test_coche": tc, "test_arbol": ta},
                                  indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Escrito {salida}")
-    gb.preview(Path(a.preview), geo, extra=lambda ax: dibujar(ax, spawns))
+    gb.preview(Path(a.preview), geo, extra=lambda ax: (gb.dibujar_props(ax, props), dibujar(ax, spawns)))
 
 
 if __name__ == "__main__":
