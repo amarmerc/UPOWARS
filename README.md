@@ -69,13 +69,19 @@ exportada, de modo que spawns, caminos y colisión coinciden):
 - Caminos y zonas: mallas drapeadas, cada vértice a `altura + offset` (0,03 caminos; 0,013-0,016 zonas).
 - Edificios volumen: base a (cota mínima bajo la huella - 0,5 m), cubierta a (cota media + altura); soportales con el
   gálibo medido desde la cota media.
-- Techos (también `building=roof`, con `base_m` relativa al terreno local) y túneles: la losa sigue al terreno
-  (cara superior a `altura + altura_m`, grosor constante, watertight); pilares desde terreno - 0,3 m hasta la losa;
-  paredes de túnel desde terreno - 0,3 m hasta la losa.
+- Techos (también `building=roof`, con `base_m` relativa al terreno local) y túneles: columna `nivel` de
+  `data/alturas.csv`: `plano` (defecto) = losa horizontal con la cara superior a una cota absoluta constante
+  (`cota_abs`, m s.n.m.; si está rellena manda; si no, mediana de mdt+ndsm LiDAR en la huella encogida 1 m con
+  ndsm >= 2 m, o terreno máximo + altura si hay < 10 píxeles); `inclinado` (defecto del pasillo central) = plano de
+  mínimos cuadrados de esos píxeles; `terreno` = losa drapeada sobre el terreno. Grosor 0,4 m, watertight. Los
+  valores calculados se escriben en el CSV (nivel, cota_abs y notas) si estaban vacíos. Pilares desde terreno - 0,3 m
+  hasta la cara inferior de la losa en su punto; paredes de túnel desde terreno - 0,3 m hasta la losa. El generador
+  avisa si el terreno sobresale por encima de la cara inferior de la losa. `forma=excluir` omite el edificio.
 - Muros, vallas, pádel y `limite`: prismas con base a terreno - 0,3 m y cara superior a terreno + altura.
 
 Además de `export/preview.png` (con curvas de nivel cada 1 m, cota sobre el nivel del mar), se generan
-`export/perfil_pasillo.png` (perfil lateral del pasillo cubierto central: terreno, losa y pilares, medido sobre el .glb) y
+`export/perfil_pasillo.png` (perfil lateral del pasillo cubierto central: terreno, losa y pilares, medido sobre el .glb),
+`export/perfil_marquesinas.png` (marquesinas 321893434 y 555538618, igual) y
 `export/perfil_escaleras.png` (las dos escaleras OSM 1373674173 y 1373674174: MDT de 5 m, MDT de 1 m y malla final).
 `generar_spawns.py` escribe y = terreno + 0,1 en los spawns y datos de test relativos al terreno (rayos a 1,5 m sobre
 él, troceados en tramos si el terreno estorbaría; ver su docstring).

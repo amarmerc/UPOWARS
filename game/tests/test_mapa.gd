@@ -162,7 +162,7 @@ func _ejecutar() -> void:
 		qv.exclude = [jugador.get_rid()]
 		var vhit: Dictionary = espacio.intersect_ray(qv)
 		var yv: float = (vhit["position"] as Vector3).y if not vhit.is_empty() else NAN
-		comprobar("e2) rayo vertical choca con la losa del techo (que sigue al terreno)",
+		comprobar("e2) rayo vertical choca con la losa inclinada del pasillo",
 				not vhit.is_empty() and yv >= float(rv["techo_y_min"]) - 0.15 and yv <= float(rv["techo_y_max"]) + 0.15,
 				"y=%.3f esperado [%.3f, %.3f] collider=%s" % [yv, rv["techo_y_min"], rv["techo_y_max"], dueno(vhit)])
 
@@ -174,6 +174,47 @@ func _ejecutar() -> void:
 		var hf: Dictionary = primer_choque(espacio, jugador, tp2["rayo_horizontal"])
 		comprobar("f1) rayo a 1,5 m por el eje de la franja 22-24 llega al extremo este sin chocar", hf.is_empty(),
 				"choca en %s" % describir(hf))
+
+	# j) marquesinas 18-24 (building=roof, losa plana): la larga a una cota constante y la corta a su misma cota
+	var tm: Dictionary = datos.get("test_marquesinas", {})
+	comprobar("j0) datos test_marquesinas presentes", tm.has("larga") and tm.has("corta"))
+	if tm.has("larga") and tm.has("corta"):
+		var medias: Dictionary = {}
+		for clave: String in ["larga", "corta"]:
+			var ys_m: Array[float] = []
+			var ok_dueno: bool = true
+			var det: String = ""
+			for pt: Dictionary in tm[clave]["puntos"]:
+				var d_: Array = pt["desde"]
+				var h_: Array = pt["hasta"]
+				var qm := PhysicsRayQueryParameters3D.create(Vector3(d_[0], d_[1], d_[2]), Vector3(h_[0], h_[1], h_[2]))
+				qm.exclude = [jugador.get_rid()]
+				var rm: Dictionary = espacio.intersect_ray(qm)
+				var ym: float = (rm["position"] as Vector3).y if not rm.is_empty() else NAN
+				ys_m.append(ym)
+				ok_dueno = ok_dueno and dueno(rm).begins_with("edif_%d_" % int(tm[clave]["id"]))
+				det += " %.3f" % ym
+			var mn: float = ys_m.min()
+			var mx: float = ys_m.max()
+			var media: float = (mn + mx) / 2.0
+			medias[clave] = media
+			if clave == "larga":
+				comprobar("j1) 5 rayos verticales bajo la marquesina larga chocan con su losa y la cota varía < 0,05 m",
+						ys_m.size() == 5 and ok_dueno and not is_nan(mn) and mx - mn < 0.05,
+						"y=[%s ] dispersión=%.4f" % [det, mx - mn])
+			else:
+				var dif: float = absf(media - float(medias["larga"]))
+				comprobar("j2) la losa de la marquesina corta está a la cota de la larga (±0,05 m)",
+						ok_dueno and not is_nan(mn) and mx - mn < 0.05 and dif <= 0.05,
+						"y=[%s ] media_corta=%.3f media_larga=%.3f dif=%.4f" % [det, media, medias["larga"], dif])
+	# j3) el bloque 1373674172 (excluido) ya no existe y la franja 22-24 sigue libre
+	var hay_bloque: bool = false
+	for h: Node in mapa.find_children("*", "MeshInstance3D", true, false):
+		if str(h.name).begins_with("edif_1373674172"):
+			hay_bloque = true
+	var hf3: Dictionary = primer_choque(espacio, jugador, tp2["rayo_horizontal"]) if not tp2.is_empty() else {"x": 1}
+	comprobar("j3) franja 22-24 libre y sin el bloque 1373674172", not hay_bloque and hf3.is_empty(),
+			"bloque_presente=%s choque=%s" % [hay_bloque, describir(hf3) if hf3.has("collider") else "nada"])
 
 	# g) cerramiento de las pistas de pádel
 	# (Godot quita el sufijo -col del nombre del nodo y le añade un StaticBody3D hijo: padel-col -> "padel")

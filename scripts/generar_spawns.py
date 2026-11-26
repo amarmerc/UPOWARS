@@ -49,6 +49,8 @@ FACHADA_MIN, FACHADA_MAX = 5.0, 15.0
 DIST_FACHADA_IDEAL = 8.0
 DIST_PILAR_MIN = 1.0
 ID_PASILLO_CENTRAL = 1373541639   # techo del eje central (edificios 1 a 18)
+ID_MARQUESINA_LARGA = 321893434   # marquesina larga del 18 al 24 (building=roof, de oeste a este)
+ID_MARQUESINA_CORTA = 555538618   # marquesina corta que sale de la fachada sur del 24 y se une a la larga
 PAREJA_TEST = (8, 9)
 ID_TUNEL_37 = 142276198
 ALT_RAYO = 1.5            # altura de los rayos de test sobre el terreno
@@ -244,9 +246,63 @@ def test_pasillo(ctx, T):
     return {"descripcion": f"pasillo central (techo {ID_PASILLO_CENTRAL}) entre los edificios {PAREJA_TEST[0]} y {PAREJA_TEST[1]}",
             "rayo_horizontal": rayo_sobre_terreno(T, (a2[0], -a2[1]), (b2[0], -b2[1])),
             "rayo_vertical": {"desde": g(m, hm + ALT_RAYO), "hasta": g(m, hm + 30.0),
-                              "techo_y_min": round(hm + techo["altura"] - gb.GROSOR_TECHO, 3),
-                              "techo_y_max": round(hm + techo["altura"], 3)},
+                              "techo_y_min": round(float(techo["losa"]["bot"](m[0], m[1])), 3),
+                              "techo_y_max": round(float(techo["losa"]["top"](m[0], m[1])), 3)},
             "ancho_pasillo_m": round(ancho, 1)}
+
+
+def _puntos_bajo_losa(ctx, e, fracciones, T):
+    """Un punto por fraccion del eje largo del techo `e`, libre de pilares y de edificios (>1 m) y a >1 m del borde de la
+    losa; si el punto exacto no vale se busca el mas cercano. Devuelve [(x, norte)] en el plano local."""
+    poly = e["poly"]
+    cs = list(poly.minimum_rotated_rectangle.exterior.coords)
+    l0, l1 = (cs[0], cs[1]) if math.dist(cs[0], cs[1]) > math.dist(cs[1], cs[2]) else (cs[1], cs[2])
+    L = math.dist(l0, l1)
+    ux, uy = (l1[0] - l0[0]) / L, (l1[1] - l0[1]) / L
+    nx, ny = -uy, ux
+    c = poly.centroid
+    interior = poly.buffer(-1.0)
+    volumenes = unary_union([q["poly"] for q in ctx.edificios if q["forma"] != "techo"])
+    s0 = (c.x - l0[0]) * ux + (c.y - l0[1]) * uy       # abscisa del centroide sobre el eje
+    out = []
+    for f in fracciones:
+        s_t = L * f
+        mejor = None
+        for ds in np.arange(0.0, 20.0, 0.5):
+            for sg in ((1, -1) if ds else (1,)):
+                for dn in np.arange(-4.0, 4.01, 0.5):
+                    s = s_t + sg * ds
+                    p = Point(l0[0] + ux * s + nx * dn, l0[1] + uy * s + ny * dn)
+                    if not interior.contains(p) or volumenes.distance(p) < 1.0:
+                        continue
+                    if ctx.pilares is not None and ctx.pilares.distance(p) < 1.0:
+                        continue
+                    d = ds + abs(dn) * 0.01
+                    if mejor is None or d < mejor[0]:
+                        mejor = (d, p)
+            if mejor is not None:
+                break
+        if mejor is None:
+            raise SystemExit(f"No hay punto libre bajo la losa {e['id']} (fraccion {f})")
+        out.append((mejor[1].x, mejor[1].y))
+    return out
+
+
+def test_marquesinas(ctx, T):
+    """Marquesina larga (5 puntos repartidos) y corta (3 puntos): rayo vertical hacia arriba desde 0,3 m sobre el
+    terreno; debe chocar con la cara inferior de la losa, y todas a la misma cota (la corta se une a la larga)."""
+    res = {"descripcion": "marquesinas 18-24: losa plana a una cota constante; la corta al mismo nivel que la larga"}
+    for clave, wid, fr in (("larga", ID_MARQUESINA_LARGA, (0.1, 0.3, 0.5, 0.7, 0.9)),
+                           ("corta", ID_MARQUESINA_CORTA, (0.25, 0.5, 0.75))):
+        e = next(q for q in ctx.edificios if q["id"] == wid)
+        pts = []
+        for x, y in _puntos_bajo_losa(ctx, e, fr, T):
+            h = float(T.h(x, y))
+            pts.append({"desde": [round(x, 2), round(h + 0.3, 3), round(-y, 2)],
+                        "hasta": [round(x, 2), round(h + 30.0, 3), round(-y, 2)],
+                        "y_esperada": round(float(e["losa"]["bot"](x, y)), 3)})
+        res[clave] = {"id": wid, "cota_abs": e["losa"]["cota_abs"], "puntos": pts}
+    return res
 
 
 def rayo_sobre_terreno(T, p0, p1):
@@ -458,7 +514,8 @@ def main():
     if dif:
         raise SystemExit(f"El terreno ({T.info()}) no coincide con {a.meta} ({mt}) en {dif}; "
                          "usa las mismas opciones que generar_blockout.py o regenera el blockout")
-    _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas), T)
+    _, _, geo = gb.construir(mapa, filas, gb.cargar_pasos(a.pasos), gb.cargar_pistas(a.pistas), T,
+                            gb.Lidar(a.mdt, gb.NDSM_DEFECTO, mapa.E0, mapa.N0))
     ctx = Contexto(mapa, geo)
 
     cand = [("entrada", "Entrada principal", *spawn_entrada(ctx))]
@@ -484,13 +541,15 @@ def main():
     print("test_tunel_37:", json.dumps(tp4, ensure_ascii=False))
     tp2 = test_paso_22_24(geo, T)
     print("test_paso_22_24:", json.dumps(tp2, ensure_ascii=False))
+    tm = test_marquesinas(ctx, T)
+    print("test_marquesinas:", json.dumps(tm, ensure_ascii=False))
     tt = test_terreno(ctx, T)
     print("test_terreno:", json.dumps(tt, ensure_ascii=False))
     ts = test_subida(ctx, T)
     print("test_subida:", json.dumps(ts, ensure_ascii=False))
     salida.write_text(json.dumps({"ejes": meta["ejes_gltf"], "origen": meta["origen"], "spawns": spawns,
                                   "test_pasillo": tp, "test_paso_22_24": tp2,
-                                  "test_pasillo_pilares": tp3, "test_tunel_37": tp4,
+                                  "test_pasillo_pilares": tp3, "test_tunel_37": tp4, "test_marquesinas": tm,
                                   "test_terreno": tt, "test_subida": ts, "terreno": mt},
                                  indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Escrito {salida}")

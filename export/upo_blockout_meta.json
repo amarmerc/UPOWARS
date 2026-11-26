@@ -40,8 +40,11 @@
     "bbox_malla_orden": "x_min, norte_min, x_max, norte_max"
   },
   "recuentos": {
-    "edificios": 73,
-    "edificios_partidos": 3,
+    "edificios": 72,
+    "edificios_partidos": 2,
+    "losas_plano": 20,
+    "losas_inclinado": 1,
+    "edificios_excluidos": 1,
     "pilares": 407,
     "techos": 20,
     "caminos_tertiary": 30,
@@ -63,8 +66,8 @@
     "pistas_padel": 2
   },
   "verificacion": {
-    "nodos": 112,
-    "triangulos": 688656,
+    "nodos": 111,
+    "triangulos": 688632,
     "bounds": [
       [
         -768.0,
@@ -77,7 +80,7 @@
         636.0
       ]
     ],
-    "edificios": 93,
+    "edificios": 92,
     "no_watertight": [],
     "triangulos_terreno": 415004
   }
