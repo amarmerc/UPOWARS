@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"tirachinas"
+nombre = "Tirachinas "Gomero""
+ranura = 1
+tipo = &"proyectil"
+sonido = &"tirachinas"
+apuntable = false
+ruido = 8.0
+cadencia = 2.0
+automatica = false
+tiempo_cambio = 0.4
+dano_base = 20.0
+mult_cabeza = 2.5
+alcance = 90.0
+caida_inicio = 90.0
+caida_factor_min = 1.0
+penetracion_armadura = 0.6
+velocidad_proyectil = 38.0
+gravedad_proyectil = 9.8
+carga_tiempo = 0.0
+cargador = 12
+reserva = 48
+tiempo_recarga = 1.4
+dispersion_quieto = 0.3
+dispersion_agachado = 0.15
+dispersion_movimiento = 1.5
+dispersion_aire = 3.0
+retroceso_pitch = PackedFloat32Array(0.4)
+retroceso_yaw = PackedFloat32Array(0.0)
+retroceso_recuperacion = 20.0
+retroceso_pausa = 0.15
+velocidad_mov = 1.05

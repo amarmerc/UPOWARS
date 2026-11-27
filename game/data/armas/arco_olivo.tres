@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"arco_olivo"
+nombre = "Arco "Olivo""
+ranura = 1
+tipo = &"proyectil"
+sonido = &"arco_disparo"
+apuntable = false
+ruido = 6.0
+cadencia = 0.9
+automatica = false
+tiempo_cambio = 0.7
+dano_base = 78.0
+mult_cabeza = 3.5
+mult_piernas = 0.7
+alcance = 150.0
+caida_inicio = 150.0
+caida_factor_min = 1.0
+penetracion_armadura = 0.9
+velocidad_proyectil = 70.0
+gravedad_proyectil = 9.8
+carga_tiempo = 1.0
+carga_minima = 0.35
+cargador = 10
+reserva = 20
+tiempo_recarga = 1.6
+dispersion_quieto = 0.0
+dispersion_agachado = 0.0
+dispersion_movimiento = 1.0
+dispersion_aire = 2.0
+retroceso_pitch = PackedFloat32Array(0.3)
+retroceso_yaw = PackedFloat32Array(0.0)
+retroceso_recuperacion = 20.0
+retroceso_pausa = 0.2
+velocidad_mov = 0.95

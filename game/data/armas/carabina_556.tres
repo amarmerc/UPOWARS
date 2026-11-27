@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"carabina_556"
+nombre = "Carabina 5,56"
+ranura = 1
+tipo = &"hitscan"
+sonido = &"disparo_fusil"
+ruido = 70.0
+cadencia = 10.5
+automatica = true
+tiempo_cambio = 0.7
+dano_base = 29.0
+mult_cabeza = 4.0
+alcance = 130.0
+caida_inicio = 28.0
+caida_factor_min = 0.55
+penetracion_armadura = 0.65
+cargador = 30
+reserva = 90
+tiempo_recarga = 2.2
+dispersion_quieto = 0.2
+dispersion_agachado = 0.1
+dispersion_movimiento = 1.2
+dispersion_aire = 3.5
+zoom = 1.3
+retroceso_pitch = PackedFloat32Array(0.4, 0.5, 0.55, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.3, 0.25)
+retroceso_yaw = PackedFloat32Array(0.0, 0.05, -0.1, 0.12, 0.15, -0.1, -0.2, 0.2, 0.1, -0.1, 0.1)
+retroceso_recuperacion = 15.0
+retroceso_pausa = 0.12
+velocidad_mov = 0.95

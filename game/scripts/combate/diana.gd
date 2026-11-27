@@ -5,11 +5,14 @@ extends Node3D
 
 signal reaparecida
 
-@export_range(0.0, 100.0) var armadura: float = 0.0
+## Escudo inicial (0 a 50).
+@export_range(0.0, 50.0) var armadura: float = 0.0
+@export var equipo: int = 0
 @export var tiempo_reaparicion: float = 3.0
 @export var duracion_caida: float = 0.35
 
 var salud: Salud
+var ceguera: EstadoCeguera
 var hitboxes: Hitboxes
 var caida: Node3D  ## pivote en los pies que gira al caer
 var muerta: bool = false
@@ -22,8 +25,12 @@ var _vida_numeros: Array[float] = []
 func _ready() -> void:
 	salud = Salud.new()
 	salud.name = "Salud"
-	salud.armadura_inicial = armadura
+	salud.escudo_inicial = armadura
+	salud.equipo = equipo
 	add_child(salud)
+	ceguera = EstadoCeguera.new()
+	ceguera.name = "Ceguera"
+	add_child(ceguera)
 	caida = Node3D.new()
 	caida.name = "Cuerpo"
 	add_child(caida)
@@ -79,7 +86,7 @@ func _on_herido(cantidad: float, zona: String, _atacante: Node) -> void:
 	_vida_numeros.append(0.9)
 
 
-func _on_muerto(_atacante: Node) -> void:
+func _on_muerto(_atacante: Node, _arma: ArmaDatos) -> void:
 	muerta = true
 	_t_muerta = 0.0
 	hitboxes.activar(false)

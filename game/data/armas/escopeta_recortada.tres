@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"escopeta_recortada"
+nombre = "Escopeta recortada"
+ranura = 2
+tipo = &"perdigones"
+sonido = &"disparo_escopeta"
+ruido = 80.0
+cadencia = 2.5
+automatica = false
+tiempo_cambio = 0.55
+dano_base = 11.0
+mult_cabeza = 1.5
+mult_piernas = 0.8
+alcance = 30.0
+caida_inicio = 3.0
+caida_factor_min = 0.08
+penetracion_armadura = 0.6
+perdigones = 8
+dispersion_perdigon = 6.0
+cargador = 2
+reserva = 10
+tiempo_recarga = 2.8
+dispersion_quieto = 0.4
+dispersion_agachado = 0.3
+dispersion_movimiento = 1.2
+dispersion_aire = 2.5
+zoom = 1.1
+retroceso_pitch = PackedFloat32Array(4.0, 3.5)
+retroceso_yaw = PackedFloat32Array(0.0, 0.3)
+retroceso_recuperacion = 9.0
+retroceso_pausa = 0.3
+velocidad_mov = 0.95

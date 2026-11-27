@@ -5,12 +5,12 @@ extends Node3D
 
 const DIANA: PackedScene = preload("res://scenes/diana.tscn")
 const ID_SPAWN: String = "campo_practica"
-## [distancia (m), desplazamiento lateral (m, + = derecha), armadura]
+## [distancia (m), desplazamiento lateral (m, + = derecha), escudo (0 a 50)]
 const DISPOSICION: Array = [
 	[10.0, -2.5, 0.0], [10.0, 2.5, 0.0],
-	[20.0, -4.0, 100.0], [20.0, 4.0, 0.0],
-	[35.0, -6.0, 0.0], [35.0, 6.0, 100.0],
-	[50.0, -8.0, 100.0], [50.0, 8.0, 0.0],
+	[20.0, -4.0, 50.0], [20.0, 4.0, 0.0],
+	[35.0, -6.0, 0.0], [35.0, 6.0, 50.0],
+	[50.0, -8.0, 50.0], [50.0, 8.0, 0.0],
 ]
 
 var punto_tiro: Vector3 = Vector3.ZERO

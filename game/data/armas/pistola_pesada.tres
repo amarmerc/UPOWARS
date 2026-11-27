@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"pistola_pesada"
+nombre = "Pistola pesada .50"
+ranura = 2
+tipo = &"hitscan"
+sonido = &"disparo_pesada"
+ruido = 75.0
+cadencia = 2.4
+automatica = false
+tiempo_cambio = 0.6
+dano_base = 54.0
+mult_cabeza = 3.0
+alcance = 90.0
+caida_inicio = 15.0
+caida_factor_min = 0.6
+penetracion_armadura = 0.8
+cargador = 7
+reserva = 28
+tiempo_recarga = 2.3
+dispersion_quieto = 0.3
+dispersion_agachado = 0.15
+dispersion_movimiento = 3.0
+dispersion_aire = 5.0
+zoom = 1.15
+retroceso_pitch = PackedFloat32Array(2.6, 2.0)
+retroceso_yaw = PackedFloat32Array(0.0, 0.3)
+retroceso_recuperacion = 10.0
+retroceso_pausa = 0.3
+velocidad_mov = 0.97

@@ -1,6 +1,7 @@
 extends CanvasLayer
-## HUD: punto de mira dinamico y hit marker, vida/armadura, arma y municion, vineta roja al recibir dano
-## y datos de depuracion (spawn, posicion, velocidad; F3 los muestra u oculta).
+## HUD: punto de mira dinamico, hit marker y mira de zoom, vida/escudo, arma y municion, utilidades, carga y calor, aviso de
+## recoger armas, marcas de pintura, kill feed, indicador de direccion del dano, ceguera, vineta roja al recibir dano y
+## datos de depuracion (spawn, posicion, velocidad; F3 los muestra u oculta).
 
 const DURACION_VINETA: float = 0.45
 
@@ -28,6 +29,7 @@ func _ready() -> void:
 	_vineta.texture = t
 	_vineta.stretch_mode = TextureRect.STRETCH_SCALE
 	_vineta.modulate.a = 0.0
+	SenalesCombate.obtener(get_tree()).baja.connect(_on_baja)
 
 
 ## Conecta el HUD con el jugador: vida, municion, dispersion, hit marker y vineta.
@@ -51,9 +53,43 @@ func _process(delta: float) -> void:
 	var g: GestorArmas = _jugador.gestor
 	var a: ArmaDatos = g.actual()
 	var s: Salud = _jugador.salud
-	_combate.call("poner", s.vida, s.vida_max, s.armadura, a.nombre,
-			g.municion_cargador(), g.municion_reserva(), a.cuerpo_a_cuerpo, g.recargando)
+	var mirada: ArmaSuelo = g.arma_mirada() if (_jugador.activo and not _jugador.muerto) else null
+	var carga: float = -1.0
+	var etiqueta: String = "CARGA"
+	if a.tipo == ArmaDatos.T_PUNO and g.puno_en_vuelo:
+		carga = g.progreso_puno()
+		etiqueta = "VUELVE"
+	elif g.cargando:
+		carga = g.carga
+		etiqueta = "TENSANDO" if a.tipo == ArmaDatos.T_PROYECTIL else "CARGANDO"
+	_combate.call("poner", {
+		"vida": s.vida, "vida_max": s.vida_max, "escudo": s.escudo, "arma": a.nombre,
+		"cargador": g.municion_cargador(), "reserva": g.municion_reserva(),
+		"infinita": a.cargador <= 0 and not a.es_utilidad(), "utilidad": a.es_utilidad(),
+		"recargando": g.recargando, "carga": carga, "etiqueta_carga": etiqueta,
+		"calor": g.calor if a.tipo == ArmaDatos.T_SABLE else -1.0, "sobrecalentado": g.sobrecalentado,
+		"utilidades": g.utilidades_info(),
+		"prompt": ("E para recoger %s" % mirada.nombre_arma()) if mirada != null else ""})
+	_combate.call("poner_marcas", _marcas(), _jugador.ceguera.nivel() if _jugador.ceguera != null else 0.0)
+	var scope: bool = a.mira_zoom and g.aim_t > 0.8
+	_mira.call("poner_zoom", scope)
 	_mira.call("poner_apertura", _apertura_px(g))
+
+
+## Marcas de pintura de los enemigos visibles para el equipo del jugador (a traves de paredes).
+func _marcas() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var cam: Camera3D = _jugador.camara
+	for sm: Salud in Utilidades.marcados_para(self, _jugador.salud.equipo):
+		var duenio: Node3D = sm.get_parent() as Node3D
+		if duenio == null or sm == _jugador.salud:
+			continue
+		var p: Vector3 = duenio.global_position + Vector3(0.0, 2.1, 0.0)
+		if cam.is_position_behind(p):
+			continue
+		out.append({"pos": cam.unproject_position(p), "texto": "%s  %d m" % [
+				sm.nombre_visible(), int(p.distance_to(cam.global_position))]})
+	return out
 
 
 ## Separacion (px) de los trazos de la mira: el angulo de dispersion proyectado en pantalla.
@@ -62,17 +98,32 @@ func _apertura_px(g: GestorArmas) -> float:
 	var alto: float = float(get_viewport().get_visible_rect().size.y)
 	var grados: float = g.dispersion_actual()
 	var px: float = tan(deg_to_rad(grados)) / tan(deg_to_rad(cam.fov) * 0.5) * alto * 0.5
-	return 3.0 + px
+	return 3.0 + minf(px, alto * 0.3)
 
 
-func _on_jugador_herido(cantidad: float, _zona: String, _atacante: Node) -> void:
+func _on_jugador_herido(cantidad: float, _zona: String, atacante: Node) -> void:
 	_vineta_t = DURACION_VINETA
 	_vineta_fuerza = clampf(0.3 + cantidad / 100.0, 0.3, 0.8)
 	_vineta.modulate.a = _vineta_fuerza
+	var origen: Node3D = atacante as Node3D
+	if origen != null and _jugador != null and origen != _jugador:
+		var d: Vector3 = origen.global_position - _jugador.global_position
+		var f: Vector3 = -_jugador.camara.global_transform.basis.z
+		d.y = 0.0
+		f.y = 0.0
+		if d.length() > 0.1 and f.length() > 0.01:
+			_combate.call("anadir_golpe", f.signed_angle_to(d.normalized(), Vector3.DOWN))
 
 
 func _on_impacto_confirmado(zona: String, mato: bool) -> void:
 	_mira.call("mostrar_hit", zona == "cabeza", mato)
+
+
+func _on_baja(atacante: Node, victima: Salud, arma: ArmaDatos) -> void:
+	var sa: Salud = Salud.de(atacante)
+	var quien: String = sa.nombre_visible() if sa != null else "El campus"
+	var propia: bool = _jugador != null and (sa == _jugador.salud)
+	_combate.call("anadir_baja", quien, arma.nombre if arma != null else "", victima.nombre_visible(), propia)
 
 
 func actualizar(nombre: String, pos: Vector3, velocidad: float, vuelo: bool) -> void:

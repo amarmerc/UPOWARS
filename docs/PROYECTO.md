@@ -77,3 +77,8 @@ Si el escritor se atasca, el líder avisa al usuario y lo hace él con permiso.
 
 - **2026-11-26**: Arranque del proyecto en local (D:\Juegos\UPOWARS); definidos agentes lector/escritor.
 - **2026-11-26**: Alturas de edificios desde LiDAR IGN (MDSn edificación, WCS wcs-mds.idee.es/mds, coverage mdsn_e025) vía scripts/alturas_lidar.py; correcciones manuales: torre (Edificio 35) 63 m, biblioteca (25) igual que 23/24.
+- **2026-11-27**: rediseño a modo competitivo por rondas + modo libre; ver docs/DISENO_COMPETITIVO.md
+- **2026-11-27**: P3 bots: `game/scripts/bots/` (Bot, CerebroBot, Comandos/ApiPartida, CompraBot, DificultadBot, NavBots, DirectorBots, PartidaPrueba provisional), escena `scenes/prueba_bots.tscn`, `tests/test_bots.gd`; player.gd y kit_reaparicion intactos; ver README (Bots).
+- **2026-11-27**: P4 partida: `game/scripts/partida/` (Partida autoritativa, ConfigPartida, ComandosJugador, Cachimba caida), `game/scripts/ui/` (lobby, tienda, pausa, HUD de partida), `scenes/juego.tscn` como escena principal (lobby al arrancar; `main.tscn` queda como mundo), `tests/test_partida.gd`; ver README (Partida).
+- **2026-11-27**: lobby rehecho (equipos con huecos y tarjetas de personaje, modos unificados Modo libre / Cachimba Wars / Modo pleno, perfil local), personajes provisionales (`data/personajes/`, `ModeloPersonaje` como punto único para modelos importados) y tienda estilo Valorant con iconos pre-renderizados (`tests/generar_iconos.gd`); ver README (Partida).
+- **2026-11-28**: modelos externos (Quaternius CC0, sable y coches de Sketchfab): armas, 12 personajes animados y coches del pack; `CREDITOS.md` + botón Créditos en el lobby; ver README (Modelos externos).

@@ -32,11 +32,14 @@ Uso: uv run python scripts/generar_blockout.py [--entrada data/raw/osm_upo.json]
      [--suavizado-m 1]   (los valores por defecto viven en scripts/terreno.py)
      [--no-copiar-godot]   (por defecto copia el .glb a game/assets/mapa/)
      [--sin-arboles] [--sin-coches] [--ocupacion 0.55] [--coches-carretera 15] [--semilla 1]
-     [--altura-min-arbol 3] [--sep-arboles 3]
+     [--altura-min-arbol 3] [--sep-arboles 3] [--zonas data/zonas.json] [--props data/props.csv]
+     [--altura-tronco-grande 12]
 
 Vegetacion y coches (scripts/vegetacion.py, coches.py, entorno.py): arboles low-poly desde el nDSM de vegetacion LiDAR
 (`arboles_troncos-col` con colision y `arboles_copas*` sin ella, uno por tono de verde) y coches estaticos
 (`coches_<color>-col` con colision, `coches_ruedas-col`, `coches_cristales`) en los aparcamientos y algunas carreteras; ademas export/coches.json. Evitan los spawns de game/data/spawns.json si existe.
+Zonas y coberturas (scripts/datos_zonas.py, props.py): data/zonas.json excluye arboles y coches de los limites y barreras de las zonas y
+engrosa los troncos altos dentro de ellas; data/props.csv coloca los props (nodos `props_<material>-col`, ver props.py).
 """
 import argparse
 import csv
@@ -60,7 +63,9 @@ from shapely.validation import make_valid
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import coches as coc  # noqa: E402
+import datos_zonas as dz  # noqa: E402
 import entorno as ent  # noqa: E402
+import props as prp  # noqa: E402
 import terreno as ter  # noqa: E402
 import vegetacion as veg  # noqa: E402
 
@@ -151,6 +156,7 @@ COLORES = {
 }
 COLORES.update(veg.COLORES_MATERIAL)
 COLORES.update(coc.COLORES_MATERIAL)
+COLORES.update(prp.COLORES_MATERIAL)
 
 
 # ---------------------------------------------------------------- utilidades
@@ -1727,6 +1733,11 @@ def anadir_argumentos_props(ap):
     ap.add_argument("--semilla", type=int, default=1, help="semilla del azar (tonos, ocupacion, colores, jitter)")
     ap.add_argument("--altura-min-arbol", type=float, default=veg.ALT_MIN_M, help="altura minima de un arbol (m)")
     ap.add_argument("--sep-arboles", type=float, default=veg.SEP_MIN_M, help="separacion minima entre troncos (m)")
+    ap.add_argument("--zonas", default=dz.ZONAS_FUENTE, help="zonas competitivas (data/zonas.json): sus limites y barreras "
+                    "excluyen arboles y coches; dentro, los arboles altos tienen tronco grueso")
+    ap.add_argument("--props", default=dz.PROPS_CSV, help="coberturas (data/props.csv); vacio o inexistente = ninguna")
+    ap.add_argument("--altura-tronco-grande", type=float, default=veg.ALT_TRONCO_GRANDE_M,
+                    help="en las zonas, altura (m) desde la que un arbol tiene tronco de 0,5-0,7 m de radio (12)")
 
 
 def construir_props(mapa, geo, a, spawns_json=SPAWNS_JSON, spawns=None):
@@ -1736,25 +1747,47 @@ def construir_props(mapa, geo, a, spawns_json=SPAWNS_JSON, spawns=None):
     import hashlib
     if spawns is None:
         spawns = ent.leer_spawns(spawns_json)
-    entorno = ent.Entorno(mapa, geo, spawns, MARGEN_LIMITE)
+    zonas = dz.zonas_local(dz.leer_zonas(a.zonas))
+    filas_props = dz.leer_props(a.props)
+    huellas_props = [prp.huella(p) for p in filas_props]
+    claros = [Point(p["x"], -p["z"]).buffer(float(prp.parse_notas(p["notas"])["claro"]), 24)
+              for p in filas_props if "claro" in prp.parse_notas(p["notas"])]
+    entorno = ent.Entorno(mapa, geo, spawns, MARGEN_LIMITE, zonas, huellas_props, claros)
     piezas, stats, arboles, lista = [], {}, [], []
+    if filas_props:
+        piezas.extend(prp.piezas_props(filas_props, geo["terreno"]))
+        stats["props"] = len(filas_props)
+        for tipo in prp.TIPOS:
+            n_t = sum(1 for p in filas_props if p["tipo"] == tipo)
+            if n_t:
+                stats["props_" + tipo] = n_t
     if not a.sin_arboles:
         rng = np.random.default_rng([a.semilla, 1])
-        arboles, st = veg.generar_arboles(entorno, a.ndsm_veg, mapa.E0, mapa.N0, rng, a.altura_min_arbol, a.sep_arboles)
+        arboles, st = veg.generar_arboles(entorno, a.ndsm_veg, mapa.E0, mapa.N0, rng, a.altura_min_arbol, a.sep_arboles,
+                                          a.altura_tronco_grande)
         stats.update({"arboles_" + k: v for k, v in st.items()})
         piezas.extend(veg.piezas_arboles(arboles))
     if not a.sin_coches:
         rng = np.random.default_rng([a.semilla, 2])
         lista, st = coc.generar_coches(mapa, entorno, arboles, rng, a.ocupacion, a.coches_carretera)
+        prohibido = entorno.prohibido_coche()
+        if prohibido is not None:     # ningun coche cruza un limite de zona ni una barrera ni se solapa con un prop
+            n0 = len(lista)
+            lista = [c for c in lista if not prohibido.intersects(coc.rect_coche(c))]
+            n_p = sum(1 for c in lista if c["plaza"])
+            st = {**st, "coches_zona_excluidos": n0 - len(lista), "coches": len(lista), "coches_parking": n_p,
+                  "coches_carretera": len(lista) - n_p}
         stats.update(st)
         piezas.extend(coc.piezas_coches(lista))
     h = hashlib.sha1()
     for t in arboles:
-        h.update(f"{t['x']:.2f},{t['y']:.2f},{t['h']:.1f};".encode())
+        h.update(f"{t['x']:.2f},{t['y']:.2f},{t['h']:.1f},{t['r_tronco']:.2f};".encode())
+    for p in filas_props:
+        h.update(f"{p['tipo']},{p['x']:.2f},{p['z']:.2f},{p['yaw']:.1f},{p['escala']:g},{p['notas']};".encode())
     for c in lista:
         h.update(f"{c['pos']},{c['yaw_deg']};".encode())
     return {"entorno": entorno, "arboles": arboles, "coches": lista, "piezas": piezas, "stats": stats,
-            "huella": h.hexdigest()[:16]}
+            "props": filas_props, "huellas_props": huellas_props, "zonas": zonas, "huella": h.hexdigest()[:16]}
 
 
 def dibujar_props(ax, props):
@@ -2409,13 +2442,19 @@ def verificar(ruta):
         print("   no watertight:", n)
     tri_terreno = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("terreno"))
     print(f"[verificacion] triangulos del terreno: {tri_terreno}")
+    pr = [n for n in nombres if n.startswith("props_")]
+    malos_p = [n for n in pr if not sc.geometry[sc.graph[n][1]].is_watertight]
+    print(f"[verificacion] nodos de props: {len(pr)} | triangulos: "
+          f"{sum(len(sc.geometry[sc.graph[n][1]].faces) for n in pr)} | NO watertight: {len(malos_p)}")
+    for n in malos_p:
+        print("   no watertight:", n)
     tri_arboles = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("arboles"))
     tri_coches = sum(len(sc.geometry[sc.graph[n][1]].faces) for n in nombres if n.startswith("coches"))
     print(f"[verificacion] triangulos de arboles: {tri_arboles} | de coches: {tri_coches}")
     mats = {sc.geometry[sc.graph[n][1]].visual.material.name for n in nombres}
     print(f"[verificacion] materiales distintos: {len(mats)} {sorted(mats)}")
     return {"nodos": len(nombres), "triangulos": tris, "bounds": b.tolist(),
-            "edificios": len(edif), "no_watertight": malos + malos_l,
+            "edificios": len(edif), "no_watertight": malos + malos_l + malos_p,
             "triangulos_terreno": tri_terreno, "triangulos_arboles": tri_arboles, "triangulos_coches": tri_coches}
 
 
@@ -2509,6 +2548,7 @@ def main():
     }
     if not a.sin_coches:
         guardar_coches(salida.with_name("coches.json"), props, a)
+        guardar_coches(Path(__file__).resolve().parent.parent / "game" / "data" / "coches.json", props, a)   # lo lee game/scripts/coches_externos.gd
     meta_ruta = salida.with_name(salida.stem + "_meta.json")
     meta_ruta.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Meta: {meta_ruta}")

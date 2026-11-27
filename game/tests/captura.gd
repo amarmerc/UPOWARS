@@ -178,6 +178,7 @@ func _ejecutar() -> void:
 		img.save_png(ruta)
 		print("captura ", ruta, " ", img.get_size())
 	await _combate(main, cam, salida)
+	await _arsenal(main, cam, salida)
 	quit(0)
 
 
@@ -292,3 +293,330 @@ func _combate(main: Node, cam_libre: Camera3D, salida: String) -> void:
 		for i in 2:
 			await process_frame
 		await _guardar(salida, "combate_" + ("pistola" if idx == 1 else "navaja"))
+
+
+# ======================================================================== arsenal (P2)
+
+const ARSENAL_ORDEN: Array[StringName] = [
+	&"pistola_9mm", &"pistola_auto", &"pistola_pesada", &"revolver_357", &"escopeta_recortada", &"subfusil_compacto",
+	&"subfusil_9mm", &"subfusil_45", &"escopeta_corredera", &"escopeta_auto", &"carabina_556", &"fusil_asalto",
+	&"fusil_combate", &"fusil_tirador", &"fusil_precision", &"ametralladora", &"arco_olivo", &"tirachinas",
+	&"lanzacohetes", &"sable_plasma", &"puno_bot", &"navaja", &"granada_humo", &"granada_cegadora",
+	&"granada_explosiva", &"bote_pintura", &"extintor", &"altavoz"]
+
+
+## Frames de proceso (y de fisica) para que animaciones y efectos avancen.
+func _frames(n: int) -> void:
+	for i in n:
+		await process_frame
+
+
+## Mira al horizonte (algo hacia arriba) y avanza el gestor hasta terminar el cambio de arma.
+func _listo(gestor: GestorArmas, jugador: Jugador, segundos: float = 1.3) -> void:
+	for i in int(segundos * 60.0):
+		gestor.avanzar(1.0 / 60.0)
+		if i % 6 == 0:
+			await process_frame
+	await process_frame
+
+
+## Capturas del arsenal: mosaico de todas las armas, fusil de precision apuntando, humo, explosion, sable bloqueando,
+## arco cargando, arma en el suelo con el aviso de recoger y HUD con kill feed, marcas, direccion del dano y ceguera.
+func _arsenal(main: Node, cam_libre: Camera3D, salida: String) -> void:
+	var jugador: Jugador = main.get_node("Jugador")
+	var campo: CampoPractica = main.campo
+	var gestor: GestorArmas = jugador.gestor
+	jugador.activo = true
+	jugador.set_physics_process(true)
+	jugador.entrada_manual = true
+	jugador.camara.make_current()
+	gestor.entrada_manual = true
+	gestor.kit_reaparicion = []
+	gestor.reiniciar()
+	main.hud.visible = true
+	main.hud.get_node("Info").visible = false
+	var d: Array[Diana] = campo.dianas
+	var fwd: Vector3 = campo.adelante
+	for i in 20:
+		await physics_frame
+	# --- 1. mosaico: cada arma en la mano, mirando al cielo para un fondo limpio
+	jugador._pitch = deg_to_rad(24.0)
+	jugador._aplicar_rotacion_cabeza()
+	var celdas: Array[Image] = []
+	for id: StringName in ARSENAL_ORDEN:
+		gestor.inventario.utilidades.clear()
+		if Catalogo.hueco(id) == &"utilidades":
+			gestor.equipar(id)
+			gestor.sel_util = 0
+			gestor.cambiar_arma(3)
+			gestor.sel_util = 0
+			gestor._forzar_arma(3)
+		elif id == &"navaja":
+			gestor.cambiar_arma(2)
+		else:
+			gestor.equipar(id)
+		await _listo(gestor, jugador, 1.2)
+		await RenderingServer.frame_post_draw
+		var img: Image = root.get_viewport().get_texture().get_image()
+		var celda: Image = img.get_region(Rect2i(500, 250, 780, 470))
+		celda.convert(Image.FORMAT_RGBA8)
+		celdas.append(celda)
+	var cw: int = 390
+	var ch: int = 235
+	var cols: int = 6
+	var filas: int = int(ceil(celdas.size() / float(cols)))
+	var mosaico: Image = Image.create(cw * cols, ch * filas, false, Image.FORMAT_RGBA8)
+	for i in celdas.size():
+		var c: Image = celdas[i]
+		c.resize(cw, ch, Image.INTERPOLATE_BILINEAR)
+		mosaico.blit_rect(c, Rect2i(0, 0, cw, ch), Vector2i((i % cols) * cw, (i / cols) * ch))
+	mosaico.save_png(salida.path_join("arsenal_mosaico.png"))
+	print("captura ", salida.path_join("arsenal_mosaico.png"), " ", mosaico.get_size())
+	gestor.inventario.utilidades.clear()
+	gestor.reiniciar()
+
+	# --- 2. fusil de precision apuntando (mira de zoom) a una diana a 35 m
+	gestor.equipar(&"fusil_precision")
+	jugador._pitch = 0.0
+	jugador._aplicar_rotacion_cabeza()
+	jugador.camara.look_at(d[5].centro("torso"), Vector3.UP)
+	jugador.rotation.y += 0.0
+	await _listo(gestor, jugador, 1.3)
+	gestor.gatillo_alt = true
+	await _listo(gestor, jugador, 0.8)
+	jugador.camara.look_at(d[5].centro("cabeza"), Vector3.UP)
+	await process_frame
+	await _guardar(salida, "arsenal_precision_apuntando")
+	gestor.gatillo_alt = false
+	await _listo(gestor, jugador, 0.6)
+	# mismo fusil sin apuntar, para comparar el viewmodel y la mira normal
+	await _guardar(salida, "arsenal_precision_cadera")
+
+	# --- 3. humo: una granada de humo explota a 9 m delante, entre el tirador y las dianas
+	gestor.reiniciar()
+	await _listo(gestor, jugador, 0.8)
+	jugador.camara.look_at(jugador.camara.global_position + fwd * 10.0 + Vector3(0, -0.3, 0), Vector3.UP)
+	var humo: ArmaDatos = Catalogo.arma(&"granada_humo")
+	var punto: Vector3 = campo.punto_tiro + fwd * 9.0
+	punto.y = campo._suelo(punto)
+	Utilidades.activar(jugador, humo, punto, jugador)
+	await _frames(70)
+	await _guardar(salida, "arsenal_humo")
+	for n: Node in get_nodes_in_group("nubes"):
+		(n as NubeVision).avanzar(30.0)
+	await _frames(3)
+
+	# --- 4. explosion: granada explosiva junto a las dianas a 20 m (bola de fuego, humo, luz)
+	var explosiva: ArmaDatos = Catalogo.arma(&"granada_explosiva")
+	var pe: Vector3 = d[3].global_position + Vector3(-1.5, 0.3, 1.0)
+	cam_libre.make_current()
+	cam_libre.fov = 70.0
+	cam_libre.global_position = campo.punto_tiro + fwd * 6.0 + Vector3(2.5, 2.0, 0)
+	cam_libre.look_at(pe + Vector3(0, 1.2, 0), Vector3.UP)
+	main.hud.visible = false
+	jugador.get_node("Armas/Viewmodel").visible = false
+	await _frames(4)
+	Utilidades.explosion(jugador, pe, explosiva, jugador)
+	await _frames(9)
+	await _guardar(salida, "arsenal_explosion")
+	await _frames(40)
+	jugador.get_node("Armas/Viewmodel").visible = true
+	jugador.camara.make_current()
+	main.hud.visible = true
+	for dd: Diana in d:
+		dd.salud.reiniciar()
+		dd.muerta = false
+		dd.caida.rotation.x = 0.0
+		dd.hitboxes.activar(true)
+
+	# --- 5. sable de plasma bloqueando un disparo
+	gestor.equipar(&"sable_plasma")
+	jugador.camara.look_at(jugador.camara.global_position + fwd * 10.0, Vector3.UP)
+	await _listo(gestor, jugador, 1.0)
+	gestor.gatillo_alt = true
+	await _listo(gestor, jugador, 0.4)
+	var tirador := Node3D.new()
+	root.add_child(tirador)
+	tirador.global_position = jugador.camara.global_position + fwd * 9.0
+	var pistola: ArmaDatos = Catalogo.arma(&"pistola_pesada")
+	for k in 4:
+		var r: Dictionary = Balistica.resolver_disparo(tirador.global_position,
+				(jugador.hitboxes.centro_zona("torso") - tirador.global_position).normalized(), pistola, tirador, gestor.rng)
+		Balistica.aplicar(r, pistola, tirador)
+	await process_frame
+	await _guardar(salida, "arsenal_sable_bloqueo")
+	tirador.queue_free()
+	gestor.gatillo_alt = false
+	jugador.salud.reiniciar()
+	await _listo(gestor, jugador, 0.6)
+
+	# --- 6. arco cargando (la cuerda se tensa y sale la barra de carga)
+	gestor.equipar(&"arco_olivo")
+	await _listo(gestor, jugador, 1.0)
+	gestor.gatillo = true
+	await _listo(gestor, jugador, 0.7)
+	await _guardar(salida, "arsenal_arco_carga")
+	gestor.gatillo = false
+	await _listo(gestor, jugador, 0.3)
+	for p: Node in get_nodes_in_group("proyectiles"):
+		p.queue_free()
+
+	# --- 7. armas en el suelo: el aviso "E para recoger" al mirarlas
+	gestor.reiniciar()
+	await _listo(gestor, jugador, 0.8)
+	var frente: Vector3 = campo.punto_tiro + fwd * 2.0
+	var ids: Array[StringName] = [&"escopeta_corredera", &"fusil_precision", &"lanzacohetes", &"revolver_357"]
+	for i in ids.size():
+		var pos: Vector3 = frente + fwd.cross(Vector3.UP) * (float(i) * 0.9 - 1.4)
+		pos.y = campo._suelo(pos) + 0.5
+		ArmaSuelo.crear(jugador, ids[i], 5, 10, pos)
+	await _frames(40)
+	var objetivo: Node3D = get_nodes_in_group("armas_suelo")[1] as Node3D
+	jugador._pitch = 0.0
+	jugador.camara.look_at(objetivo.global_position + Vector3(0, 0.05, 0), Vector3.UP)
+	jugador.rotation.y = jugador.rotation.y
+	await _frames(6)
+	await _guardar(salida, "arsenal_armas_suelo")
+	gestor.limpiar_armas_suelo()
+
+	# --- 8. HUD: utilidades, kill feed, marcas de pintura a traves de pared, direccion del dano y ceguera
+	gestor.equipar(&"granada_humo")
+	gestor.equipar(&"granada_humo")
+	gestor.equipar(&"bote_pintura")
+	gestor.equipar(&"granada_explosiva")
+	gestor.cambiar_arma(3)
+	await _listo(gestor, jugador, 1.0)
+	jugador.camara.look_at(d[3].centro("torso"), Vector3.UP)
+	jugador.salud.escudo = 40.0
+	d[2].salud.marcar(0, 5.0)
+	d[4].salud.marcar(0, 5.0)
+	d[7].salud.recibir_dano(500.0, "cabeza", 1.0, jugador, Catalogo.arma(&"fusil_combate"))
+	d[6].salud.recibir_dano(500.0, "torso", 1.0, jugador, Catalogo.arma(&"revolver_357"))
+	jugador.salud.recibir_dano(22.0, "torso", 1.0, d[1])
+	jugador.salud.recibir_dano(12.0, "torso", 1.0, d[3])
+	await _frames(3)
+	await _guardar(salida, "arsenal_hud")
+	jugador.ceguera.cegar(1.0, 3.0)
+	await _frames(2)
+	await _guardar(salida, "arsenal_ceguera")
+	jugador.ceguera.restante = 0.0
+	gestor.kit_reaparicion = [&"fusil_asalto"]
+	gestor.reiniciar()
+
+
+## Oculta el arma en primera persona (la dibuja un script de combate en su propio SubViewport) para las capturas del mapa.
+func _ocultar_viewmodel(main: Node) -> void:
+	for n: Node in main.find_children("*", "", true, false):
+		var sc: Script = n.get_script() as Script
+		if sc != null and sc.resource_path.ends_with("viewmodel_capa.gd") and "visible" in n:
+			n.set("visible", false)
+
+
+## Tres capturas por zona competitiva:
+##  zona_<id>.png         desde el spawn de defensores (barreras activas) mirando a un site, con la barrera del equipo a la vista;
+##  zona_<id>_muro.png    desde dentro, a ~8 m del tramo del limite mas largo y despejado, mirando al muro translucido de 8 m;
+##  zona_<id>_lobby.png   la camara de vista previa del lobby;
+## y aula_aire_libre.png (detras de la ultima fila, mirando a la pizarra).
+func _zonas(main: Node, cam: Camera3D, salida: String) -> void:
+	_ocultar_viewmodel(main)
+	var espacio: PhysicsDirectSpaceState3D = (main as Node3D).get_world_3d().direct_space_state
+	for zid in ZonaActiva.ids_disponibles():
+		var zona: ZonaActiva = ZonaActiva.crear(zid)
+		main.add_child(zona)
+		zona.activar_barreras(true)
+		await physics_frame
+		await physics_frame
+		# 1) spawn de defensores: el spawn y el site con la vista mas despejada (rayo a 1,7 m hasta el centro del site)
+		var mejor_pos: Vector3 = zona.punto_spawn("defensores", 2)["pos"]
+		var mejor_obj: Vector3 = zona.centro_site("A") + Vector3(0, 1.2, 0)
+		var mejor_libre: float = -1.0
+		for i in zona.n_spawns("defensores"):
+			var pos: Vector3 = zona.punto_spawn("defensores", i)["pos"]
+			for k: String in zona.zona["sites"]:
+				var obj: Vector3 = zona.centro_site(k) + Vector3(0, 1.2, 0)
+				var ojo: Vector3 = pos + Vector3(0, 1.7, 0)
+				var q := PhysicsRayQueryParameters3D.create(ojo, obj)
+				q.collision_mask = ZonaActiva.CAPA_MUNDO
+				var r: Dictionary = espacio.intersect_ray(q)
+				var d: float = ojo.distance_to(obj)
+				var libre: float = d if r.is_empty() else ojo.distance_to(r["position"])
+				if libre > mejor_libre + (3.0 if i != 2 else 0.0):
+					mejor_libre = libre
+					mejor_pos = pos
+					mejor_obj = obj
+		cam.fov = 80.0
+		cam.global_position = mejor_pos + Vector3(0, 1.7, 0)
+		cam.look_at(mejor_obj, Vector3.UP)
+		for i in 8:
+			await process_frame
+		await _guardar(salida, "zona_" + zid)
+		# 2) el muro del limite: tramo largo desde el que un rayo hacia fuera acaba en el muro
+		var lim: PackedVector2Array = zona.limites()["poligono"]
+		var cuerpo_muro: StaticBody3D = zona.muro.get_node("Cuerpo") as StaticBody3D
+		var elegido: Array = []
+		var mejor_largo: float = 0.0
+		for i in lim.size():
+			var a: Vector2 = lim[i]
+			var b: Vector2 = lim[(i + 1) % lim.size()]
+			var largo: float = a.distance_to(b)
+			if largo < 14.0 or largo <= mejor_largo:
+				continue
+			var medio: Vector2 = (a + b) * 0.5
+			var t: Vector2 = (b - a).normalized()
+			var normal: Vector2 = Vector2(-t.y, t.x)
+			if not Geometry2D.is_point_in_polygon(medio + normal * 0.5, lim):
+				normal = -normal
+			var y0: float = zona.centro_site("A").y
+			var desde := Vector3(medio.x + normal.x * 8.0, y0 + 2.0, medio.y + normal.y * 8.0)
+			var q2 := PhysicsRayQueryParameters3D.create(desde, Vector3(medio.x - normal.x * 4.0, y0 + 2.0, medio.y - normal.y * 4.0))
+			q2.collision_mask = ZonaActiva.CAPA_MUNDO
+			var r2: Dictionary = espacio.intersect_ray(q2)
+			if not r2.is_empty() and r2["collider"] == cuerpo_muro:
+				mejor_largo = largo
+				elegido = [medio, normal]
+		if not elegido.is_empty():
+			var medio_e: Vector2 = elegido[0]
+			var normal_e: Vector2 = elegido[1]
+			var qy := PhysicsRayQueryParameters3D.create(Vector3(medio_e.x + normal_e.x * 8.0, 200, medio_e.y + normal_e.y * 8.0),
+					Vector3(medio_e.x + normal_e.x * 8.0, -50, medio_e.y + normal_e.y * 8.0))
+			var ry: Dictionary = espacio.intersect_ray(qy)
+			var suelo_y: float = (ry["position"] as Vector3).y if not ry.is_empty() else zona.centro_site("A").y
+			cam.global_position = Vector3(medio_e.x + normal_e.x * 8.0, suelo_y + 1.7, medio_e.y + normal_e.y * 8.0)
+			cam.look_at(Vector3(medio_e.x, suelo_y + 3.0, medio_e.y), Vector3.UP)
+			for i in 8:
+				await process_frame
+			await _guardar(salida, "zona_" + zid + "_muro")
+		# 3) vista previa del lobby
+		var lc: Dictionary = zona.camara_lobby()
+		cam.fov = float(lc["fov"])
+		cam.global_position = lc["pos"]
+		cam.look_at(lc["mira"], Vector3.UP)
+		for i in 6:
+			await process_frame
+		await _guardar(salida, "zona_" + zid + "_lobby")
+		zona.queue_free()
+		await process_frame
+	cam.fov = 75.0
+	# aula al aire libre: detras de la ultima fila, mirando a la pizarra
+	var datos: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/spawns.json"))
+	var aula: Variant = datos.get("aula", null)
+	if aula is Dictionary:
+		var p: Array = aula["pos"]
+		var yaw: float = deg_to_rad(float(aula["yaw_deg"]))
+		var atras := Vector3(sin(yaw), 0, cos(yaw))
+		var centro := Vector3(p[0], p[1], p[2])
+		var desde: Vector3 = centro + atras * 11.0
+		var q := PhysicsRayQueryParameters3D.create(Vector3(desde.x, 200, desde.z), Vector3(desde.x, -50, desde.z))
+		var no_terreno: Array[RID] = []
+		for h: Node in main.find_children("*", "StaticBody3D", true, false):
+			if h.get_parent().name != "terreno":
+				no_terreno.append((h as StaticBody3D).get_rid())
+		q.exclude = no_terreno
+		var r: Dictionary = (main as Node3D).get_world_3d().direct_space_state.intersect_ray(q)
+		if not r.is_empty():
+			desde.y = (r["position"] as Vector3).y
+		cam.global_position = desde + Vector3(0, 2.2, 0)
+		cam.look_at(centro + Vector3(0, 1.4, 0), Vector3.UP)
+		for i in 8:
+			await process_frame
+		await _guardar(salida, "aula_aire_libre")

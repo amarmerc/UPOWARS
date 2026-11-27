@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"granada_humo"
+nombre = "Granada de humo"
+ranura = 4
+apuntable = false
+ruido = 10.0
+cadencia = 1.0
+automatica = false
+tiempo_cambio = 0.5
+cargador = 1
+reserva = 0
+tiempo_recarga = 0.0
+velocidad_lanzamiento = 17.0
+velocidad_lanzamiento_flojo = 7.0
+velocidad_mov = 1.0
+dispersion_quieto = 0.0
+dispersion_agachado = 0.0
+dispersion_movimiento = 0.0
+dispersion_aire = 0.0
+tipo = &"granada_humo"
+sonido = &"lanzar"
+mecha = 1.2
+radio_efecto = 5.0
+duracion_efecto = 15.0

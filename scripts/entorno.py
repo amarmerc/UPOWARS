@@ -29,8 +29,22 @@ def leer_spawns(ruta):
 
 
 class Entorno:
-    def __init__(self, mapa, geo, spawns, margen_limite):
+    def __init__(self, mapa, geo, spawns, margen_limite, zonas=None, props=None, claros=None):
+        """`zonas`: lista de dicts de contexto.zonas_local (limite, barreras, sites en el plano local); `props`: huellas
+        (shapely) de los props de data/props.csv; `claros`: circulos (shapely) sin troncos (columna notas `claro=R`). Los arboles y coches no pueden cruzar el limite de una zona ni sus
+        barreras, ni quedar dentro de una barrera de spawn ni sobre un prop."""
         self.mapa, self.geo = mapa, geo
+        self.zonas = list(zonas or [])
+        self.props_huellas = unary_union(list(props)) if props else None
+        self.claros = unary_union(list(claros)) if claros else None
+        lineas = []
+        for z in self.zonas:
+            lineas.append(z["limite"].exterior)
+            for b in z["barreras"]:
+                lineas.append(b.exterior)
+        self.lineas_zona = unary_union(lineas) if lineas else None
+        self.zonas_union = unary_union([z["limite"] for z in self.zonas]) if self.zonas else None
+        self.barreras_zona = unary_union([b for z in self.zonas for b in z["barreras"]]) if self.zonas else None
         self.T = geo["terreno"]
         self.campus = geo["campus"]
         self.zona = self.campus.buffer(margen_limite - ZONA_MARGEN_LIMITE)
@@ -71,8 +85,24 @@ class Entorno:
                   self._g([self.pistas], 0.0),
                   self._g([self.pilares], 2.0),
                   self._g([self.barreras], 2.0),
-                  self._g([self.spawn_pts], 3.0)]
+                  self._g([self.spawn_pts], 3.0),
+                  self._g([self.lineas_zona], 1.3),
+                  self._g([self.barreras_zona], 1.0),
+                  self._g([self.props_huellas], 0.6),
+                  self._g([self.claros], 0.0)]
         return unary_union([p for p in partes if p is not None])
+
+    def prohibido_coche(self):
+        """Geometria que un coche no puede tocar: limites y barreras de las zonas, dentro de las barreras y props."""
+        partes = [self._g([self.lineas_zona], 0.6), self._g([self.barreras_zona], 1.0), self._g([self.props_huellas], 0.5)]
+        partes = [p for p in partes if p is not None]
+        return unary_union(partes) if partes else None
+
+    def en_zona(self, x, y):
+        """Mascara de puntos (arrays) dentro de alguna zona competitiva."""
+        if self.zonas_union is None:
+            return np.zeros(np.shape(x), bool)
+        return shapely.contains_xy(self.zonas_union, x, y)
 
     def fuera_zona(self, x, y):
         return ~shapely.contains_xy(self.zona, x, y)

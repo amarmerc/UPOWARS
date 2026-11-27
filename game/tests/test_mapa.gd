@@ -487,6 +487,37 @@ func _ejecutar() -> void:
 			exterior is MeshInstance3D and exterior.find_children("*", "StaticBody3D", true, false).is_empty()
 			and exterior.find_children("*", "CollisionShape3D", true, false).is_empty())
 
+	# p) coberturas (data/props.csv -> nodos props_<material>): existen, tienen colision (salvo el arbusto) y bloquean rayos
+	var nodos_props: Array = mapa.find_children("props_*", "MeshInstance3D", true, false)
+	var sin_col: Array[String] = []
+	var con_col: int = 0
+	var triangulos: int = 0
+	for h: Node in nodos_props:
+		var mi_p := h as MeshInstance3D
+		triangulos += (mi_p.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3 if mi_p.mesh != null else 0
+		if h.find_children("*", "StaticBody3D", true, false).size() > 0 and h.find_children("*", "CollisionShape3D", true, false).size() > 0:
+			con_col += 1
+		elif str(h.name) != "props_arbusto":
+			sin_col.append(str(h.name))
+	comprobar("p1) existen los nodos props_* del .glb (un nodo por material, >= 10)", nodos_props.size() >= 10 and int(datos.get("n_props", 0)) >= 100,
+			"nodos=%d, props=%d, triangulos=%d" % [nodos_props.size(), int(datos.get("n_props", 0)), triangulos])
+	comprobar("p2) todos los props_* (salvo el arbusto de la jardinera) tienen StaticBody3D con CollisionShape3D", sin_col.is_empty() and con_col >= nodos_props.size() - 1,
+			"con colision=%d, sin: %s" % [con_col, str(sin_col)])
+	var tipos_ok: Dictionary = {}
+	var tipos_visto: Dictionary = {}
+	for tpr: Dictionary in datos.get("test_props", []):
+		var rr: Dictionary = primer_choque(espacio, jugador, {"desde": tpr["desde"], "hasta": tpr["hasta"]})
+		var tipo_p: String = str(tpr["tipo"])
+		tipos_visto[tipo_p] = true
+		if not rr.is_empty() and dueno(rr).begins_with("props_"):
+			tipos_ok[tipo_p] = true
+		else:
+			print("  prop %s: rayo %s -> %s" % [tipo_p, str(tpr["desde"]), describir(rr)])
+	comprobar("p3) un rayo horizontal a cada prop (banco, murete, jardinera, contenedor, reciclaje, aparcabicis, marquesina, expendedora, sillas, mesa, aula) choca con props_*",
+			tipos_visto.size() >= 11 and tipos_ok.size() == tipos_visto.size(), "tipos con rayo=%d, que chocan=%d" % [tipos_visto.size(), tipos_ok.size()])
+	comprobar("p4) el aula al aire libre existe (spawns.json) y la pizarra (props_pizarra) tiene colision", datos.get("aula", null) is Dictionary
+			and mapa.find_child("props_pizarra", true, false) != null)
+
 	print("RESULTADO: %s (%d fallos)" % ["PASS" if fallos == 0 else "FAIL", fallos])
 	main.queue_free()
 	await process_frame

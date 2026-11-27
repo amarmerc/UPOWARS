@@ -4,8 +4,8 @@ extends SceneTree
 ## Imprime PASS/FAIL por comprobacion y sale con codigo 0 (todo bien) o 1.
 ## Usa el campo de practica real (dianas a 10/20/35/50 m) con RNG fijo y dispersion 0 salvo donde se pide lo contrario.
 
-const FUSIL: ArmaDatos = preload("res://data/armas/fusil_r7.tres")
-const PISTOLA: ArmaDatos = preload("res://data/armas/pistola_p9.tres")
+const FUSIL: ArmaDatos = preload("res://data/armas/fusil_asalto.tres")
+const PISTOLA: ArmaDatos = preload("res://data/armas/pistola_9mm.tres")
 const NAVAJA: ArmaDatos = preload("res://data/armas/navaja.tres")
 const DT: float = 1.0 / 60.0
 
@@ -79,8 +79,8 @@ func _ejecutar() -> void:
 	while not campo.listo and n_espera < 60:
 		await physics_frame
 		n_espera += 1
-	comprobar("c0) el campo de practica tiene 8 dianas (3 con armadura 100)",
-			campo.dianas.size() == 8 and campo.dianas.filter(func(d: Diana) -> bool: return d.armadura == 100.0).size() == 3,
+	comprobar("c0) el campo de practica tiene 8 dianas (3 con escudo 50)",
+			campo.dianas.size() == 8 and campo.dianas.filter(func(d: Diana) -> bool: return d.armadura == 50.0).size() == 3,
 			"dianas=%d" % campo.dianas.size())
 	var sp: Dictionary = {}
 	for s: Dictionary in main.spawns:
@@ -97,10 +97,10 @@ func _ejecutar() -> void:
 	avanzar_gestor(1.0)  # termina el cambio de arma inicial
 
 	# ---- datos de las armas
-	comprobar("d1) Fusil R-7: automatico, ~10 disp/s, cargador 30, dano 33",
+	comprobar("d1) Fusil de asalto 5,56: automatico, ~10 disp/s, cargador 30, dano 33",
 			FUSIL.automatica and cerca(FUSIL.cadencia, 10.0, 0.5) and FUSIL.cargador == 30 and FUSIL.dano_base == 33.0
 			and FUSIL.mult_cabeza == 4.0 and FUSIL.mult_torso == 1.0 and FUSIL.mult_piernas == 0.75)
-	comprobar("d2) Pistola P-9: semiautomatica, cargador 12, dano 28",
+	comprobar("d2) Pistola 9 mm: semiautomatica, cargador 12, dano 28",
 			not PISTOLA.automatica and PISTOLA.cargador == 12 and PISTOLA.dano_base == 28.0)
 	comprobar("d3) Navaja: cuerpo a cuerpo, 2 m, dano 40 / fuerte 65",
 			NAVAJA.cuerpo_a_cuerpo and NAVAJA.alcance == 2.0 and NAVAJA.dano_base == 40.0 and NAVAJA.dano_fuerte == 65.0)
@@ -123,17 +123,17 @@ func _ejecutar() -> void:
 	comprobar("c1c) a las piernas x0,75 (24,75)", res["zona"] == "piernas" and cerca(res["daño"], 24.75),
 			"dano=%.2f" % res["daño"])
 	restaurar(d10)
-	d10b.salud.armadura = 100.0
+	d10b.salud.escudo = 50.0
 	res = tirar(FUSIL, d10b.centro("torso"))
 	var vida_perdida: float = 100.0 - d10b.salud.vida
-	comprobar("c1d) con armadura 100 llega menos dano a la vida (33 x 0,7 = 23,1) y la armadura baja",
-			cerca(vida_perdida, 23.1) and vida_perdida < 33.0 and cerca(d10b.salud.armadura, 100.0 - 33.0 * 0.3 * 0.5),
-			"vida_perdida=%.2f armadura=%.2f" % [vida_perdida, d10b.salud.armadura])
+	comprobar("c1d) con escudo 50 llega menos dano a la vida (33 x 0,7 = 23,1) y el escudo baja",
+			cerca(vida_perdida, 23.1) and vida_perdida < 33.0 and cerca(d10b.salud.escudo, 50.0 - 33.0 * 0.3 * 0.5),
+			"vida_perdida=%.2f escudo=%.2f" % [vida_perdida, d10b.salud.escudo])
 	restaurar(d10b)
-	d10b.salud.armadura = 100.0
+	d10b.salud.escudo = 50.0
 	var pen: float = PISTOLA.penetracion_armadura
 	d10b.salud.recibir_dano(28.0, "torso", pen, null)
-	comprobar("c1e) la penetracion depende del arma (pistola 0,5: 14 a la vida)", cerca(100.0 - d10b.salud.vida, 14.0),
+	comprobar("c1e) la penetracion depende del arma (pistola 0,5: 14 a la vida con escudo)", cerca(100.0 - d10b.salud.vida, 14.0),
 			"vida_perdida=%.2f" % (100.0 - d10b.salud.vida))
 	restaurar(d10b)
 
@@ -154,7 +154,7 @@ func _ejecutar() -> void:
 	comprobar("c2c) la navaja (2 m) no llega a una diana a 50 m", not lejos["impacto"] or lejos["salud"] == null)
 
 	# ---- c3: cargador, sin municion y recarga
-	gestor.reiniciar()
+	gestor.reponer_municion()
 	avanzar_gestor(1.0)
 	gestor.cambiar_arma(0)
 	jugador.camara.look_at(jugador.camara.global_position + Vector3(0, 1, -1), Vector3.UP)  # al cielo
@@ -193,20 +193,20 @@ func _ejecutar() -> void:
 			a_medias and not gestor.recargando and gestor.municion_cargador() == 30 and gestor.municion_reserva() == 60,
 			"cargador=%d reserva=%d" % [gestor.municion_cargador(), gestor.municion_reserva()])
 	# recarga interrumpida al cambiar de arma
-	gestor.cargadores[0] = 10
+	gestor.inventario.fijar_municion(&"fusil_asalto", 10, gestor.inventario.reserva(&"fusil_asalto"))
 	gestor.recargar()
 	avanzar_gestor(0.5)
 	gestor.cambiar_arma(1)
 	avanzar_gestor(t_rec)
-	comprobar("c3e) cambiar de arma cancela la recarga", not gestor.recargando and gestor.cargadores[0] == 10
-			and gestor.indice == 1, "cargador fusil=%d" % gestor.cargadores[0])
+	comprobar("c3e) cambiar de arma cancela la recarga", not gestor.recargando and gestor.cargador_en(0) == 10
+			and gestor.indice == 1, "cargador fusil=%d" % gestor.cargador_en(0))
 	gestor.cambiar_arma(gestor.indice_previo)
 	comprobar("c3f) 'ultima arma' (Q) vuelve al fusil y fija su velocidad de movimiento",
 			gestor.indice == 0 and cerca(jugador.mult_velocidad_arma, FUSIL.velocidad_mov))
 	avanzar_gestor(1.0)
 
 	# ---- c4: cadencia
-	gestor.reiniciar()
+	gestor.reponer_municion()
 	avanzar_gestor(1.0)
 	gestor.gatillo = false
 	gestor.avanzar(DT)
@@ -359,18 +359,18 @@ func _ejecutar() -> void:
 	root.add_child(tirador)
 	tirador.global_position = jugador.global_position + Vector3(7.0, 1.65, 0.0)
 	await esperar_fisica(3)
-	gestor.cargadores[0] = 5
-	jugador.salud.armadura = 50.0
+	gestor.inventario.fijar_municion(&"fusil_asalto", 5, 40)
+	jugador.salud.escudo = 50.0
 	var obj_j: Vector3 = jugador.hitboxes.centro_zona("torso")
 	var r8: Dictionary = Balistica.resolver_disparo(tirador.global_position, (obj_j - tirador.global_position).normalized(),
 			FUSIL, tirador, rng, 0.0)
 	var herido_n: Array[float] = [0.0]
 	jugador.salud.herido.connect(func(c: float, _z: String, _a: Node) -> void: herido_n[0] += c)
 	Balistica.aplicar(r8, FUSIL, tirador)
-	comprobar("c8a) el jugador recibe un disparo al torso (hitbox propia): pierde vida y armadura",
+	comprobar("c8a) el jugador recibe un disparo al torso (hitbox propia): pierde vida y escudo",
 			r8["zona"] == "torso" and r8["salud"] == jugador.salud and jugador.salud.vida < 100.0
-			and jugador.salud.armadura < 50.0 and herido_n[0] > 0.0,
-			"vida=%.1f armadura=%.2f" % [jugador.salud.vida, jugador.salud.armadura])
+			and jugador.salud.escudo < 50.0 and herido_n[0] > 0.0,
+			"vida=%.1f escudo=%.2f" % [jugador.salud.vida, jugador.salud.escudo])
 	var pos_muerte: Vector3 = jugador.global_position
 	var r8b: Dictionary = Balistica.resolver_disparo(tirador.global_position,
 			(jugador.hitboxes.centro_zona("cabeza") - tirador.global_position).normalized(), FUSIL, tirador, rng, 0.0)
@@ -380,10 +380,10 @@ func _ejecutar() -> void:
 	await esperar_fisica(90)
 	comprobar("c8c) sigue muerto a los 1,5 s (camara fija)", jugador.muerto)
 	await esperar_fisica(40)
-	comprobar("c8d) reaparece a los 2 s con vida 100, armadura 0 y municion llena",
-			not jugador.muerto and jugador.salud.vida == 100.0 and jugador.salud.armadura == 0.0
-			and gestor.cargadores[0] == 30 and gestor.reservas[0] == 90 and jugador.hitboxes.zonas["torso"].collision_layer == 2,
-			"vida=%.1f armadura=%.1f cargador=%d" % [jugador.salud.vida, jugador.salud.armadura, gestor.cargadores[0]])
+	comprobar("c8d) reaparece a los 2 s con vida 100, escudo 0 y municion llena",
+			not jugador.muerto and jugador.salud.vida == 100.0 and jugador.salud.escudo == 0.0
+			and gestor.cargador_en(0) == 30 and gestor.reserva_en(0) == 90 and jugador.hitboxes.zonas["torso"].collision_layer == 2,
+			"vida=%.1f escudo=%.1f cargador=%d" % [jugador.salud.vida, jugador.salud.escudo, gestor.cargador_en(0)])
 	var dxz: float = Vector2(jugador.global_position.x - sp["pos"][0], jugador.global_position.z - sp["pos"][2]).length()
 	comprobar("c8e) reaparece en el spawn elegido (campo de practica)", dxz < 0.1, "distancia=%.3f m" % dxz)
 	comprobar("c8f) la posicion de muerte era la del spawn (no se movio)", pos_muerte.distance_to(jugador.global_position) < 0.5)

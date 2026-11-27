@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_suelo.gd" id="1"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_1"]
+radius = 0.7
+
+[node name="ArmaSuelo" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Zona" type="Area3D" parent="."]
+collision_layer = 16
+collision_mask = 0
+monitoring = false
+
+[node name="Forma" type="CollisionShape3D" parent="Zona"]
+shape = SubResource("SphereShape3D_1")

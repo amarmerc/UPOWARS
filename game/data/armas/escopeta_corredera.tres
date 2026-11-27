@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"escopeta_corredera"
+nombre = "Escopeta de corredera"
+ranura = 1
+tipo = &"perdigones"
+sonido = &"disparo_escopeta"
+ruido = 90.0
+cadencia = 1.15
+automatica = false
+tiempo_cambio = 0.8
+dano_base = 14.0
+mult_cabeza = 1.5
+mult_piernas = 0.8
+alcance = 60.0
+caida_inicio = 8.0
+caida_factor_min = 0.12
+penetracion_armadura = 0.55
+perdigones = 9
+dispersion_perdigon = 3.6
+cargador = 6
+reserva = 24
+tiempo_recarga = 3.2
+dispersion_quieto = 0.3
+dispersion_agachado = 0.2
+dispersion_movimiento = 1.5
+dispersion_aire = 3.0
+zoom = 1.2
+retroceso_pitch = PackedFloat32Array(5.0)
+retroceso_yaw = PackedFloat32Array(0.2)
+retroceso_recuperacion = 9.0
+retroceso_pausa = 0.4
+velocidad_mov = 0.92
