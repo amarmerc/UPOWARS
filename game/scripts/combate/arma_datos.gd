@@ -110,6 +110,9 @@ const T_PUNO: StringName = &"puno"
 @export_group("Apuntar")
 ## Aumentos al apuntar (1 = sin zoom): el campo de vision base se divide por este valor.
 @export var zoom: float = 1.25
+## Niveles de aumento alternativos (p. ej. 4 y 8 en el fusil de precision): con el arma apuntada se cambia de nivel con la rueda del
+## raton o con un segundo clic derecho rapido. Vacio = solo `zoom`.
+@export var zoom_niveles: PackedFloat32Array = PackedFloat32Array()
 ## Si es verdadero se dibuja la mira de zoom (francotirador) y se oculta el arma.
 @export var mira_zoom: bool = false
 @export var tiempo_apuntar: float = 0.16

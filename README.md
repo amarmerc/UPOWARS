@@ -269,25 +269,26 @@ zona.limites()                                      # {poligono: PackedVector2Ar
 
 ### Coberturas (`data/props.csv` y `props.py`)
 
-Tipos: `banco`, `murete` (4 m x `escala`, o `largo=6` en `notas`; 1,0 m de alto), `jardinera` (con arbusto), `contenedor` (basura, grande),
+Tipos clasicos: `banco`, `murete` (4 m x `escala`, o `largo=6` en `notas`; 1,0 m de alto), `jardinera` (con arbusto), `contenedor` (basura, grande),
 `reciclaje_azul` / `reciclaje_amarillo` / `reciclaje_verde`, `aparcabicis`, `marquesina` (autobús; una en cada `highway=bus_stop` de OSM, de cara a
 la carretera), `expendedora` (junto a fachadas), `pila_sillas`, `mesa` (`volcada` en `notas` para usarla de cobertura) y `aula` (el aula al aire
 libre: 4 filas de 4 asientos con respaldo mirando a una pizarra sobre patas; `claro=9` en `notas` quita los troncos a 9 m).
+
+**Coberturas de obra (grandes, mejoras tras probar el juego)**: `muro_obra` (bloques u hormigon a medio construir, 2-2,5 m de alto y 3-6 m de largo, coronacion escalonada; notas `largo=`, `alto=`, `ladrillo`, `l` = en L), `valla_obra` (tablones de 2 m), `palets` (dos pilas; `n=7` = 1,05 m para agacharse, `n=14` = 2,1 m), `sacos` (pila escalonada de ~1,1 m), `bigbag` (fila de 3 de ~1,15 m; `alto=2` = 2,3 m), `cuba` (cuba de escombros de 3,7 m y ~1,6 m), `caseta` (caseta de obra de 2,6 m), `bobina` (cable tumbada de 1,1 m; `n=2` = 2,2 m) y `bloques` (palet con paquetes de bloques; `n=2` = 1,3 m, `n=4` = 2,4 m; `ladrillo`). Mezclan alturas bajas (1-1,2 m: agacharse) y altas (>= 2 m: cubren de pie). Materiales nuevos `prop_ladrillo`, `prop_saco`, `prop_cuba`, `prop_caseta`. Las parametrizaciones van en `notas` (`clave=valor; flag`), antes del texto libre.
 `x`, `z` son de juego; `yaw` es la rotación Y de Godot (el *frente* del prop mira a -Z con yaw 0); una fila con `#` en `tipo` se ignora.
 
 Cada prop son cajas cerradas (watertight) apoyadas en el terreno (las del suelo bajan hasta el punto más alto de la huella y el desnivel bajo ella
 debe ser <= 0,45 m), un nodo por material: `props_hormigon-col`, `props_madera-col`, `props_metal-col`, `props_basura-col`,
 `props_reciclaje_azul/amarillo/verde-col`, `props_expendedora-col`, `props_cristal_oscuro-col`, `props_pizarra-col`, `props_silla-col` y
 `props_arbusto` (sin colisión). Los materiales conservan su color del `.glb` (`materiales.gd` solo ajusta rugosidad y metal). Árboles grandes: dentro
-de las zonas, los árboles de >= 12 m tienen tronco de 0,5-0,7 m de radio (`--altura-tronco-grande`); son unos 135 con la semilla 1.
+de las zonas, los árboles de >= 6 m tienen tronco de 0,45-0,7 m de radio = 0,9-1,4 m de diámetro, que tapa a un jugador (`--altura-tronco-grande`, antes 12 m y 0,5-0,7); la copa se ensancha (radio >= 1,4 + 2,2 x radio del tronco) y el tronco sube al 55 % de la altura. Son 280 con la semilla 1 (cuentan como cobertura).
 
-`generar_props.py` propone: el aula (en el bosque de `detras_22`, junto al 24), 5 coberturas alrededor de cada site, grupos de mobiliario junto a
-las fachadas (reciclaje, expendedoras, aparcabicis), una cobertura cada vez que quedaría un tramo abierto de > 22 m en alguna ruta, las 6
+`generar_props.py --completar --densificar` (idempotente; no toca tus filas) refuerza cada site hasta 11 coberturas altas a < 10 m del centro y rellena los espacios abiertos de cada zona (ningun punto libre a > 10 m de una cobertura, separacion >= 2 m entre coberturas grandes y rutas principales libres); correrlo dos veces porque las rutas cambian al poner props. `generar_props.py` propone: el aula (en el bosque de `detras_22`, junto al 24), 5 coberturas alrededor de cada site, grupos de mobiliario junto a
+las fachadas (reciclaje, expendedoras, aparcabicis), una cobertura cada vez que quedaría un tramo abierto de > 12 m en alguna ruta (`generar_zonas` avisa por encima de 14 m; antes 22 / 25 m), las 6
 marquesinas y unos pocos bancos / contenedores fuera de las zonas. Nunca pone nada sobre edificios, troncos, coches, pilares, muros, escaleras,
 pasos peatonales, agua ni las barreras de spawn; deja libre el eje de los suelos de pasillo (los tests de recorrido pasan por él) y los puntos de
 `test_suelos`. Tras editar el CSV a mano, `generar_zonas.py` lo revalida (solapes, suelos reservados, desnivel) y `generar_props.py --completar` añade
-lo que falte sin tocar tus filas. Con las posiciones actuales hay unos 246 props (banco 95, murete 40, jardinera 36, contenedor 24, aparcabicis 15,
-pila_sillas 11, mesa 10, marquesina 6, reciclaje 6, expendedora 2, aula 1) y unos 19 000 triángulos.
+lo que falte sin tocar tus filas. Con las posiciones actuales hay 476 props (antes 246; 160 de obra grande) y unos 51 000 triángulos.
 
 Opciones nuevas, comunes a `generar_blockout.py` y `generar_spawns.py` (usa las mismas en los dos): `--zonas data/zonas.json`,
 `--props data/props.csv`, `--altura-tronco-grande 12`. `generar_spawns.py` escribe además `n_props`, `test_props` (un rayo horizontal por tipo hacia
@@ -402,8 +403,8 @@ sin RigidBody), `lanzable.gd`, `nube_vision.gd`, `altavoz.gd`, `utilidades.gd` (
 `arma_suelo.gd` (+ `scenes/arma_suelo.tscn`, `limpiar_armas_suelo()`), `armero.gd` (F6), `senales_combate.gd` (bus `ruido` y `baja`).
 Todo el daño pasa por `Balistica` (RNG inyectable). Escudo 0-50 en `Salud` (equipo, `Salud.fuego_amigo` = false por defecto, autodaño explosivo).
 
-**Controles**: WASD, Espacio salta, **Shift correr** (6,5 m/s, no se dispara corriendo y hay 0,25 s de demora), **Alt sigilo**, **Ctrl agacharse**,
-**clic derecho apunta** (FOV menor, menos dispersión, más lento, arma centrada; mira de zoom en el fusil de precisión y el tirador; con el
+**Controles**: WASD, Espacio salta, **Shift correr** (7,8 m/s, no se dispara corriendo y hay 0,25 s de demora), **Alt sigilo**, **Ctrl agacharse**,
+**clic derecho apunta** (FOV menor, zoom por arma: pistolas y subfusiles 1,3-1,4x, fusiles 1,8-2x, tirador semiautomático 4x, precisión de cerrojo 4x y 8x: **rueda del ratón** o un **segundo clic derecho rápido** (< 0,45 s) cambia de nivel; sensibilidad del ratón proporcional a tan(FOV/2); `ArmaDatos.zoom` y `zoom_niveles`; menos dispersión, más lento, arma centrada; mira de zoom en el fusil de precisión y el tirador; con el
 sable bloquea, con la navaja golpe fuerte), clic izquierdo dispara (arco y Puño-Bot: mantener para cargar), R recargar, 1 principal, 2 secundaria,
 3 cuerpo a cuerpo, 4 utilidades (de nuevo 4 cicla), rueda cicla, Q última, **E recoger**, **G tirar el arma**, **F6 armero de pruebas**, F1 vuelo, M selector, F3 depuración, K suicidio.
 
@@ -427,7 +428,7 @@ sable bloquea, con la navaja golpe fuerte), clic izquierdo dispara (arco y Puño
 | Ametralladora ligera | principal | 3300 | 26 | 11/s | 100/100 | recarga 5,8 s, vel. 0,7 |
 | Arco "Olivo" | especial | 2200 | 78 (cabeza 273) | carga 1 s | 10/20 | recuperación lenta |
 | Tirachinas "Gomero" | especial | 400 | 20 | 2/s | 12/48 | poco daño |
-| Lanzacohetes "Traca" | especial | 4000 | 125 área, 6 m | 0,8/s | 1/1 | 2 cohetes, autodaño, recarga 4,8 s |
+| Lanzacohetes "Traca" | especial | 4500 | 125 área, 6 m | 0,8/s | 3/6 | 9 cohetes, autodaño, recarga 4,8 s |
 | "Sable de Plasma" | especial | 3000 | 68 arco | 1,5/s | - | bloqueo con calor, 4 s sobrecalentado |
 | "Puño-Bot" | especial (secundaria) | 600 | 46 + empuje | carga 0,8 s | - | vuelve a los 1,5 s |
 | Navaja | cuerpo a cuerpo | 0 | 40 / 65 | 2/s | - | siempre |
@@ -564,5 +565,18 @@ abiertas): los atacantes suelen ganar eliminando a los defensores antes de llega
 
 **Pruebas**: `Godot_console.exe --headless --path game --script res://tests/test_partida.gd [-- rapido]` (con `rapido` se salta la partida completa acelerada);
 `Godot_console.exe --headless --path game --script res://tests/sim_partida.gd -- zonas=el_eje rondas=12 escala=12` mide la tasa de victoria por bando. `tests/test_bots.gd` sigue usando `PartidaPrueba`.
+
+## Mejoras tras probar el juego
+
+- **Contorno de enemigos y sin nombres** (`scripts/combate/contorno_enemigos.gd`, `shaders/contorno_enemigo.gdshader`): los enemigos ya no llevan etiqueta de nombre (tampoco en las marcas de pintura: solo la distancia). Un nodo
+  `ContornoEnemigos` (lo crea `main.gd`) revisa cada enemigo vivo cada 3 fotogramas (desfasados) con `Utilidades.linea_de_vision` desde la camara a cabeza y torso (pared, prop, tronco y humo tapan) y, si lo ve, pone como
+  `material_overlay` de sus mallas un contorno magenta-rojo (inverted hull en espacio de vista, ancho creciente con la distancia, prueba de profundidad normal: nunca se pinta a traves de nada). Aliados: nombre pequeno solo
+  a menos de 14 m o al apuntarles con vista despejada, y siempre (con vista despejada) al espectar. Equipo 0 (modo libre) = todos enemigos. Coste: ~3 comprobaciones (2 rayos) por fotograma con 10 personajes.
+- **Manos** (`scripts/combate/manos_viewmodel.gd`): las manos-caja del viewmodel son ahora manos low-poly con dorso, 4 dedos de 2 falanges, pulgar, muneca, puno de manga y antebrazo (derecha en la empunadura, izquierda bajo el
+  guardamano). Piel (o guantes) y manga salen del personaje elegido (`ManosViewmodel.COLORES_PERSONAJE`, colores de humans_master.fbx; `GestorArmas.poner_personaje`, lo llama `juego.gd`). No se reutiliza el esqueleto de
+  Humans_Master en primera persona (habria que animar su pose con cada arma).
+- **Zoom** (ver Controles): overlay de mira telescopica (vineta circular negra + reticula + aumentos "4x"/"8x") en el fusil tirador y el de precision.
+- **Equilibrio de los bots tras las coberturas**: ver `docs/PROYECTO.md` (antes / despues con `tests/sim_partida.gd`).
+- Capturas: `tests/captura_mejoras.gd` (sin `--headless`; `-- <carpeta> [zonas|arbol|zoom|contorno|manos]`) escribe en `export/capturas_mejoras/`.
 
 Diseño y plan del proyecto: [docs/PROYECTO.md](docs/PROYECTO.md).

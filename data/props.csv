@@ -245,3 +245,233 @@ jardinera,-53.93,19.60,45.0,1,el_eje: cobertura de ruta
 pila_sillas,-49.40,15.07,255.9,1,el_eje: cobertura de ruta
 banco,-125.86,-140.15,90.0,1,el_puente: cobertura de ruta
 murete,-25.69,18.55,90.0,1.06,el_eje: cobertura de ruta
+murete,-2.54,187.68,33.8,1.24,plaza_america: cobertura del site A
+bigbag,-11.53,188.09,308.5,1,alto=1; plaza_america: cobertura del site A
+murete,-12.34,182.69,259.9,1.05,plaza_america: cobertura del site A
+bigbag,1.59,190.84,45.3,1,alto=1; plaza_america: cobertura del site A
+jardinera,-8.20,175.85,201.4,1,plaza_america: cobertura del site A
+bloques,3.98,186.20,75.2,1,n=2;ladrillo; plaza_america: cobertura del site A
+murete,-3.40,270.73,10.4,1.01,plaza_america: cobertura del site B
+palets,0.15,254.03,141.0,1,n=15; plaza_america: cobertura del site B
+murete,-8.50,253.66,202.8,1.03,plaza_america: cobertura del site B
+jardinera,-4.47,257.73,173.0,1,plaza_america: cobertura del site B
+jardinera,-3.95,268.89,8.7,1,plaza_america: cobertura del site B
+bloques,0.98,264.60,71.8,1,n=2;ladrillo; plaza_america: cobertura del site B
+muro_obra,-101.00,231.21,72.3,1,alto=2.2;largo=4.5; plaza_america: cobertura de espacio abierto
+bloques,9.00,318.71,188.3,1,n=2;ladrillo; plaza_america: cobertura de espacio abierto
+jardinera,-28.50,311.21,154.5,1,plaza_america: cobertura de espacio abierto
+palets,36.50,156.21,301.1,1,n=15; plaza_america: cobertura de espacio abierto
+caseta,-43.50,291.21,170.8,1,plaza_america: cobertura de espacio abierto
+bloques,59.00,198.71,265.6,1,n=2; plaza_america: cobertura de espacio abierto
+cuba,-98.50,251.21,150.2,1,plaza_america: cobertura de espacio abierto
+bobina,-26.00,286.21,195.7,1,n=1; plaza_america: cobertura de espacio abierto
+bloques,21.50,163.71,309.9,1,n=2; plaza_america: cobertura de espacio abierto
+valla_obra,-11.00,316.21,180.0,1,largo=3.2; plaza_america: cobertura de espacio abierto
+muro_obra,-53.50,276.21,88.5,1,alto=2.5;largo=5.9; plaza_america: cobertura de espacio abierto
+cuba,-86.00,226.21,170.7,1,plaza_america: cobertura de espacio abierto
+bigbag,-96.00,283.71,117.2,1,alto=1; plaza_america: cobertura de espacio abierto
+palets,-73.50,256.21,76.1,1,n=7; plaza_america: cobertura de espacio abierto
+bobina,4.00,306.21,105.2,1,n=1; plaza_america: cobertura de espacio abierto
+muro_obra,-68.50,273.71,93.5,1,alto=2.0;largo=4.3;l; plaza_america: cobertura de espacio abierto
+murete,59.00,183.71,270.3,1.12,plaza_america: cobertura de espacio abierto
+sacos,46.50,148.71,289.3,1,n=5; plaza_america: cobertura de espacio abierto
+sacos,-31.00,298.71,158.2,1,n=6; plaza_america: cobertura de espacio abierto
+bigbag,-91.00,238.71,91.7,1,alto=2; plaza_america: cobertura de espacio abierto
+muro_obra,-23.50,273.71,107.7,1,alto=2.0;largo=4.7;l; plaza_america: cobertura de espacio abierto
+bloques,16.50,308.71,199.8,1,n=4; plaza_america: cobertura de espacio abierto
+jardinera,-86.00,256.21,85.9,1,plaza_america: cobertura de espacio abierto
+palets,14.00,193.71,238.7,1,n=15; plaza_america: cobertura de espacio abierto
+caseta,-56.00,296.21,91.9,1,plaza_america: cobertura de espacio abierto
+valla_obra,-101.00,176.21,92.3,1,largo=4.8; plaza_america: cobertura de espacio abierto
+cuba,8.00,278.71,133.0,1,plaza_america: cobertura de espacio abierto
+bobina,34.00,171.21,315.4,1,n=1; plaza_america: cobertura de espacio abierto
+bloques,-38.50,248.71,76.4,1,n=2; plaza_america: cobertura de espacio abierto
+valla_obra,24.00,151.21,316.6,1,largo=3.2; plaza_america: cobertura de espacio abierto
+muro_obra,4.00,291.21,199.1,1,alto=2.2;largo=5.3; plaza_america: cobertura de espacio abierto
+cuba,11.50,158.71,21.2,1,plaza_america: cobertura de espacio abierto
+bigbag,-41.00,306.21,150.3,1,alto=1; plaza_america: cobertura de espacio abierto
+palets,-18.50,306.21,159.8,1,n=7; plaza_america: cobertura de espacio abierto
+bobina,-83.50,213.71,79.4,1,n=1; plaza_america: cobertura de espacio abierto
+muro_obra,-87.50,291.21,102.7,1,alto=2.4;largo=4.0;ladrillo; plaza_america: cobertura de espacio abierto
+murete,-58.50,236.21,64.3,1.11,plaza_america: cobertura de espacio abierto
+sacos,-73.50,293.71,109.0,1,n=6; plaza_america: cobertura de espacio abierto
+muro_obra,-34.49,166.85,107.9,1,alto=2.2;largo=3.6; plaza_america: cobertura de ruta
+palets,-25.73,262.65,96.1,1,n=15; plaza_america: cobertura de ruta
+palets,53.88,192.70,207.8,1,n=7; plaza_america: cobertura de ruta
+sacos,-17.98,255.15,102.9,1,n=5; plaza_america: cobertura de ruta
+bigbag,-36.42,241.15,104.0,1,alto=2; plaza_america: cobertura de ruta
+muro_obra,-69.93,252.25,53.0,1,alto=2.3;largo=4.8;ladrillo;l; plaza_america: cobertura de ruta
+sacos,-48.03,267.35,103.6,1,n=6; plaza_america: cobertura de ruta
+bloques,-63.12,247.05,51.3,1,n=2; plaza_america: cobertura de ruta
+banco,-102.85,196.74,180.0,1,plaza_america: cobertura de ruta
+bobina,-77.40,224.78,194.7,1,n=1; plaza_america: cobertura de ruta
+muro_obra,-52.01,233.17,37.4,1,alto=2.5;largo=5.6; plaza_america: cobertura de ruta
+palets,-12.04,165.79,40.4,1,n=8; plaza_america: cobertura de ruta
+valla_obra,-65.19,176.15,99.9,1,largo=3.2; plaza_america: cobertura de ruta
+bloques,-92.11,197.79,132.0,1,n=3;ladrillo; plaza_america: cobertura de ruta
+jardinera,-88.64,180.97,135.0,1,plaza_america: cobertura de ruta
+valla_obra,-56.49,161.65,105.8,1,largo=3.2; plaza_america: cobertura de ruta
+bloques,-32.12,235.35,104.4,1,n=2; plaza_america: cobertura de ruta
+palets,-13.12,227.15,102.1,1,n=15; plaza_america: cobertura de ruta
+bobina,-13.12,235.35,351.0,1,n=1; plaza_america: cobertura de ruta
+expendedora,3.35,223.78,166.7,1,plaza_america: mobiliario junto a la fachada
+banco,2.88,236.15,90.0,1,plaza_america: cobertura de ruta
+aparcabicis,22.18,228.84,167.0,1,plaza_america: mobiliario junto a la fachada
+cuba,21.88,235.35,273.7,1,plaza_america: cobertura de ruta
+sacos,18.45,245.88,323.5,1,n=6; plaza_america: cobertura de ruta
+bloques,5.65,260.85,257.7,1,n=2; plaza_america: cobertura de ruta
+palets,88.72,-246.26,259.2,1,n=7; biblioteca_24: cobertura del site A
+murete,103.57,-239.33,58.3,1.24,biblioteca_24: cobertura del site A
+cuba,104.09,-247.56,52.9,1,biblioteca_24: cobertura del site A
+jardinera,94.96,-234.73,353.6,1,biblioteca_24: cobertura del site A
+jardinera,98.81,-251.20,158.7,1,biblioteca_24: cobertura del site A
+jardinera,99.26,-235.27,20.5,1,biblioteca_24: cobertura del site A
+muro_obra,99.88,-278.07,104.1,1,alto=2.2;largo=4.6; biblioteca_24: cobertura del site B
+palets,90.86,-266.64,341.8,1,n=8; biblioteca_24: cobertura del site B
+murete,95.56,-265.94,23.8,1.03,biblioteca_24: cobertura del site B
+jardinera,95.49,-280.29,151.0,1,biblioteca_24: cobertura del site B
+jardinera,97.81,-272.02,71.2,1,biblioteca_24: cobertura del site B
+jardinera,87.90,-267.99,325.7,1,biblioteca_24: cobertura del site B
+muro_obra,171.05,-279.68,278.1,1,alto=2.2;largo=3.5; biblioteca_24: cobertura de espacio abierto
+bloques,38.55,-207.18,124.9,1,n=3;ladrillo; biblioteca_24: cobertura de espacio abierto
+jardinera,51.05,-239.68,95.5,1,biblioteca_24: cobertura de espacio abierto
+palets,81.05,-194.68,146.6,1,n=15; biblioteca_24: cobertura de espacio abierto
+caseta,43.55,-252.18,146.2,1,biblioteca_24: cobertura de espacio abierto
+valla_obra,163.55,-265.68,300.5,1,largo=3.2; biblioteca_24: cobertura de espacio abierto
+cuba,178.55,-287.18,259.8,1,biblioteca_24: cobertura de espacio abierto
+bobina,83.55,-182.18,200.1,1,n=1; biblioteca_24: cobertura de espacio abierto
+bloques,63.55,-199.68,131.9,1,n=2; biblioteca_24: cobertura de espacio abierto
+valla_obra,56.05,-274.68,97.7,1,largo=3.2; biblioteca_24: cobertura de espacio abierto
+muro_obra,43.55,-189.68,118.2,1,alto=2.5;largo=3.9; biblioteca_24: cobertura de espacio abierto
+cuba,158.55,-277.18,276.6,1,biblioteca_24: cobertura de espacio abierto
+bigbag,58.55,-177.18,148.6,1,alto=1; biblioteca_24: cobertura de espacio abierto
+palets,163.55,-289.68,297.9,1,n=15; biblioteca_24: cobertura de espacio abierto
+bobina,161.05,-254.68,32.5,1,n=1; biblioteca_24: cobertura de espacio abierto
+muro_obra,37.55,-277.18,89.4,1,alto=2.3;largo=3.0;ladrillo;l; biblioteca_24: cobertura de espacio abierto
+muro_obra,137.20,-249.03,308.0,1,alto=2.2;largo=4.0; biblioteca_24: cobertura de ruta
+palets,143.99,-266.57,309.7,1,n=8; biblioteca_24: cobertura de ruta
+cuba,138.19,-272.37,255.7,1,biblioteca_24: cobertura de ruta
+valla_obra,155.10,-259.77,303.5,1,largo=3.2; biblioteca_24: cobertura de ruta
+bigbag,123.50,-234.67,318.9,1,alto=2; biblioteca_24: cobertura de ruta
+muro_obra,47.53,-310.35,212.3,1,alto=2.2;largo=5.6; detras_22: cobertura del site A
+murete,53.58,-309.27,141.7,1.09,detras_22: cobertura del site A
+cuba,58.47,-302.72,271.9,1,detras_22: cobertura del site A
+jardinera,52.13,-313.77,171.8,1,detras_22: cobertura del site A
+jardinera,42.74,-307.81,257.7,1,detras_22: cobertura del site A
+jardinera,58.40,-310.97,123.9,1,detras_22: cobertura del site A
+banco,44.83,-299.92,314.6,1,detras_22: cobertura del site A
+palets,48.16,-340.18,6.9,1,n=7; detras_22: cobertura del site B
+murete,53.96,-346.60,75.0,1.16,detras_22: cobertura del site B
+bigbag,47.20,-356.16,163.0,1,alto=1; detras_22: cobertura del site B
+bigbag,49.18,-347.98,62.8,1,alto=1; detras_22: cobertura del site B
+jardinera,46.00,-341.95,8.1,1,detras_22: cobertura del site B
+bloques,37.25,-349.50,268.6,1,n=4; detras_22: cobertura del site B
+muro_obra,-27.00,-327.01,112.7,1,alto=2.2;largo=3.5; detras_22: cobertura de espacio abierto
+bloques,-17.00,-333.51,118.3,1,n=2;ladrillo; detras_22: cobertura de espacio abierto
+jardinera,-19.50,-291.01,102.0,1,detras_22: cobertura de espacio abierto
+palets,13.00,-343.51,106.2,1,n=14; detras_22: cobertura de espacio abierto
+caseta,-4.50,-286.01,116.8,1,detras_22: cobertura de espacio abierto
+valla_obra,128.00,-345.01,258.2,1,largo=3.2; detras_22: cobertura de espacio abierto
+cuba,65.50,-321.01,186.8,1,detras_22: cobertura de espacio abierto
+palets,94.94,-356.38,240.7,1,n=8; detras_22: cobertura de ruta
+banco,63.85,-341.28,0.0,1,detras_22: cobertura de ruta
+banco,61.75,-365.97,315.0,1,detras_22: cobertura de ruta
+aparcabicis,67.57,-359.09,24.3,1,detras_22: mobiliario junto a la fachada
+bloques,66.27,-361.44,329.0,1,n=2;ladrillo; detras_22: cobertura de ruta
+palets,55.15,-340.80,346.0,1,n=8; detras_22: cobertura de ruta
+palets,-28.77,24.68,103.0,1,n=7; el_eje: cobertura del site A
+palets,-38.69,34.99,0.9,1,n=7; el_eje: cobertura del site A
+murete,-45.49,31.61,306.8,1.07,el_eje: cobertura del site A
+jardinera,-39.84,16.83,191.3,1,el_eje: cobertura del site A
+jardinera,-46.13,21.81,242.7,1,el_eje: cobertura del site A
+jardinera,-40.71,28.16,308.6,1,el_eje: cobertura del site A
+bloques,-43.61,24.98,247.8,1,n=3;ladrillo; el_eje: cobertura del site A
+banco,-31.01,19.77,131.7,1,el_eje: cobertura del site A
+murete,11.09,-6.43,199.1,1.16,el_eje: cobertura del site B
+bigbag,22.23,-0.82,114.4,1,alto=1; el_eje: cobertura del site B
+bigbag,16.31,10.65,359.6,1,alto=1; el_eje: cobertura del site B
+jardinera,12.57,7.62,345.8,1,el_eje: cobertura del site B
+jardinera,18.55,-1.48,127.4,1,el_eje: cobertura del site B
+jardinera,8.58,8.93,322.0,1,el_eje: cobertura del site B
+palets,-17.16,72.26,202.8,1,n=7; el_eje: cobertura de espacio abierto
+bloques,-122.16,-30.24,44.6,1,n=2;ladrillo; el_eje: cobertura de espacio abierto
+jardinera,-97.16,-45.24,39.7,1,el_eje: cobertura de espacio abierto
+palets,-77.16,-2.74,55.9,1,n=7; el_eje: cobertura de espacio abierto
+bobina,-3.66,89.76,123.2,1,n=1; el_eje: cobertura de espacio abierto
+valla_obra,-47.16,-75.24,41.7,1,largo=3.2; el_eje: cobertura de espacio abierto
+cuba,-107.16,12.26,244.9,1,el_eje: cobertura de espacio abierto
+bobina,-39.66,-25.24,19.8,1,n=1; el_eje: cobertura de espacio abierto
+bloques,-84.66,62.26,131.8,1,n=2; el_eje: cobertura de espacio abierto
+valla_obra,-39.66,84.76,179.6,1,largo=4.8; el_eje: cobertura de espacio abierto
+muro_obra,-64.66,97.26,167.8,1,alto=2.5;largo=3.9; el_eje: cobertura de espacio abierto
+cuba,-92.16,52.26,116.7,1,el_eje: cobertura de espacio abierto
+bigbag,-19.66,-40.24,48.6,1,alto=1; el_eje: cobertura de espacio abierto
+palets,-109.66,-37.74,44.5,1,n=7; el_eje: cobertura de espacio abierto
+bobina,-27.16,79.76,75.4,1,n=1; el_eje: cobertura de espacio abierto
+muro_obra,-27.16,-30.24,68.6,1,alto=2.0;largo=3.2;l; el_eje: cobertura de espacio abierto
+murete,15.34,52.26,181.5,1.07,el_eje: cobertura de espacio abierto
+sacos,-89.66,9.76,69.7,1,n=5; el_eje: cobertura de espacio abierto
+sacos,-117.16,22.26,79.5,1,n=6; el_eje: cobertura de espacio abierto
+bigbag,-52.16,92.26,182.2,1,alto=1; el_eje: cobertura de espacio abierto
+muro_obra,-102.32,6.55,107.8,1,alto=2.2;largo=5.6; el_eje: cobertura de ruta
+palets,-83.44,-10.64,117.0,1,n=8; el_eje: cobertura de ruta
+banco,-44.45,2.73,0.0,1,el_eje: cobertura de ruta
+valla_obra,-97.91,-34.31,301.9,1,largo=3.2; el_eje: cobertura de ruta
+bloques,-30.47,29.66,238.8,1,n=2;ladrillo; el_eje: cobertura de ruta
+contenedor,21.47,15.29,300.0,1,el_eje: mobiliario junto a la fachada
+sacos,26.63,10.76,239.5,1,n=6; el_eje: cobertura de ruta
+bloques,-60.73,-16.66,51.3,1,n=2;ladrillo; el_eje: cobertura de ruta
+banco,-65.68,-11.71,45.0,1,el_eje: cobertura de ruta
+bobina,-9.25,59.37,25.7,1,n=1; el_eje: cobertura de ruta
+palets,-56.82,-24.20,36.0,1,n=7; el_eje: cobertura de ruta
+contenedor,-112.28,-18.70,32.3,1,el_eje: mobiliario junto a la fachada
+palets,-11.73,9.05,105.7,1,n=8; el_eje: cobertura de ruta
+bloques,-33.11,8.95,77.8,1,n=3;ladrillo; el_eje: cobertura de ruta
+jardinera,-16.19,13.35,90.0,1,el_eje: cobertura de ruta
+palets,-80.78,-213.14,46.0,1,n=7; el_puente: cobertura del site A
+murete,-85.39,-212.51,30.2,1.15,el_puente: cobertura del site A
+murete,-83.18,-209.35,32.2,1.07,el_puente: cobertura del site A
+jardinera,-88.66,-224.32,185.2,1,el_puente: cobertura del site A
+jardinera,-92.61,-208.94,330.2,1,el_puente: cobertura del site A
+jardinera,-86.14,-222.12,160.0,1,el_puente: cobertura del site A
+muro_obra,-48.55,-193.36,212.8,1,alto=2.2;largo=4.6; el_puente: cobertura del site B
+bigbag,-54.01,-183.07,293.2,1,alto=1; el_puente: cobertura del site B
+cuba,-46.66,-175.65,251.6,1,el_puente: cobertura del site B
+jardinera,-51.90,-189.45,237.2,1,el_puente: cobertura del site B
+jardinera,-39.27,-185.14,91.4,1,el_puente: cobertura del site B
+bloques,-38.05,-190.56,112.3,1,n=2;ladrillo; el_puente: cobertura del site B
+muro_obra,-43.32,-265.55,328.5,1,alto=2.2;largo=5.8; el_puente: cobertura de espacio abierto
+bloques,-9.82,-205.55,298.7,1,n=3;ladrillo; el_puente: cobertura de espacio abierto
+jardinera,-144.82,-125.55,148.1,1,el_puente: cobertura de espacio abierto
+palets,-57.32,-205.55,46.7,1,n=15; el_puente: cobertura de espacio abierto
+caseta,-12.32,-243.05,321.6,1,el_puente: cobertura de espacio abierto
+valla_obra,-71.32,-118.05,168.0,1,largo=3.2; el_puente: cobertura de espacio abierto
+cuba,-19.82,-210.55,64.4,1,el_puente: cobertura de espacio abierto
+bobina,-92.32,-238.05,338.4,1,n=1; el_puente: cobertura de espacio abierto
+bloques,0.18,-218.05,317.2,1,n=2; el_puente: cobertura de espacio abierto
+contenedor,-102.75,-117.05,212.7,1,el_puente: mobiliario junto a la fachada
+banco,-99.28,-113.05,135.0,1,el_puente: cobertura de ruta
+palets,-132.96,-145.22,139.5,1,n=7; el_puente: cobertura de ruta
+sacos,-77.53,-163.65,82.7,1,n=5; el_puente: cobertura de ruta
+bigbag,-80.54,-178.75,107.1,1,alto=2; el_puente: cobertura de ruta
+banco,-80.54,-164.15,90.0,1,el_puente: cobertura de ruta
+banco,-80.54,-160.75,90.0,1,el_puente: cobertura de ruta
+bloques,-82.94,-164.15,83.8,1,n=4; el_puente: cobertura de ruta
+banco,-84.14,-174.15,90.0,1,el_puente: cobertura de ruta
+banco,-76.94,-172.35,90.0,1,el_puente: cobertura de ruta
+muro_obra,-78.35,-184.82,167.7,1,alto=2.5;largo=5.8; el_puente: cobertura de ruta
+palets,-25.65,266.25,86.2,1,n=8; plaza_america: cobertura de ruta
+palets,-87.52,233.16,42.1,1,n=15; plaza_america: cobertura de ruta
+banco,-65.32,217.36,45.0,1,plaza_america: cobertura de ruta
+banco,-28.07,228.85,90.0,1,plaza_america: cobertura de ruta
+bigbag,-10.37,247.81,62.3,1,alto=2; plaza_america: cobertura de ruta
+muro_obra,-44.50,217.82,52.5,1,alto=2.3;largo=5.9;ladrillo;l; plaza_america: cobertura de ruta
+muro_obra,161.80,-284.88,240.0,1,alto=2.2;largo=3.1; biblioteca_24: cobertura de ruta
+palets,138.10,-282.35,273.8,1,n=15; biblioteca_24: cobertura de ruta
+banco,103.58,-288.35,270.0,1,biblioteca_24: cobertura de ruta
+valla_obra,43.11,-325.53,324.4,1,largo=4.8; detras_22: cobertura de ruta
+palets,52.02,-316.62,318.4,1,n=14; detras_22: cobertura de ruta
+bigbag,41.56,-328.78,324.8,1,alto=1; detras_22: cobertura de ruta
+muro_obra,48.06,-318.88,304.5,1,alto=2.2;largo=3.4; detras_22: cobertura de ruta
+banco,-53.51,8.21,45.0,1,el_eje: cobertura de ruta
+palets,-53.14,10.56,31.7,1,n=8; el_eje: cobertura de ruta

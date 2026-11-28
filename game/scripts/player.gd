@@ -1,6 +1,6 @@
 class_name Jugador
 extends CharacterBody3D
-## Jugador en primera persona. Controles: WASD, Espacio salta, Shift corre (~6,5 m/s), Alt camina sigiloso, Ctrl se agacha,
+## Jugador en primera persona. Controles: WASD, Espacio salta, Shift corre (~7,8 m/s), Alt camina sigiloso, Ctrl se agacha,
 ## clic derecho apunta (lo gestiona el GestorArmas), E recoge, G tira el arma; F1 vuelo/noclip, M selector de spawn, F3 depuracion,
 ## K suicidio (pruebas). Las acciones se definen en el Input Map de project.godot.
 
@@ -14,7 +14,7 @@ signal reaparecido
 ## Andar normal (sin modificadores).
 @export var vel_normal: float = 5.0
 ## Correr (Shift).
-@export var vel_sprint: float = 6.5
+@export var vel_sprint: float = 7.8
 ## Caminar sigiloso (Alt).
 @export var vel_sigilo: float = 2.6
 @export var vel_agachado: float = 1.7
@@ -116,7 +116,7 @@ func aplicar_impulso(v: Vector3) -> void:
 	velocity += v
 
 
-## Velocidad objetivo (m/s) del estado actual: andar 5, correr 6,5, sigilo 2,6, agachado 1,7, por los multiplicadores del arma
+## Velocidad objetivo (m/s) del estado actual: andar 5, correr 7,8, sigilo 2,6, agachado 1,7, por los multiplicadores del arma
 ## y del estado (apuntar o bloquear).
 func velocidad_objetivo() -> float:
 	var v: float = vel_normal
@@ -142,7 +142,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m := event as InputEventMouseMotion
 		# apuntando con zoom, la sensibilidad baja en proporcion al campo de vision
-		var s: float = sensibilidad * (camara.fov / fov_base)
+		var s: float = sensibilidad * tan(deg_to_rad(camara.fov) * 0.5) / tan(deg_to_rad(fov_base) * 0.5)
 		rotate_y(-m.relative.x * s)
 		_pitch = clampf(_pitch - m.relative.y * s, -deg_to_rad(89.0), deg_to_rad(89.0))
 		_aplicar_rotacion_cabeza()

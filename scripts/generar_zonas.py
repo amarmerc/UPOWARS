@@ -402,7 +402,9 @@ def preview(z, ctx, est, ruta, margen=22.0, rej=None):
     cc = [c for c in ctx.coches if vent.contains(Point(c["pos"][0], -c["pos"][2]))]
     ax.add_collection(PatchCollection([MPoly(np.asarray(coc.rect_coche(c).exterior.coords)[:-1]) for c in cc], fc="#c33", ec="k", lw=0.4, zorder=4.5))
     COL_PROP = {"banco": "#8b5a2b", "murete": "#777777", "jardinera": "#2e8b57", "contenedor": "#2f4f4f", "aparcabicis": "#222222",
-                "marquesina": "#6a0dad", "expendedora": "#d2142a", "pila_sillas": "#1e90ff", "mesa": "#cd853f", "aula": "#ff1493"}
+                "marquesina": "#6a0dad", "expendedora": "#d2142a", "pila_sillas": "#1e90ff", "mesa": "#cd853f", "aula": "#ff1493",
+                "muro_obra": "#b5651d", "valla_obra": "#deb887", "palets": "#c8a165", "sacos": "#e0d4a8", "bigbag": "#f0e6c8", "cuba": "#ff8c00",
+                "caseta": "#4682b4", "bobina": "#a0522d", "bloques": "#cd5c5c"}
     for p, g in zip(ctx.props["props"], ctx.huellas_props):
         if vent.intersects(g):
             c = COL_PROP.get(p["tipo"], "#1b9e77" if p["tipo"].startswith("reciclaje") else "#000")
@@ -466,7 +468,7 @@ def preview(z, ctx, est, ruta, margen=22.0, rej=None):
         tt.append(f"{k}: atac {ma:.1f}s [{a0:.0f}-{a1:.0f}]  def {md:.1f}s [{d0:.0f}-{d1:.0f}]  ventaja {v:+.1f}s  rutas {len(est['rutas'][k])}")
     inf = est["info"]
     ax.set_title(f"{z['nombre']} ({z['id']}) - {inf['largo_m']:.0f} x {inf['ancho_m']:.0f} m, {inf['area_m2']} m2 | " + " | ".join(tt)
-                 + "\nrojo = limite; amarillo = sites; naranja = atacantes, azul = defensores; x magenta = tramo abierto > 25 m",
+                 + "\nrojo = limite; amarillo = sites; naranja = atacantes, azul = defensores; x magenta = tramo abierto > 14 m",
                  fontsize=8)
     fig.tight_layout()
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)

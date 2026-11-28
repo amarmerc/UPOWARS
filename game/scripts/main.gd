@@ -19,6 +19,7 @@ func _ready() -> void:
 	menu.spawn_elegido.connect(_on_spawn_elegido)
 	hud.vincular(jugador)
 	efectos.vincular(jugador.gestor)
+	ContornoEnemigos.asegurar(self, jugador)
 	if not spawns.is_empty():
 		_colocar(spawns[0])  # el jugador espera inmóvil en el primer spawn hasta elegir
 	jugador.activo = false

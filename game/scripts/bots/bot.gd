@@ -263,10 +263,22 @@ func _on_baja(atacante: Node, victima: Salud, _arma: ArmaDatos) -> void:
 		cerebro.on_baja(atacante, victima)
 
 
+## Contorno de enemigo visible: `mat` = ShaderMaterial de contorno, o null para quitarlo (lo gestiona `ContornoEnemigos`).
+func fijar_contorno(mat: Material) -> void:
+	if _caida != null:
+		ModeloPersonaje.fijar_contorno(_caida, mat)
+
+
+## Nombre flotante (solo aliados y espectador; `ContornoEnemigos` lo muestra a corta distancia o al apuntar).
+func mostrar_etiqueta(on: bool) -> void:
+	if _etiqueta != null:
+		_etiqueta.visible = on and not muerto
+
+
 func _actualizar_etiqueta() -> void:
 	if _etiqueta == null:
 		return
-	_etiqueta.text = "%s  %d" % [nombre, roundi(salud.vida)] if not muerto else "%s (muerto)" % nombre
+	_etiqueta.text = nombre
 
 
 func _construir_visual() -> void:
@@ -279,11 +291,12 @@ func _construir_visual() -> void:
 	_etiqueta.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_etiqueta.no_depth_test = true
 	_etiqueta.fixed_size = true
-	_etiqueta.pixel_size = 0.0007
-	_etiqueta.font_size = 40
-	_etiqueta.outline_size = 10
+	_etiqueta.pixel_size = 0.00045
+	_etiqueta.font_size = 36
+	_etiqueta.outline_size = 8
 	_etiqueta.modulate = color.lightened(0.35)
 	_etiqueta.position = Vector3(0, 2.1, 0)
+	_etiqueta.visible = false           # sin nombres por defecto: solo aliados cercanos (ContornoEnemigos)
 	add_child(_etiqueta)
 	_actualizar_etiqueta()
 

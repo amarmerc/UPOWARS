@@ -11,6 +11,8 @@ var _hit_cabeza: bool = false
 var _hit_muerte: bool = false
 ## Mira de zoom (fusil de precision / tirador): reticula fina y vineta circular negra.
 var zoom_activo: bool = false
+## Aumentos mostrados en la mira de zoom (4, 8...).
+var aumentos: float = 0.0
 
 
 func mostrar_hit(cabeza: bool, muerte: bool = false) -> void:
@@ -20,9 +22,10 @@ func mostrar_hit(cabeza: bool, muerte: bool = false) -> void:
 	queue_redraw()
 
 
-func poner_zoom(valor: bool) -> void:
-	if valor != zoom_activo:
+func poner_zoom(valor: bool, aumento: float = 0.0) -> void:
+	if valor != zoom_activo or (valor and not is_equal_approx(aumento, aumentos)):
 		zoom_activo = valor
+		aumentos = aumento
 		queue_redraw()
 
 
@@ -80,3 +83,8 @@ func _dibujar_mira_zoom(c: Vector2) -> void:
 	draw_circle(c, 1.6, Color(0.9, 0.1, 0.05))
 	for k in range(1, 5):  # marcas de caida bajo el centro
 		draw_line(c + Vector2(-6, 30 + 22 * k), c + Vector2(6, 30 + 22 * k), fino, 2.0)
+	if aumentos > 0.0:
+		var f: Font = ThemeDB.fallback_font
+		var txt: String = "%dx" % int(roundf(aumentos))
+		draw_string(f, c + Vector2(r * 0.55, r * 0.8) + Vector2(1, 1), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(0, 0, 0, 0.9))
+		draw_string(f, c + Vector2(r * 0.55, r * 0.8), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 26, Color(1, 1, 1, 0.9))

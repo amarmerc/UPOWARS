@@ -72,6 +72,7 @@ var _m_cuerpo: StandardMaterial3D
 var _m_acento: StandardMaterial3D
 var _m_hoja: StandardMaterial3D
 var _m_piel: StandardMaterial3D
+var _m_manga: StandardMaterial3D
 var _m_madera: StandardMaterial3D
 var _m_oscuro: StandardMaterial3D
 
@@ -148,7 +149,7 @@ func preparar_icono(id: StringName, tam: Vector2i) -> SubViewport:
 		if mi.mesh == null or not mi.is_visible_in_tree():
 			continue
 		# sin manos ni cuerda procedural (cajas) en el icono: solo el modelo del arma
-		if mi.mesh is BoxMesh and (mi.material_override == _m_piel or (mi.mesh as BoxMesh).size.z >= 0.99):
+		if mi.mesh is BoxMesh and (mi.material_override == _m_piel or mi.material_override == _m_manga or (mi.mesh as BoxMesh).size.z >= 0.99):
 			mi.visible = false
 			continue
 		var a: AABB = mi.global_transform * mi.mesh.get_aabb()
@@ -473,8 +474,19 @@ func _registrar(id: StringName, nodo: Node3D) -> void:
 	_modelos[id] = nodo
 
 
-func _mano(padre: Node3D, pos: Vector3, tam: Vector3 = Vector3(0.05, 0.05, 0.08)) -> void:
-	_caja(padre, tam, pos, _m_piel)
+## Mano con dedos y antebrazo con manga (`ManosViewmodel`) que agarra un trozo de arma de tamaño `tam` centrado en `pos`.
+## `izq` = mano izquierda de apoyo (guardamano); por defecto la derecha (empunadura).
+func _mano(padre: Node3D, pos: Vector3, tam: Vector3 = Vector3(0.05, 0.05, 0.08), izq: bool = false) -> void:
+	var m: Node3D = ManosViewmodel.crear(tam, izq, _m_piel, _m_manga)
+	m.position = pos
+	padre.add_child(m)
+
+
+## Pinta las manos con la piel (o los guantes) y la manga del personaje elegido (ver `ManosViewmodel.COLORES_PERSONAJE`).
+func poner_personaje(id: StringName) -> void:
+	var c: Array = ManosViewmodel.colores(id)
+	_m_piel.albedo_color = c[0]
+	_m_manga.albedo_color = c[1]
 
 
 ## Arma larga parametrica: cuerpo, canon, cargador, culata, mira y extras segun `o`.
@@ -523,7 +535,8 @@ func _arma_larga(id: StringName, o: Dictionary) -> void:
 		_esfera(n, 0.014, Vector3(0.078, 0.03, 0.02), _m_metal)
 	if o.get("cinta", false):  # ametralladora: cinta de balas
 		_caja(n, Vector3(0.015, 0.05, 0.12), Vector3(-0.06, -0.01, -0.12), _m_acento, Vector3(0, 0, -0.5))
-	_mano(n, Vector3(0.0, -0.065, z_fin - 0.02), Vector3(0.06, 0.05, 0.09))
+	_mano(n, Vector3(0.0, -0.065, z_fin - 0.02), Vector3(0.06, 0.05, 0.09), true)
+	_mano(n, Vector3(0.0, -0.1, 0.10), Vector3(0.05, 0.1, 0.07))
 	_flashes[id] = _fogonazo(n, Vector3(0, 0.015, z_fin - canon - 0.03), o.get("flash", 0.22))
 	_registrar(id, n)
 
@@ -555,7 +568,8 @@ func _construir_modelos() -> void:
 	_m_cuerpo = _material(Color(0.24, 0.27, 0.22), 0.3, 0.6)
 	_m_acento = _material(Color(0.78, 0.45, 0.12), 0.2, 0.6)
 	_m_hoja = _material(Color(0.78, 0.8, 0.84), 0.9, 0.25)
-	_m_piel = _material(Color(0.72, 0.55, 0.45), 0.0, 0.8)
+	_m_piel = _material(Color(0.73, 0.61, 0.47), 0.0, 0.75)
+	_m_manga = _material(Color(0.53, 0.51, 0.46), 0.0, 0.9)
 	_m_madera = _material(Color(0.42, 0.27, 0.15), 0.0, 0.7)
 	_m_oscuro = _material(Color(0.08, 0.09, 0.1), 0.4, 0.5)
 
@@ -782,7 +796,7 @@ func _sustituir_por_externos() -> void:
 		var largo: float = float(m.get_meta("largo"))
 		_mano(m, Vector3(0.0, -0.06, 0.02), Vector3(0.05, 0.07, 0.06))
 		if largo > 0.4:
-			_mano(m, Vector3(0.0, -0.045, boca.z * 0.5), Vector3(0.05, 0.045, 0.08))
+			_mano(m, Vector3(0.0, -0.045, boca.z * 0.5), Vector3(0.05, 0.045, 0.08), true)
 		_atras[id] = float(m.get_meta("atras"))
 		_bocas[id] = boca
 		_externos[id] = true

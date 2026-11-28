@@ -88,7 +88,7 @@ class Entorno:
                   self._g([self.spawn_pts], 3.0),
                   self._g([self.lineas_zona], 1.3),
                   self._g([self.barreras_zona], 1.0),
-                  self._g([self.props_huellas], 0.6),
+                  self._g([self.props_huellas], 0.9),
                   self._g([self.claros], 0.0)]
         return unary_union([p for p in partes if p is not None])
 

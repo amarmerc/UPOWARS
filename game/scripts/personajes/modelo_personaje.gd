@@ -120,6 +120,16 @@ static func _brazaletes(raiz: Node3D, sk: Skeleton3D, color: Color) -> void:
 		cont.add_child(m)
 
 
+## Pone (o quita con null) el material de contorno como overlay de las mallas del cuerpo (sin tocar los materiales propios).
+static func fijar_contorno(cuerpo: Node3D, mat: Material) -> void:
+	var sk: Skeleton3D = cuerpo.find_child("Skeleton3D", true, false) as Skeleton3D
+	var base: Node = sk if sk != null else cuerpo
+	for h: Node in base.get_children():
+		var mi: MeshInstance3D = h as MeshInstance3D
+		if mi != null and not (mi.get_parent() is BoneAttachment3D):
+			mi.material_overlay = mat
+
+
 ## Cuelga el arma `id` (modelo de `ModelosArmas`) de la mano del personaje; sin modelo (o sin mano) no pone nada.
 static func poner_arma(cuerpo: Node3D, id: StringName) -> void:
 	var ba: BoneAttachment3D = cuerpo.get_meta("mano", null) as BoneAttachment3D
