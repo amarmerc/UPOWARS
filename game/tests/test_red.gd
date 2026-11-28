@@ -9,6 +9,7 @@ extends SceneTree
 ##   teletransporte, velocidad)   r9 desconexion -> bot   r10 chat y killfeed   r11 ancho de banda con 10 participantes   r12 volver al lobby
 
 const PUERTO: int = 7791
+const PUERTO_WS: int = 7792
 const DT: float = 1.0 / 60.0
 
 var fallos: int = 0
@@ -21,6 +22,8 @@ var c2: Red
 var ctl1: Dictionary = {}
 var ctl2: Dictionary = {}
 var solo: int = 0
+## `ws=1`: toda la bateria sobre WebSocket (servidor `--ws` + clientes `ws://`) en vez de ENet. Sin el, ENet + una comprobacion WebSocket (r13).
+var usar_ws: bool = false
 var informe: Array[String] = []
 
 
@@ -70,6 +73,8 @@ func _ejecutar() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("seccion="):
 			solo = int(a.get_slice("=", 1))
+		elif a == "ws=1":
+			usar_ws = true
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await frames(6)
@@ -97,6 +102,8 @@ func _ejecutar() -> void:
 		await _r9_desconexion()
 		await _r12_volver_lobby()
 	await _r11_ancho_banda()
+	if not usar_ws:
+		await _r13_websocket()
 	print("--- informe ---")
 	for l: String in informe:
 		print(l)
@@ -112,9 +119,16 @@ func _limpiar() -> void:
 			r.cerrar()
 
 
+## Conecta `r` al servidor de pruebas por el transporte elegido (ENet o WebSocket).
+func _conectar(r: Red) -> Error:
+	if usar_ws:
+		return r.iniciar_cliente("ws://127.0.0.1:%d" % PUERTO)
+	return r.iniciar_cliente("127.0.0.1", PUERTO)
+
+
 func nuevo_cliente(nombre: String, jug: Jugador) -> Red:
 	var r: Red = Red.nuevo_aislado(self, "Cliente_" + nombre)
-	r.iniciar_cliente("127.0.0.1", PUERTO)
+	_conectar(r)
 	r.cliente.nombre = nombre
 	r.cliente.personaje = CatalogoPersonajes.ids()[0]
 	r.cliente.proveedor_mundo = func() -> Array: return [main, jug]
@@ -126,7 +140,7 @@ func nuevo_cliente(nombre: String, jug: Jugador) -> Red:
 func _r1_conexion() -> void:
 	print("== r1 conexion")
 	srv = Red.nuevo_aislado(self, "Servidor")
-	var err: Error = srv.iniciar_servidor(PUERTO, 10)
+	var err: Error = srv.iniciar_servidor(PUERTO, 10, usar_ws)
 	comprobar("r1 el servidor escucha en el puerto %d" % PUERTO, err == OK, "err=%d" % err)
 	srv.servidor.mundo = main
 	srv.servidor.t_compra = 4.0
@@ -139,7 +153,7 @@ func _r1_conexion() -> void:
 	comprobar("r1 el servidor lo tiene registrado en un hueco humano", srv.servidor._pos_de(c1.mi_id()).x >= 0)
 	comprobar("r1 el primer cliente es el anfitrion", srv.servidor.anfitrion == c1.mi_id())
 	var bad: Red = Red.nuevo_aislado(self, "Cliente_Malo")
-	bad.iniciar_cliente("127.0.0.1", PUERTO)
+	_conectar(bad)
 	bad.cliente.version = 999
 	var rechazo: Array = [""]
 	bad.cliente.rechazado.connect(func(m: String) -> void: rechazo[0] = m)
@@ -592,7 +606,7 @@ func _r11_ancho_banda() -> void:
 	if s.en_partida:
 		s.volver_al_lobby()
 		await frames(30)
-	if c2 == null or not is_instance_valid(c2) or c2.enet == null:
+	if c2 == null or not is_instance_valid(c2) or c2.transporte == null:
 		c2 = nuevo_cliente("Beto", j2)
 		c2.cliente.entrada_externa = fabricar(j2, ctl2)
 		await hasta(func() -> bool: return s.clientes.size() == 2, 4.0)
@@ -649,3 +663,34 @@ func _r11_ancho_banda() -> void:
 	comprobar("r11 el segundo cliente similar (%.2f KB/s)" % bajada2, bajada2 < 12.0)
 	comprobar("r11 subida por cliente < 8 KB/s (%.2f)" % up, up < 8.0)
 	comprobar("r11 llegan ~20 snapshots/s (%.1f)" % sn_s, sn_s > 15.0 and sn_s < 26.0)
+
+
+# ------------------------------------------------------------------ r13
+
+## WebSocket: un servidor `--ws` (segundo Red aislado) y un cliente `ws://` completan el saludo, entran al lobby, un cliente ENet no
+## puede hablar con el y los RPC viajan en ambos sentidos (chat), igual que por ENet.
+func _r13_websocket() -> void:
+	print("== r13 transporte WebSocket")
+	var sw: Red = Red.nuevo_aislado(self, "ServidorWS")
+	var err: Error = sw.iniciar_servidor(PUERTO_WS, 10, true)
+	comprobar("r13 el servidor WebSocket escucha en el puerto TCP %d" % PUERTO_WS, err == OK and sw.es_websocket and sw.transporte is WebSocketMultiplayerPeer, "err=%d" % err)
+	sw.servidor.mundo = main
+	var cw: Red = Red.nuevo_aislado(self, "ClienteWS")
+	var err2: Error = cw.iniciar_cliente("ws://127.0.0.1:%d" % PUERTO_WS)
+	comprobar("r13 el cliente acepta una URL ws://", err2 == OK and cw.es_websocket, "err=%d" % err2)
+	cw.cliente.nombre = "Wanda"
+	cw.cliente.personaje = CatalogoPersonajes.ids()[0]
+	cw.cliente.proveedor_mundo = func() -> Array: return [main, j2]
+	var ok: bool = await hasta(func() -> bool: return cw.cliente.estado == ClienteRed.Estado.LOBBY and sw.servidor.clientes.has(cw.mi_id()), 6.0)
+	comprobar("r13 el cliente WebSocket entra en el lobby", ok, "estado=%d" % cw.cliente.estado)
+	comprobar("r13 es el anfitrion de ese servidor", sw.servidor.anfitrion == cw.mi_id())
+	cw.cliente.lobby_cmd(&"nombre", "Wanda la Web", null)      # RPC cliente -> servidor -> estado del lobby difundido de vuelta
+	var pos: Vector2i = sw.servidor._pos_de(cw.mi_id())
+	var ok_nombre: bool = await hasta(func() -> bool: return str(sw.servidor.huecos[pos.x][pos.y]["nombre"]) == "Wanda la Web" and str(cw.cliente.lobby["huecos"][pos.x][pos.y]["nombre"]) == "Wanda la Web", 3.0)
+	comprobar("r13 un RPC de ida y vuelta (cambiar nombre en el lobby) funciona por WebSocket", ok_nombre)
+	comprobar("r13 es_url_ws distingue destinos", Red.es_url_ws("ws://a/b") and Red.es_url_ws(" WSS://a/ws") and not Red.es_url_ws("127.0.0.1:7777"))
+	cw.cerrar()
+	await frames(10)
+	comprobar("r13 el servidor ve la desconexion del cliente WebSocket", sw.servidor.clientes.is_empty())
+	sw.cerrar()
+	await frames(5)

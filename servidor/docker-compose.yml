@@ -32,6 +32,37 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Mismo servidor en modo WebSocket (TCP) para el cliente web: SOLO escucha en 127.0.0.1; el nginx del host lo publica en
+  # https://<dominio>/ws (ver nginx-upowars.conf). Partida independiente de la de ENet (los jugadores web no se mezclan con los de UDP).
+  servidor-web:
+    build:
+      context: ..
+      dockerfile: servidor/Dockerfile
+    image: upowars-servidor:latest      # misma imagen que `servidor`
+    container_name: upowars-servidor-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WS_PUERTO:-7780}:${WS_PUERTO:-7780}"
+    environment:
+      WS_PUERTO: "${WS_PUERTO:-7780}"   # activa el modo --ws (TCP); PUERTO (UDP) no se usa en este servicio
+      MAX: "${MAX:-10}"
+      MODO: "${MODO:-cachimba_wars}"
+      ZONA: "${ZONA:-plaza_america}"
+      TAM: "${TAM:-5}"
+      RONDAS: "${RONDAS:-7}"
+      DIFICULTAD: "${DIFICULTAD:-normal}"
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # --- Varias instancias en la misma VM: descomentar y ajustar (puerto UDP distinto en cada una; abrir tambien en Oracle y en el firewall) ---
   # servidor2:
   #   build:

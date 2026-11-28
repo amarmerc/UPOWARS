@@ -16,6 +16,7 @@ param(
   [string]$Modo = "cachimba_wars",
   [string]$Zona = "plaza_america",
   [string]$Godot = "D:\Juegos\godot\Godot_v4.7.2-stable_win64_console.exe",
+  [switch]$WebSocket,      # servidor con --ws (TCP) y clientes ws://127.0.0.1:<puerto>/ws en vez de ENet/UDP
   [switch]$ConVentana
 )
 $ErrorActionPreference = "Stop"
@@ -28,6 +29,7 @@ $procs = @()
 try {
   $srvLog = Join-Path $logs "servidor.log"
   $srvArgs = @("--headless", "--path", $proyecto, "--", "--servidor", "puerto=$Puerto", "max=10", "modo=$Modo", "zona=$Zona", "tam=$Tam", "t_compra=5", "rondas=7") + $extra
+  if ($WebSocket) { $srvArgs += "--ws=$Puerto" }
   $srv = Start-Process -FilePath $Godot -ArgumentList $srvArgs -PassThru -NoNewWindow -RedirectStandardOutput $srvLog -RedirectStandardError (Join-Path $logs "servidor.err")
   $procs += $srv
   # esperar a que escuche
@@ -41,7 +43,7 @@ try {
   $hijo = Get-CimInstance Win32_Process -Filter "ParentProcessId=$($srv.Id)" | Select-Object -First 1
   $medido = if ($hijo) { Get-Process -Id $hijo.ProcessId } else { $srv }
   for ($i = 1; $i -le $Clientes; $i++) {
-    $cl = @("--headless", "--path", $proyecto, "--", "--cliente-sim=127.0.0.1:$Puerto", "nombre=Sim$i") + $extra
+    $cl = @("--headless", "--path", $proyecto, "--", "--cliente-sim=$(if ($WebSocket) { "ws://127.0.0.1:$Puerto/ws" } else { "127.0.0.1:$Puerto" })", "nombre=Sim$i") + $extra
     if ($ConVentana) { $cl = $cl | Where-Object { $_ -ne "--headless" } }
     $p = Start-Process -FilePath $Godot -ArgumentList $cl -PassThru -NoNewWindow -RedirectStandardOutput (Join-Path $logs "cliente$i.log") -RedirectStandardError (Join-Path $logs "cliente$i.err")
     $procs += $p

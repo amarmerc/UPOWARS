@@ -30,6 +30,8 @@ func _init() -> void:
 	panel.add_child(v)
 	v.add_child(EstiloUI.etiqueta("PAUSA", 32, EstiloUI.ACENTO))
 	var datos: Array = [["Reanudar", reanudar], ["Volver al lobby", volver_lobby], ["Salir del juego", salir_juego]]
+	if OS.has_feature("web"):      # en el navegador no se puede cerrar el juego
+		datos.pop_back()
 	for d: Array in datos:
 		var b: Button = EstiloUI.boton(str(d[0]), 20)
 		var sen: Signal = d[1]

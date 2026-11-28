@@ -5,3 +5,4 @@ data/raw/
 export/*.tmp
 
 export/red_logs/
+export/web/

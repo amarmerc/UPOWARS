@@ -118,6 +118,7 @@ func _construir() -> void:
 	pie.add_child(ayuda)
 	var salir: Button = EstiloUI.boton("Salir", 14)
 	salir.pressed.connect(func() -> void: salir_juego.emit())
+	salir.visible = not OS.has_feature("web")      # en el navegador no se puede "cerrar" el juego
 	pie.add_child(salir)
 	var cred: Button = EstiloUI.boton("Créditos", 14)
 	cred.pressed.connect(_mostrar_creditos)
@@ -136,7 +137,9 @@ func _construir() -> void:
 		le.focus_exited.connect(_enviar_config)
 
 
-## Panel de red: crear una partida local (este proceso hace de servidor) o unirse a la de otro por IP:puerto.
+## Panel de red: crear una partida local (este proceso hace de servidor) o unirse a la de otro por IP:puerto (ENet) o por URL
+## ws:// / wss:// (WebSocket). En la version web no hay "Crear partida local" (el navegador no puede abrir un servidor) y el campo
+## viene con la direccion del servidor web del propio sitio (wss://<host de la pagina>/ws).
 func _panel_red() -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", EstiloUI.caja(EstiloUI.PANEL, EstiloUI.ACENTO2, 2, 10, 10))
@@ -149,14 +152,15 @@ func _panel_red() -> Control:
 	v.add_child(h)
 	_boton_crear = EstiloUI.boton("Crear partida local", 15)
 	_boton_crear.pressed.connect(func() -> void: crear_local_pedido.emit(_puerto_ip()))
+	_boton_crear.visible = not OS.has_feature("web")
 	h.add_child(_boton_crear)
 	_ip = LineEdit.new()
-	_ip.text = "127.0.0.1:%d" % ProtoRed.PUERTO_DEFECTO
-	_ip.placeholder_text = "IP:puerto"
+	_ip.text = _destino_por_defecto()
+	_ip.placeholder_text = "IP:puerto o ws://host/ws"
 	_ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_ip)
 	_boton_unirse = EstiloUI.boton("Unirse", 15)
-	_boton_unirse.pressed.connect(func() -> void: unirse_pedido.emit(_ip.text.get_slice(":", 0).strip_edges(), _puerto_ip()))
+	_boton_unirse.pressed.connect(_pulsar_unirse)
 	h.add_child(_boton_unirse)
 	var h2 := HBoxContainer.new()
 	v.add_child(h2)
@@ -172,6 +176,25 @@ func _panel_red() -> Control:
 	_boton_desconectar.pressed.connect(func() -> void: desconectar_pedido.emit())
 	h2.add_child(_boton_desconectar)
 	return panel
+
+
+## Valor inicial del campo de union: en la exportacion web, el servidor del propio sitio; en escritorio, el servidor local.
+func _destino_por_defecto() -> String:
+	if OS.has_feature("web"):
+		var esquema: String = str(JavaScriptBridge.eval("location.protocol === 'https:' ? 'wss://' : 'ws://'", true))
+		var host: String = str(JavaScriptBridge.eval("location.host", true))
+		if host != "" and host != "null":
+			return "%s%s/ws" % [esquema, host]
+	return "127.0.0.1:%d" % ProtoRed.PUERTO_DEFECTO
+
+
+## `ws://...` / `wss://...` se manda tal cual (puerto 0 = el de la URL); lo demas es IP[:puerto] de ENet.
+func _pulsar_unirse() -> void:
+	var t: String = _ip.text.strip_edges()
+	if Red.es_url_ws(t):
+		unirse_pedido.emit(t, 0)
+	else:
+		unirse_pedido.emit(t.get_slice(":", 0).strip_edges(), _puerto_ip())
 
 
 func _puerto_ip() -> int:

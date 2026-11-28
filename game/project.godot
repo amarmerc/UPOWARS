@@ -172,3 +172,4 @@ marcador={
 [rendering]
 
 textures/default_filters/anisotropic_filtering_level=4
+renderer/rendering_method.web="gl_compatibility"

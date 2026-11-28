@@ -11,7 +11,10 @@ servidor/
   healthcheck.sh      sano = el puerto UDP esta abierto (/proc/net/udp)
   docker-compose.yml  puerto UDP, restart unless-stopped, limites 1,5 CPU / 2 GB, segunda instancia comentada
   .env.ejemplo        parametros de partida
-  actualizar.sh       git pull + rebuild + restart
+  actualizar.sh       git pull + rebuild + restart + reexportar el cliente web
+  Dockerfile.web      (+ .dockerignore propio) exporta el cliente WEB (Godot 4.7.2, plantillas verificadas con SHA-512)
+  exportar_web.sh     construye Dockerfile.web y copia el resultado a /var/www/upowars
+  nginx-upowars.conf  server de nginx del HOST: estaticos + proxy WebSocket /ws -> 127.0.0.1:7780 (ver "Jugar en el navegador")
   probar_local.ps1    simula el contenedor en Windows (servidor + cliente simulado)
 .dockerignore         (raiz) solo entra game/ sin cache, modelos externos, texturas, iconos ni tests
 ```
@@ -103,6 +106,7 @@ Parametros (en `.env` o variables de entorno; sin definir = valor por defecto de
 | Variable | Defecto | Significado |
 |---|---|---|
 | `PUERTO` | 7777 | puerto UDP |
+| `WS_PUERTO` | (vacio; 7780 en `servidor-web`) | si se define, el servidor escucha por **WebSocket (TCP)** en ese puerto en vez de ENet/UDP |
 | `MAX` | 10 | humanos conectados como maximo |
 | `MODO` | cachimba_wars | `cachimba_wars`, `pleno` o `libre` |
 | `ZONA` | plaza_america | id de zona (ver `game/data/zonas.json`) |
@@ -145,14 +149,58 @@ con `docker stats` mientras juegan clientes reales). Orden de magnitud: con 2 OC
 (~0,4-0,6 GB por instancia). El ancho de banda es ~4-6 KB/s por jugador en cada sentido (~100 kbit/s por partida de 10), irrelevante.
 Si `docker stats` muestra la instancia pegada al limite de `cpus`, el servidor ira con retraso (fisica a 60 Hz): sube el limite o baja `TAM`.
 
-## 9. Probar sin Docker (en un PC con Windows)
+## 9. Jugar en el navegador (https://upowars.amarmer.es)
+
+El cliente web es el mismo juego exportado a HTML5/WebAssembly (preset "Web" de `game/export_presets.cfg`, sin hilos, asi que no hacen falta
+cabeceras COOP/COEP). Los navegadores no pueden usar UDP, asi que el servicio `servidor-web` del compose ejecuta el mismo servidor con
+`--ws 7780` (WebSocket sobre TCP, sin cifrar, **solo en 127.0.0.1**) y el **nginx del host** pone el TLS y lo publica en `wss://upowars.amarmer.es/ws`.
+Los jugadores web y los de escritorio por UDP estan en partidas distintas (otra instancia), salvo que el escritorio entre tambien por
+`wss://upowars.amarmer.es/ws` en el campo de union del lobby.
+
+La version web va con **menos calidad grafica** (renderizador Compatibility/WebGL 2) y **algo mas de lag** que la descargable (WebSocket/TCP en lugar
+de UDP, mas el TLS y el proxy).
+
+Pasos (nginx y certbot ya instalados en el host):
+
+1. **DNS**: registro `A` de `upowars` (en amarmer.es) -> IP publica de la VM.
+2. **Abrir 80 y 443 TCP**: en la Security List de Oracle (Ingress, TCP, origen `0.0.0.0/0`, puertos 80 y 443) y en el firewall de la VM
+   (`sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT`, igual con 443, y `netfilter-persistent save`; o `ufw allow 80,443/tcp`).
+   El puerto 7780 NO se abre: solo lo usa nginx desde la propia maquina.
+3. **Certificado** (antes de instalar el server de nginx, que lo referencia):
+   ```bash
+   sudo certbot certonly --nginx -d upowars.amarmer.es
+   ```
+4. **nginx**:
+   ```bash
+   sudo cp ~/UPOWARS/servidor/nginx-upowars.conf /etc/nginx/sites-available/upowars.conf
+   sudo ln -s /etc/nginx/sites-available/upowars.conf /etc/nginx/sites-enabled/upowars.conf
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+5. **Servidores** (crea tambien `servidor-web`; comprueba con `docker compose ps` y `docker compose logs servidor-web` que aparece `SERVIDOR LISTO ws/7780`):
+   ```bash
+   cd ~/UPOWARS/servidor && docker compose up -d --build
+   ```
+6. **Exportar el cliente web** (la primera vez tarda: descarga las plantillas de exportacion, ~1 GB, y las verifica; necesita Docker con BuildKit/`buildx`):
+   ```bash
+   ./exportar_web.sh                 # copia a /var/www/upowars (pide sudo si hace falta); otro destino: ./exportar_web.sh /ruta
+   ```
+7. Abre **https://upowars.amarmer.es**: pulsa para cargar y, en el lobby, **Unirse** ya trae `wss://upowars.amarmer.es/ws`. Haz clic en la partida
+   para capturar el raton; **Esc** lo libera y abre el menu de pausa.
+
+Despues, `./actualizar.sh` reconstruye los servidores y reexporta la web (`WEB=0 ./actualizar.sh` salta la exportacion). Cliente y servidor deben ser de la misma version:
+tras actualizar, recarga la pagina con Ctrl+F5.
+
+Notas: el renovado de certbot sigue funcionando (el puerto 80 sirve `/.well-known/acme-challenge/`); si cambias `WS_PUERTO`, cambia tambien el `proxy_pass`
+de `nginx-upowars.conf`; el juego web no se puede cerrar desde dentro (se cierra la pestana), por eso no hay boton "Salir".
+
+## 10. Probar sin Docker (en un PC con Windows)
 
 ```powershell
 powershell -File servidor\probar_local.ps1                  # mismos argumentos que el contenedor; arranca un cliente simulado y comprueba que entra
 powershell -File servidor\probar_local.ps1 -ConBash         # ejecuta servidor/entrypoint.sh de verdad (necesita Git Bash)
 ```
 
-## 10. Alternativa (no por defecto): exportar un .pck
+## 11. Alternativa (no por defecto): exportar un .pck
 
 En lugar de ejecutar el codigo, se puede exportar `game/` con las plantillas de exportacion de Godot 4.7.2 (preset Linux ARM64, "Export PCK/ZIP") y
 meter en la imagen solo el binario + el `.pck` (`godot --headless --main-pack juego.pck -- --servidor ...`). Arranca algo mas rapido, pero exige instalar las
@@ -160,6 +208,6 @@ plantillas en el PC y regenerar el .pck en cada cambio. Con el enfoque actual ba
 
 ## Notas de seguridad y operacion
 
-- El contenedor corre como usuario `upowars` (uid 10001), sin privilegios; solo publica el puerto UDP.
+- El contenedor corre como usuario `upowars` (uid 10001), sin privilegios; `servidor` publica el puerto UDP y `servidor-web` solo TCP en 127.0.0.1.
 - El servidor no autentica jugadores: quien conozca IP:puerto puede unirse (hasta `MAX`). Para limitarlo, restringe el CIDR de origen en la Security List.
 - Los logs rotan (3 x 10 MB).

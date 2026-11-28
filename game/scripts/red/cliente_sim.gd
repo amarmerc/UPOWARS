@@ -1,6 +1,6 @@
 class_name ClienteSim
 extends Node
-## Cliente automatico para pruebas de carga y `scripts/probar_red.ps1`: se une a un servidor, se marca listo y, ya en partida, camina
+## Cliente automatico (ENet o WebSocket segun la direccion) para pruebas de carga y `scripts/probar_red.ps1`: se une a un servidor, se marca listo y, ya en partida, camina
 ## trazando curvas y dispara a intervalos con entradas guionizadas (sin teclado). Imprime estadisticas cada 10 s.
 
 var red: Red
@@ -23,9 +23,12 @@ static func iniciar(juego: Node, mundo: Node3D, jug: Jugador, destino: String, n
 	cs.red = red
 	red.lag_ms = int(args["lag"])
 	red.perdida_pct = float(args["perdida"])
-	var ip: String = destino.get_slice(":", 0)
-	var puerto: int = int(destino.get_slice(":", 1)) if destino.contains(":") else ProtoRed.PUERTO_DEFECTO
-	red.iniciar_cliente(ip, puerto)
+	if Red.es_url_ws(destino):      # ws://host[:puerto]/ruta o wss://...
+		red.iniciar_cliente(destino)
+	else:
+		var ip: String = destino.get_slice(":", 0)
+		var puerto: int = int(destino.get_slice(":", 1)) if destino.contains(":") else ProtoRed.PUERTO_DEFECTO
+		red.iniciar_cliente(ip, puerto)
 	var c: ClienteRed = red.cliente
 	c.nombre = nombre
 	c.personaje = CatalogoPersonajes.ids()[absi(hash(nombre)) % CatalogoPersonajes.ids().size()]

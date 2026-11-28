@@ -230,6 +230,8 @@ func configurar(libre: bool) -> void:
 	if libre:
 		_titulo.text = "TIENDA · modo libre"
 		var datos: Array = [["Reanudar", reanudar], ["Volver al lobby", volver_lobby], ["Salir del juego", salir_juego]]
+		if OS.has_feature("web"):      # en el navegador no se puede cerrar el juego
+			datos.pop_back()
 		for d: Array in datos:
 			var b: Button = EstiloUI.boton(str(d[0]), 16)
 			var sen: Signal = d[1]

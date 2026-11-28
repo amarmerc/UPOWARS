@@ -1,0 +1,12 @@
+# Contexto de build de servidor/Dockerfile.web (BuildKit usa este fichero en lugar del .dockerignore de la raiz).
+# La exportacion web necesita game/ COMPLETO (modelos, texturas e iconos incluidos: van dentro del .pck), salvo pruebas y caches.
+*
+!game/
+
+# cache del editor de ESTE PC (se regenera con --import en el build) y salida de exportaciones locales
+game/.godot
+game/export
+# pruebas y capturas (no van en el juego)
+game/tests
+**/*.tmp
+**/__pycache__

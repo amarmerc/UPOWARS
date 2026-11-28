@@ -73,8 +73,10 @@ ENV HOME=/home/upowars \
 
 # Juego en red: UDP (ENet). Cambiar con PUERTO=... (y publicar el mismo puerto).
 EXPOSE 7777/udp
+# Modo WebSocket (variable WS_PUERTO, p. ej. 7780): TCP, solo detras de un proxy (nginx del host).
+EXPOSE 7780/tcp
 
-# El puerto UDP esta abierto si aparece en /proc/net/udp(6) (no hay curl ni nc en la imagen).
+# El puerto esta abierto si aparece en /proc/net/udp(6) (ENet) o en LISTEN en /proc/net/tcp(6) (WS_PUERTO) (no hay curl ni nc en la imagen).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD ["/usr/local/bin/healthcheck.sh"]
 
 STOPSIGNAL SIGTERM

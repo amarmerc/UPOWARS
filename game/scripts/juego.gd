@@ -38,6 +38,9 @@ var chat: ChatRed
 var _espec: Node = null
 var _interactuando: bool = false
 var _pausado: bool = false
+## Solo en la version web: el navegador libera el puntero con Esc SIN entregar la tecla al juego; se detecta por el bloqueo de puntero.
+var _web_bloqueado: bool = false
+var _web_t: float = 0.0
 
 
 func _ready() -> void:
@@ -334,6 +337,11 @@ func _al_reaparecer() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not en_partida or montando_partida:
 		return
+	if OS.has_feature("web") and event is InputEventMouseButton and event.pressed and jugador.activo and not _web_bloqueado \
+			and not _pausado and not tienda.visible:
+		# El clic es el gesto de usuario que el navegador exige para capturar el raton: se (re)pide el bloqueo del puntero.
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if red_modo != "" and event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_T \
 			and not chat.esta_abierto() and not tienda.visible:
 		get_viewport().set_input_as_handled()
@@ -341,21 +349,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		if cfg.es_libre():
-			if tienda.visible:
-				_reanudar()
-			else:
-				tienda.configurar(true)
-				jugador.activo = false
-				tienda.abrir()
-		elif tienda.visible:
-			tienda.cerrar_tienda()
-		else:
-			_pausado = true
-			jugador.activo = false
-			pausa.visible = true
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-			get_tree().paused = true
+		_menu_esc()
 	elif event.is_action_pressed("tienda") and not cfg.es_libre():
 		if tienda.visible:
 			tienda.cerrar_tienda()
@@ -363,6 +357,40 @@ func _unhandled_input(event: InputEvent) -> void:
 			_abrir_tienda_compra()
 	elif _espec != null and event is InputEventMouseButton and event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_siguiente_aliado()
+
+
+## Esc: pausa (competitivo) o tienda con opciones (libre); si la tienda esta abierta, la cierra.
+func _menu_esc() -> void:
+	if cfg.es_libre():
+		if tienda.visible:
+			_reanudar()
+		else:
+			tienda.configurar(true)
+			jugador.activo = false
+			tienda.abrir()
+	elif tienda.visible:
+		tienda.cerrar_tienda()
+	else:
+		_pausado = true
+		jugador.activo = false
+		pausa.visible = true
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		get_tree().paused = true
+
+
+## Web: sin bloqueo de puntero activo (el navegador lo exige tras un gesto del usuario y lo quita al pulsar Esc). Un clic en la partida
+## lo vuelve a pedir; si el navegador lo quito (Esc), se abre el mismo menu que abriria Esc en escritorio.
+func _vigilar_raton_web(delta: float) -> void:
+	_web_t += delta
+	if _web_t < 0.1:
+		return
+	_web_t = 0.0
+	var bloqueado: bool = bool(JavaScriptBridge.eval("document.pointerLockElement !== null", true))
+	var perdido: bool = _web_bloqueado and not bloqueado
+	_web_bloqueado = bloqueado
+	if perdido and en_partida and not montando_partida and not _pausado and not tienda.visible and not chat.esta_abierto() \
+			and (jugador.activo or jugador.muerto):
+		_menu_esc()
 
 
 func _siguiente_aliado() -> void:
@@ -392,9 +420,11 @@ func _physics_process(_delta: float) -> void:
 		comandos_jugador.apagar_cachimba(false)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if hud_partida == null:      # servidor dedicado: sin HUD ni camara (evita un error por fotograma)
 		return
+	if OS.has_feature("web"):
+		_vigilar_raton_web(delta)
 	_actualizar_camara()
 
 
@@ -502,7 +532,7 @@ func unirse(ip: String, puerto: int) -> void:
 		cerrar_red()
 		mostrar_lobby()
 		lobby.poner_estado_red("Se perdio la conexion con el servidor"))
-	lobby.poner_estado_red("Conectando a %s:%d..." % [ip, puerto])
+	lobby.poner_estado_red("Conectando a %s..." % (ip if Red.es_url_ws(ip) else "%s:%d" % [ip, puerto]))
 
 
 func cerrar_red() -> void:
