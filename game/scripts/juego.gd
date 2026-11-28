@@ -29,12 +29,22 @@ var comandos_jugador: ComandosJugador = null
 var en_partida: bool = false
 var montando_partida: bool = false
 
+## Red: `red` vive en /root/Red. red_modo = "" (un jugador), "host" (este proceso es el servidor y el jugador local es un participante
+## mas) o "cliente" (el servidor es otro proceso: `partida` es un espejo, el jugador predice y el servidor decide).
+var red: Red = null
+var red_modo: String = ""
+var chat: ChatRed
+
 var _espec: Node = null
 var _interactuando: bool = false
 var _pausado: bool = false
 
 
 func _ready() -> void:
+	var args: Dictionary = ArranqueRed.argumentos()
+	if bool(args["servidor"]):
+		await ArranqueRed.arrancar_servidor(self, args)       # servidor dedicado: sin lobby, sin HUD, sin audio
+		return
 	mundo = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	add_child(mundo)
 	jugador = mundo.get_node("Jugador")
@@ -55,6 +65,17 @@ func _ready() -> void:
 	hud_partida = HudPartida.new()
 	hud_partida.name = "HudPartida"
 	add_child(hud_partida)
+	chat = ChatRed.new()
+	chat.name = "Chat"
+	add_child(chat)
+	chat.abierto.connect(func() -> void: jugador.activo = false)
+	chat.cerrado.connect(func() -> void:
+		if en_partida and not _pausado and not tienda.visible:
+			jugador.activo = true)
+	chat.enviar.connect(_enviar_chat)
+	lobby.crear_local_pedido.connect(iniciar_host)
+	lobby.unirse_pedido.connect(unirse)
+	lobby.desconectar_pedido.connect(cerrar_red)
 	lobby.iniciar.connect(func(c: ConfigPartida) -> void: iniciar(c))
 	lobby.salir_juego.connect(func() -> void: get_tree().quit())
 	lobby.zona_elegida.connect(_ver_zona)
@@ -73,6 +94,10 @@ func _ready() -> void:
 		d.salud.vivo = false
 		d.hitboxes.activar(false)
 	mostrar_lobby()
+	if str(args["sim"]) != "":
+		lobby.visible = false
+		mundo.set_process_unhandled_input(false)
+		ClienteSim.iniciar(self, mundo, jugador, str(args["sim"]), str((args["kv"] as Dictionary).get("nombre", "Sim")), args)
 
 
 # ------------------------------------------------------------------ lobby
@@ -125,6 +150,10 @@ func desmontar_partida() -> void:
 	en_partida = false
 	_espec = null
 	_interactuando = false
+	if red != null and red_modo == "host" and red.servidor != null:
+		red.servidor.desmontar()
+	elif red != null and red_modo == "cliente" and red.cliente != null:
+		red.cliente.desmontar()
 	for b: Bot in bots:
 		if is_instance_valid(b):
 			b.queue_free()
@@ -305,6 +334,11 @@ func _al_reaparecer() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not en_partida or montando_partida:
 		return
+	if red_modo != "" and event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_T \
+			and not chat.esta_abierto() and not tienda.visible:
+		get_viewport().set_input_as_handled()
+		chat.abrir()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		if cfg.es_libre():
@@ -374,7 +408,7 @@ func _actualizar_camara() -> void:
 	if muerto and not aliados.is_empty():
 		if _espec == null or not aliados.has(_espec):
 			_espec = aliados[0]
-		var b: Bot = _espec as Bot
+		var b: Variant = _espec if (_espec is Bot or _espec is ProxyRed) else null
 		if b != null:
 			var dir: Vector3 = b.mirada_dir()
 			camara.global_transform = Transform3D(Basis.looking_at(dir, Vector3.UP), b.ojos())
@@ -389,3 +423,161 @@ func _actualizar_camara() -> void:
 	jugador.gestor.mostrar_viewmodel(not jugador.muerto and jugador.salud.vivo)
 	if not jugador.camara.is_current():
 		jugador.camara.make_current()
+
+
+# ------------------------------------------------------------------ red (multijugador)
+
+func _nuevo_red() -> Red:
+	var r := Red.new()
+	r.name = "Red"
+	r.leer_argumentos(OS.get_cmdline_user_args())
+	get_tree().root.add_child(r)
+	return r
+
+
+func _datos_perfil() -> Dictionary:
+	var p: Dictionary = PerfilJugador.cargar()
+	if lobby != null:
+		p["nombre"] = lobby._nombre_local()
+		p["personaje"] = lobby.personaje_elegido()
+	return p
+
+
+## "Crear partida local": este proceso hace de servidor y el jugador local es un participante mas (sin latencia). Otros se unen por IP:puerto.
+func iniciar_host(puerto: int) -> void:
+	cerrar_red()
+	red = _nuevo_red()
+	await get_tree().process_frame
+	var err: Error = red.iniciar_servidor(puerto, 10)
+	if err != OK:
+		lobby.poner_estado_red("No se pudo abrir el puerto UDP %d (error %d)" % [puerto, err])
+		red.queue_free()
+		red = null
+		return
+	red_modo = "host"
+	var s: ServidorRed = red.servidor
+	s.mundo = mundo
+	s.jugador_local = jugador
+	s.lobby_cambiado.connect(func(e: Dictionary) -> void: lobby.aplicar_estado_red(e, 1))
+	s.sesion_montada.connect(_on_sesion_host)
+	s.sesion_terminada.connect(_on_sesion_terminada_red)
+	s.chat_local.connect(func(d: Dictionary) -> void: chat.anadir(str(d["de"]), int(d["g"]), str(d["texto"])))
+	lobby.red_enviar = func(accion: StringName, a: Variant, b: Variant) -> void: s.lobby_cmd(1, accion, a, b)
+	var p: Dictionary = _datos_perfil()
+	s.on_unirse(1, str(p["nombre"]), String(p["personaje"]), ProtoRed.VERSION)
+	var ips: PackedStringArray = []
+	for a: String in IP.get_local_addresses():
+		if a.count(".") == 3 and not a.begins_with("127.") and not a.begins_with("169.254."):
+			ips.append(a)
+	lobby.poner_estado_red("Anfitrion en UDP %d. IP para unirse: %s" % [puerto, ", ".join(ips) if not ips.is_empty() else "127.0.0.1"])
+
+
+func unirse(ip: String, puerto: int) -> void:
+	cerrar_red()
+	red = _nuevo_red()
+	await get_tree().process_frame
+	if red.iniciar_cliente(ip if ip != "" else "127.0.0.1", puerto) != OK:
+		lobby.poner_estado_red("No se pudo iniciar la conexion")
+		red.queue_free()
+		red = null
+		return
+	red_modo = "cliente"
+	var c: ClienteRed = red.cliente
+	var p: Dictionary = _datos_perfil()
+	c.nombre = str(p["nombre"])
+	c.personaje = p["personaje"]
+	c.proveedor_mundo = func() -> Array: return [mundo, jugador]
+	c.lobby_actualizado.connect(func(e: Dictionary) -> void: lobby.aplicar_estado_red(e, red.mi_id()))
+	lobby.red_enviar = func(accion: StringName, a: Variant, b: Variant) -> void: c.lobby_cmd(accion, a, b)
+	c.sesion_iniciada.connect(func(_d: Dictionary) -> void: lobby.visible = false)
+	c.mundo_montado.connect(_on_mundo_cliente)
+	c.sesion_terminada.connect(_on_sesion_terminada_red)
+	c.chat_recibido.connect(func(d: Dictionary) -> void: chat.anadir(str(d["de"]), int(d["g"]), str(d["texto"])))
+	c.rechazado.connect(func(m: String) -> void:
+		cerrar_red()
+		lobby.poner_estado_red("Rechazado: " + m))
+	c.desconectado.connect(func() -> void:
+		cerrar_red()
+		mostrar_lobby()
+		lobby.poner_estado_red("Se perdio la conexion con el servidor"))
+	lobby.poner_estado_red("Conectando a %s:%d..." % [ip, puerto])
+
+
+func cerrar_red() -> void:
+	if red == null:
+		return
+	desmontar_partida()
+	red.cerrar()
+	red.queue_free()
+	red = null
+	red_modo = ""
+	if lobby != null:
+		lobby.salir_red()
+
+
+func _enviar_chat(texto: String) -> void:
+	if red == null:
+		return
+	if red_modo == "host" and red.servidor != null:
+		red.servidor.chat_anfitrion(texto)
+	elif red.cliente != null:
+		red.cliente.enviar_chat(texto)
+
+
+func _on_sesion_terminada_red() -> void:
+	mostrar_lobby()
+	if red != null and red.servidor != null:
+		lobby.aplicar_estado_red(red.servidor.estado_lobby(), 1)
+	elif red != null and red.cliente != null and not red.cliente.lobby.is_empty():
+		lobby.aplicar_estado_red(red.cliente.lobby, red.mi_id())
+
+
+## Vistas y menus de una partida ya montada (Partida, zona, bots) para el anfitrion o el cliente de red.
+func _vincular_vistas_red() -> void:
+	var libre: bool = cfg.es_libre()
+	lobby.visible = false
+	hud_partida.vincular(partida, jugador)
+	hud_partida.visible = true
+	mundo.hud.visible = true
+	mundo.hud.get_node("Info").visible = false
+	tienda.vincular(partida, jugador)
+	tienda.configurar(libre)
+	partida.fase_cambiada.connect(_al_cambiar_fase)
+	partida.ronda_iniciada.connect(func(_n: int) -> void: _espec = null)
+	comandos_jugador = ComandosJugador.new(jugador, partida)
+	en_partida = true
+	montando_partida = false
+	mundo.set_process_unhandled_input(libre)
+	jugador.gestor.mostrar_viewmodel(true)
+	jugador.salud.reiniciar()
+	jugador.hitboxes.activar(red_modo == "host")
+	jugador.muerto = false
+	if libre:
+		jugador.activo = true
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_actualizar_camara()
+
+
+func _on_sesion_host() -> void:
+	var s: ServidorRed = red.servidor
+	cfg = s.cfg
+	partida = s.partida
+	zona = s.zona
+	region = s.region
+	director = s.director
+	bots = s.bots
+	var pj: StringName = StringName(PerfilJugador.cargar()["personaje"])
+	if lobby != null:
+		pj = lobby.personaje_elegido()
+	jugador.gestor.poner_personaje(pj)
+	_vincular_vistas_red()
+
+
+func _on_mundo_cliente() -> void:
+	var c: ClienteRed = red.cliente
+	cfg = c.cfg
+	partida = c.partida
+	zona = c.zona
+	jugador.gestor.poner_personaje(lobby.personaje_elegido())
+	_vincular_vistas_red()
+	jugador.hitboxes.activar(false)

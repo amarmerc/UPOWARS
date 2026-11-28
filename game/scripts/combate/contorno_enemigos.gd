@@ -52,6 +52,7 @@ func _process(_delta: float) -> void:
 		return
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	var bots: Array[Node] = get_tree().get_nodes_in_group("bots")
+	bots.append_array(get_tree().get_nodes_in_group("proxies_red"))
 	if cam == null or bots.is_empty():
 		return
 	var equipo_vista: int = -1
@@ -61,7 +62,7 @@ func _process(_delta: float) -> void:
 	else:
 		var mejor: float = 1.5
 		for n: Node in bots:
-			var b0: Bot = n as Bot
+			var b0: Variant = n
 			if b0 != null and not b0.muerto:
 				var d0: float = b0.ojos().distance_to(cam.global_position)
 				if d0 < mejor:
@@ -70,8 +71,8 @@ func _process(_delta: float) -> void:
 					espectando = true
 	var i: int = 0
 	for n: Node in bots:
-		var b: Bot = n as Bot
-		if b == null:
+		var b: Variant = n
+		if b == null or not (n is Bot or n is ProxyRed):
 			continue
 		i += 1
 		if b.muerto or equipo_vista < 0:
@@ -98,7 +99,7 @@ func _process(_delta: float) -> void:
 
 
 ## Activa / desactiva el contorno de las mallas de un bot.
-func _poner(b: Bot, on: bool) -> void:
+func _poner(b: Variant, on: bool) -> void:
 	if bool(_estado.get(b, false)) == on:
 		return
 	_estado[b] = on
@@ -106,5 +107,5 @@ func _poner(b: Bot, on: bool) -> void:
 	b.fijar_contorno(material if on else null)
 
 
-func _etiqueta(b: Bot, on: bool) -> void:
+func _etiqueta(b: Variant, on: bool) -> void:
 	b.mostrar_etiqueta(on)

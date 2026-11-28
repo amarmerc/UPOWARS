@@ -22,6 +22,8 @@ const ROL_LIBRE: StringName = &"libre"
 ## Pruebas: no se mueve por iniciativa propia, solo combate lo que ve.
 const ROL_ESTATICO: StringName = &"estatico"
 const ALTURA_OJOS: float = 1.6
+## Servidor dedicado sin pantalla: los bots no construyen modelo ni etiqueta (no hay nada que dibujar).
+static var sin_visual: bool = false
 const COLORES_EQUIPO: Dictionary = {
 	0: Color(0.55, 0.78, 0.45), 1: Color(1.0, 0.48, 0.12), 2: Color(0.25, 0.6, 1.0), 3: Color(0.9, 0.3, 0.8), 4: Color(0.95, 0.9, 0.2),
 }
@@ -57,6 +59,12 @@ var cabeza: Node3D
 var ceguera: EstadoCeguera
 var comandos: ComandosBot
 var cerebro: CerebroBot
+## Red (servidor): este "bot" es el avatar de un jugador humano remoto. No lo gobierna la IA: `ServidorRed` lo mueve y dispara
+## con las entradas del cliente (mismos componentes de combate que un bot: Salud, Hitboxes, ArmasBot, ceguera). Si el humano se
+## desconecta, `humano_red = false` y el cerebro toma el control.
+var humano_red: bool = false
+var id_red: int = -1
+var peer_red: int = 0
 
 var _caida: Node3D
 var _arma_mano: StringName = &"-"
@@ -122,6 +130,8 @@ func avanzar(dt: float) -> void:
 		return
 	armas.avanzar(dt)
 	_actualizar_modelo()
+	if humano_red:
+		return
 	if congelado:
 		velocity = Vector3.ZERO
 		return
@@ -208,8 +218,9 @@ func reaparecer(pos: Vector3 = Vector3.INF, yaw_deg: float = 0.0) -> void:
 	hitboxes.activar(true)
 	_colision.set_deferred("disabled", false)
 	collision_layer = 4
-	_caida.rotation.x = 0.0
-	ModeloPersonaje.revivir(_caida)
+	if _caida != null:
+		_caida.rotation.x = 0.0
+		ModeloPersonaje.revivir(_caida)
 	armas.reiniciar()
 	if pos != Vector3.INF:
 		teletransportar(pos, yaw_deg)
@@ -238,7 +249,7 @@ func _on_muerto(atacante: Node, _arma: ArmaDatos) -> void:
 	comandos.montar_cachimba(false)
 	comandos.apagar_cachimba(false)
 	armas.soltar_al_morir()
-	if not ModeloPersonaje.morir(_caida):   # modelo sin animaciones (blockout): se tumba
+	if _caida != null and not ModeloPersonaje.morir(_caida):   # modelo sin animaciones (blockout): se tumba
 		_caida.rotation.x = deg_to_rad(90.0)
 	var s: Salud = Salud.de(atacante)
 	if s != null and s != salud and atacante is Bot:
@@ -282,6 +293,8 @@ func _actualizar_etiqueta() -> void:
 
 
 func _construir_visual() -> void:
+	if sin_visual:
+		return
 	var color: Color = COLORES_EQUIPO.get(equipo, Color(0.7, 0.7, 0.7))
 	_caida = ModeloPersonaje.crear(CatalogoPersonajes.por_id(personaje), color)
 	add_child(_caida)

@@ -62,6 +62,10 @@ var quiere_correr: bool = false
 var quiere_sigilo: bool = false
 var quiere_agachar: bool = false
 
+## Red (cliente): el servidor es autoritativo; el cuerpo se mueve con `paso_red` (prediccion) y `ClienteRed` reconcilia.
+var modo_red: bool = false
+var estado_mov := MovimientoJugador.Estado.new()
+
 var _pitch: float = 0.0
 var _ret_pitch: float = 0.0
 var _ret_yaw: float = 0.0
@@ -139,6 +143,8 @@ func fijar_apuntado(t: float, zoom: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not activo or muerto:
 		return
+	if modo_red and (event.is_action_pressed("modo_vuelo") or event.is_action_pressed("suicidio")):
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m := event as InputEventMouseMotion
 		# apuntando con zoom, la sensibilidad baja en proporcion al campo de vision
@@ -161,6 +167,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if modo_red:
+		_fisica_red(delta)
+		return
 	# La cámara se acerca suavemente a la altura de ojos de la postura actual.
 	var ojos: float = ojos_agachado if agachado else ojos_pie
 	if muerto:
@@ -177,6 +186,57 @@ func _physics_process(delta: float) -> void:
 		_mover_vuelo(delta)
 	else:
 		_mover_suelo(delta)
+
+
+# ------------------------------------------------------------------ red (cliente)
+
+func _fisica_red(delta: float) -> void:
+	if muerto:
+		_t_muerte += delta
+		_cabeza.position.y = move_toward(_cabeza.position.y, 0.5, 3.0 * delta)
+
+
+## Un paso de prediccion con la entrada de red `e` (lo llama `ClienteRed` cada tick de fisica).
+func paso_red(e: EntradaRed, dt: float) -> void:
+	estado_mov.mult_arma = mult_velocidad_arma
+	estado_mov.mult_estado = mult_velocidad_estado
+	MovimientoJugador.paso(self, estado_mov, e, dt)
+	agachado = estado_mov.agachado
+	corriendo = estado_mov.corriendo
+	_cabeza.position.y = estado_mov.ojos_y
+
+
+func _cabeza_y(y: float) -> void:
+	_cabeza.position.y = y
+
+
+## Desplaza la camara (error de prediccion que se esta desvaneciendo) sin tocar el cuerpo.
+func poner_error_visual(v: Vector3) -> void:
+	var l: Vector3 = global_transform.basis.inverse() * v
+	_cabeza.position.x = l.x
+	_cabeza.position.z = l.z
+
+
+## El servidor dice que has muerto: igual que `_on_muerto` pero sin soltar armas al mundo (las suelta el servidor).
+func morir_red() -> void:
+	muerto = true
+	_t_muerte = 0.0
+	corriendo = false
+	hitboxes.activar(false)
+	fijar_retroceso(0.0, 0.0)
+	gestor.soltar_al_morir()
+	_cabeza.rotation = Vector3(deg_to_rad(-20.0), 0.0, deg_to_rad(18.0))
+
+
+func revivir_red() -> void:
+	muerto = false
+	_pitch = 0.0
+	_ret_pitch = 0.0
+	_ret_yaw = 0.0
+	_aplicar_rotacion_cabeza()
+	gestor.cancelar_recarga()
+	gestor._resetear_estados()
+	reaparecido.emit()
 
 
 ## Pitch/yaw de retroceso (rad) que se suman a la mira; los fija el gestor de armas.
