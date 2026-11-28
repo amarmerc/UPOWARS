@@ -1,0 +1,60 @@
+# Servidor dedicado de UPOWARS.   Uso (desde esta carpeta):  docker compose up -d --build
+# Los parametros se pueden cambiar en un fichero servidor/.env (ver .env.ejemplo) o exportando las variables.
+name: upowars
+
+services:
+  servidor:
+    build:
+      context: ..                       # raiz del repo (el Dockerfile copia game/)
+      dockerfile: servidor/Dockerfile
+    image: upowars-servidor:latest
+    container_name: upowars-servidor
+    restart: unless-stopped
+    ports:
+      - "${PUERTO:-7777}:${PUERTO:-7777}/udp"
+    environment:
+      PUERTO: "${PUERTO:-7777}"
+      MAX: "${MAX:-10}"
+      MODO: "${MODO:-cachimba_wars}"   # cachimba_wars | pleno | libre
+      ZONA: "${ZONA:-plaza_america}"
+      TAM: "${TAM:-5}"                 # jugadores por equipo (humanos + bots)
+      RONDAS: "${RONDAS:-7}"
+      DIFICULTAD: "${DIFICULTAD:-normal}"
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- Varias instancias en la misma VM: descomentar y ajustar (puerto UDP distinto en cada una; abrir tambien en Oracle y en el firewall) ---
+  # servidor2:
+  #   build:
+  #     context: ..
+  #     dockerfile: servidor/Dockerfile
+  #   image: upowars-servidor:latest      # misma imagen: no se reconstruye
+  #   container_name: upowars-servidor2
+  #   restart: unless-stopped
+  #   ports:
+  #     - "7778:7778/udp"
+  #   environment:
+  #     PUERTO: "7778"
+  #     MAX: "10"
+  #     MODO: "pleno"
+  #     ZONA: "plaza_america"
+  #     TAM: "5"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.8"
+  #         memory: 1G
+  #   logging:
+  #     driver: json-file
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"

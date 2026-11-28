@@ -617,6 +617,8 @@ Godot --headless --path game -- --servidor [puerto=7777] [max=10] [modo=cachimba
 No carga UI, viewmodels ni audio (solo el mapa con su colision). Imprime `SERVIDOR LISTO udp/7777 ...`. Puerto: **UDP** (el mismo en el cliente).
 Cliente automatico de pruebas: `-- --cliente-sim=127.0.0.1:7777 nombre=Sim1`.
 
+**Docker / Oracle Cloud (linux/arm64)**: `cd servidor && docker compose up -d --build`; guia completa paso a paso (VM, firewall, actualizacion, mediciones) en [servidor/README.md](servidor/README.md).
+
 ### Como funciona (resumen)
 
 - **Tick**: fisica a 60 Hz; snapshots a 20 Hz (`TICK_SNAPSHOT = 3`); entradas del cliente a 60 Hz (cada paquete lleva las 4 ultimas).
@@ -661,4 +663,4 @@ Referencia Ampere A1 (2 OCPU): un nucleo ARM es varias veces mas lento que el de
   El arco dispara al completar la carga. En el modo libre en red el humano remoto aparece junto al primer spawn (sin selector M).
 - Sin union a partida en curso ni reconexion; sin interest management (todos ven todas las posiciones); marcas de pintura y altavoz senuelo no se
   replican al cliente; el cliente no valida su propio modelo de colision con otros jugadores.
-- Pendiente de N2: exportacion linux/arm64 y Docker.
+- N2 hecho: servidor dedicado en Docker linux/arm64 (Oracle Cloud): ver [servidor/README.md](servidor/README.md).

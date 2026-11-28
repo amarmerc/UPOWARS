@@ -393,6 +393,8 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
+	if hud_partida == null:      # servidor dedicado: sin HUD ni camara (evita un error por fotograma)
+		return
 	_actualizar_camara()
 
 

@@ -61,5 +61,10 @@ static func arrancar_servidor(padre: Node, args: Dictionary) -> Red:
 		s.t_compra = float(kv["t_compra"])
 	if kv.has("t_ronda"):
 		s.t_ronda = float(kv["t_ronda"])
+	# Trazas de actividad por stdout (docker logs): conexiones y ciclo de las partidas.
+	s.peer_unido.connect(func(p: int) -> void: print("SERVIDOR peer %d conectado (%d en total)" % [p, red.multiplayer.get_peers().size()]))
+	s.peer_salio.connect(func(p: int) -> void: print("SERVIDOR peer %d desconectado (%d en total)" % [p, red.multiplayer.get_peers().size()]))
+	s.sesion_montada.connect(func() -> void: print("SERVIDOR partida en marcha (%s, %s)" % [s.modo, s.zona_id]))
+	s.sesion_terminada.connect(func() -> void: print("SERVIDOR partida terminada, vuelta al lobby"))
 	print("SERVIDOR LISTO udp/%d max=%d modo=%s zona=%s lag=%d perdida=%.1f" % [puerto, s.max_clientes, s.modo, s.zona_id, red.lag_ms, red.perdida_pct])
 	return red

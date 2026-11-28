@@ -1,0 +1,19 @@
+# Contexto de build del servidor dedicado (servidor/Dockerfile). Solo hace falta game/ (sin cache ni recursos de cliente) y servidor/.
+# Lista blanca: se ignora todo salvo lo necesario.
+*
+!game/
+!servidor/entrypoint.sh
+!servidor/healthcheck.sh
+
+# --- dentro de game/ ---
+# Cache del editor de ESTE PC (se regenera con --import en el build)
+game/.godot
+# Recursos que solo usa el cliente (comprobado ejecutando el servidor sin ellos: modelos externos de armas/personajes/coches,
+# texturas del mapa, iconos de la tienda; el servidor usa el .glb del mapa, data/, scenes/, scripts/, shaders/ y assets/sonidos)
+game/assets/externos
+game/assets/texturas
+game/assets/iconos
+# Pruebas y capturas
+game/tests
+**/*.tmp
+**/__pycache__
