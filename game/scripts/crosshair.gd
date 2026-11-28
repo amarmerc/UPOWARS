@@ -9,6 +9,8 @@ var apertura: float = 3.0
 var _hit_t: float = 0.0
 var _hit_cabeza: bool = false
 var _hit_muerte: bool = false
+## Mira de zoom (fusil de precision / tirador): reticula fina y vineta circular negra.
+var zoom_activo: bool = false
 
 
 func mostrar_hit(cabeza: bool, muerte: bool = false) -> void:
@@ -16,6 +18,12 @@ func mostrar_hit(cabeza: bool, muerte: bool = false) -> void:
 	_hit_cabeza = cabeza
 	_hit_muerte = muerte
 	queue_redraw()
+
+
+func poner_zoom(valor: bool) -> void:
+	if valor != zoom_activo:
+		zoom_activo = valor
+		queue_redraw()
 
 
 func poner_apertura(px: float) -> void:
@@ -32,6 +40,9 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var c: Vector2 = size * 0.5
+	if zoom_activo:
+		_dibujar_mira_zoom(c)
+		return
 	var col := Color(1, 1, 1, 0.9)
 	var sombra := Color(0, 0, 0, 0.6)
 	var a: float = apertura
@@ -51,3 +62,21 @@ func _draw() -> void:
 		for dir: Vector2 in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
 			draw_line(c + dir * d0, c + dir * d1, Color(0, 0, 0, 0.6 * k), w + 2.0)
 			draw_line(c + dir * d0, c + dir * d1, hc, w)
+
+
+func _dibujar_mira_zoom(c: Vector2) -> void:
+	var r: float = size.y * 0.46
+	# todo lo de fuera del circulo en negro (anillo gigante)
+	draw_arc(c, r + size.length() * 0.5, 0.0, TAU, 96, Color(0, 0, 0, 1), size.length())
+	draw_arc(c, r, 0.0, TAU, 96, Color(0.05, 0.05, 0.05, 1), 5.0)
+	var fino := Color(0, 0, 0, 0.92)
+	draw_line(c + Vector2(-r, 0), c + Vector2(-14, 0), fino, 2.0)
+	draw_line(c + Vector2(14, 0), c + Vector2(r, 0), fino, 2.0)
+	draw_line(c + Vector2(0, -r), c + Vector2(0, -14), fino, 2.0)
+	draw_line(c + Vector2(0, 14), c + Vector2(0, r), fino, 3.5)
+	draw_line(c + Vector2(-26, 0), c + Vector2(-8, 0), fino, 3.0)
+	draw_line(c + Vector2(8, 0), c + Vector2(26, 0), fino, 3.0)
+	draw_line(c + Vector2(0, -26), c + Vector2(0, -8), fino, 3.0)
+	draw_circle(c, 1.6, Color(0.9, 0.1, 0.05))
+	for k in range(1, 5):  # marcas de caida bajo el centro
+		draw_line(c + Vector2(-6, 30 + 22 * k), c + Vector2(6, 30 + 22 * k), fino, 2.0)

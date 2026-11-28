@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"revolver_357"
+nombre = "Revólver .357"
+ranura = 2
+tipo = &"hitscan"
+sonido = &"disparo_pesada"
+ruido = 75.0
+cadencia = 1.7
+automatica = false
+tiempo_cambio = 0.7
+dano_base = 76.0
+mult_cabeza = 3.0
+alcance = 100.0
+caida_inicio = 18.0
+caida_factor_min = 0.65
+penetracion_armadura = 0.85
+cargador = 6
+reserva = 24
+tiempo_recarga = 3.4
+dispersion_quieto = 0.15
+dispersion_agachado = 0.08
+dispersion_movimiento = 3.2
+dispersion_aire = 5.5
+zoom = 1.15
+retroceso_pitch = PackedFloat32Array(3.2)
+retroceso_yaw = PackedFloat32Array(0.2)
+retroceso_recuperacion = 9.0
+retroceso_pausa = 0.35
+velocidad_mov = 0.97

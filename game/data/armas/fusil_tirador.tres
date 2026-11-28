@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"fusil_tirador"
+nombre = "Fusil tirador semiautomático"
+ranura = 1
+tipo = &"hitscan"
+sonido = &"disparo_precision"
+ruido = 100.0
+cadencia = 3.3
+automatica = false
+tiempo_cambio = 0.9
+dano_base = 58.0
+mult_cabeza = 3.0
+alcance = 220.0
+caida_inicio = 50.0
+caida_factor_min = 0.7
+penetracion_armadura = 0.85
+cargador = 10
+reserva = 40
+tiempo_recarga = 2.7
+dispersion_quieto = 0.5
+dispersion_agachado = 0.3
+dispersion_movimiento = 3.5
+dispersion_aire = 6.0
+dispersion_apuntando = 0.2
+zoom = 2.4
+mira_zoom = true
+tiempo_apuntar = 0.22
+velocidad_apuntando = 0.55
+retroceso_pitch = PackedFloat32Array(1.6)
+retroceso_yaw = PackedFloat32Array(0.15)
+retroceso_recuperacion = 10.0
+retroceso_pausa = 0.2
+velocidad_mov = 0.9

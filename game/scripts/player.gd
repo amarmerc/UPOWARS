@@ -1,15 +1,22 @@
 class_name Jugador
 extends CharacterBody3D
-## Jugador en primera persona, controles tipo CS (WASD, salto, caminar lento, agacharse)
-## y modo vuelo/noclip (F1). Las acciones se definen en el Input Map de project.godot.
+## Jugador en primera persona. Controles: WASD, Espacio salta, Shift corre (~6,5 m/s), Alt camina sigiloso, Ctrl se agacha,
+## clic derecho apunta (lo gestiona el GestorArmas), E recoge, G tira el arma; F1 vuelo/noclip, M selector de spawn, F3 depuracion,
+## K suicidio (pruebas). Las acciones se definen en el Input Map de project.godot.
+
+signal reaparecido
 
 @export_group("Ratón")
 ## Radianes por píxel de movimiento del ratón.
 @export var sensibilidad: float = 0.0022
 
 @export_group("Velocidades (m/s)")
-@export var vel_correr: float = 5.0
-@export var vel_caminar: float = 2.6
+## Andar normal (sin modificadores).
+@export var vel_normal: float = 5.0
+## Correr (Shift).
+@export var vel_sprint: float = 6.5
+## Caminar sigiloso (Alt).
+@export var vel_sigilo: float = 2.6
 @export var vel_agachado: float = 1.7
 @export var vel_vuelo: float = 20.0
 @export var mult_vuelo_rapido: float = 3.0
@@ -23,6 +30,8 @@ extends CharacterBody3D
 
 @export_group("Combate")
 @export var tiempo_reaparicion: float = 2.0
+## Campo de vision (grados) sin apuntar.
+@export var fov_base: float = 80.0
 
 @export_group("Dimensiones (m)")
 @export var altura_pie: float = 1.8
@@ -39,11 +48,19 @@ var punto_reaparicion: Vector3 = Vector3.ZERO
 var yaw_reaparicion: float = 0.0
 ## Multiplicador de velocidad segun el arma en la mano (lo fija el gestor de armas).
 var mult_velocidad_arma: float = 1.0
+## Multiplicador de velocidad segun el estado (apuntando, bloqueando con el sable); lo fija el gestor de armas.
+var mult_velocidad_estado: float = 1.0
 var vuelo: bool = false
 var agachado: bool = false
 var nombre_spawn: String = ""
-
-signal reaparecido
+## Estados que fija el movimiento (corriendo) y el gestor de armas (apuntando).
+var corriendo: bool = false
+var apuntando: bool = false
+## Entrada manual (tests, bots): no se lee el teclado para correr / sigilo / agacharse.
+var entrada_manual: bool = false
+var quiere_correr: bool = false
+var quiere_sigilo: bool = false
+var quiere_agachar: bool = false
 
 var _pitch: float = 0.0
 var _ret_pitch: float = 0.0
@@ -57,13 +74,19 @@ var _capsula: CapsuleShape3D
 @onready var salud: Salud = $Salud
 @onready var hitboxes: Hitboxes = $Hitboxes
 @onready var gestor: GestorArmas = $Armas
+var ceguera: EstadoCeguera
 
 
 func _ready() -> void:
 	_capsula = _colision.shape as CapsuleShape3D
 	_aplicar_postura(false)
 	_cabeza.position.y = ojos_pie
+	camara.fov = fov_base
+	ceguera = EstadoCeguera.new()
+	ceguera.name = "Ceguera"
+	add_child(ceguera)
 	salud.muerto.connect(_on_muerto)
+	salud.bloqueo = gestor._intentar_bloqueo  # el sable de plasma bloquea disparos y proyectiles
 
 
 ## Coloca al jugador (pos en coordenadas del juego, yaw en grados) y lo deja en pie.
@@ -86,13 +109,42 @@ func velocidad_horizontal() -> float:
 	return Vector2(velocity.x, velocity.z).length()
 
 
+## Impulso (m/s) que se suma a la velocidad: explosiones, extintor y puno empujan con esto.
+func aplicar_impulso(v: Vector3) -> void:
+	if vuelo or muerto:
+		return
+	velocity += v
+
+
+## Velocidad objetivo (m/s) del estado actual: andar 5, correr 6,5, sigilo 2,6, agachado 1,7, por los multiplicadores del arma
+## y del estado (apuntar o bloquear).
+func velocidad_objetivo() -> float:
+	var v: float = vel_normal
+	if agachado:
+		v = vel_agachado
+	elif quiere_sigilo:
+		v = vel_sigilo
+	elif corriendo:
+		v = vel_sprint
+	return v * mult_velocidad_arma * mult_velocidad_estado
+
+
+## Apuntado (0..1) y aumentos: el gestor de armas lo llama cada tick. Reduce el campo de vision de la camara.
+func fijar_apuntado(t: float, zoom: float) -> void:
+	apuntando = t > 0.0
+	var k: float = lerpf(1.0, maxf(zoom, 1.0), t)
+	camara.fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(fov_base) * 0.5) / k))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not activo or muerto:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var m := event as InputEventMouseMotion
-		rotate_y(-m.relative.x * sensibilidad)
-		_pitch = clampf(_pitch - m.relative.y * sensibilidad, -deg_to_rad(89.0), deg_to_rad(89.0))
+		# apuntando con zoom, la sensibilidad baja en proporcion al campo de vision
+		var s: float = sensibilidad * (camara.fov / fov_base)
+		rotate_y(-m.relative.x * s)
+		_pitch = clampf(_pitch - m.relative.y * s, -deg_to_rad(89.0), deg_to_rad(89.0))
 		_aplicar_rotacion_cabeza()
 	elif event.is_action_pressed("alternar_raton"):
 		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -117,6 +169,10 @@ func _physics_process(delta: float) -> void:
 	_cabeza.position.y = move_toward(_cabeza.position.y, ojos, vel_transicion_camara * delta)
 	if not activo:
 		return
+	if not entrada_manual:
+		quiere_correr = Input.is_action_pressed("correr")
+		quiere_sigilo = Input.is_action_pressed("caminar_lento")
+		quiere_agachar = Input.is_action_pressed("agacharse")
 	if vuelo:
 		_mover_vuelo(delta)
 	else:
@@ -134,11 +190,13 @@ func _aplicar_rotacion_cabeza() -> void:
 	_cabeza.rotation = Vector3(_pitch + _ret_pitch, _ret_yaw, 0.0)
 
 
-func _on_muerto(_atacante: Node) -> void:
+func _on_muerto(_atacante: Node, _arma: ArmaDatos) -> void:
 	muerto = true
 	_t_muerte = 0.0
+	corriendo = false
 	hitboxes.activar(false)
 	fijar_retroceso(0.0, 0.0)
+	gestor.soltar_al_morir()
 	_cabeza.rotation = Vector3(deg_to_rad(-20.0), 0.0, deg_to_rad(18.0))
 
 
@@ -154,7 +212,7 @@ func _procesar_muerte(delta: float) -> void:
 		reaparecer()
 
 
-## Vuelve al punto de aparicion con vida 100, armadura 0 y municion llena.
+## Vuelve al punto de aparicion con vida 100, escudo 0 y el inventario base (lo comprado se soltó al morir).
 func reaparecer() -> void:
 	muerto = false
 	salud.reiniciar()
@@ -176,7 +234,7 @@ func _mover_vuelo(delta: float) -> void:
 	var dir: Vector3 = _cabeza.global_transform.basis * Vector3(entrada.x, 0.0, entrada.y)
 	dir.y += Input.get_axis("agacharse", "saltar")
 	var vel: float = vel_vuelo
-	if Input.is_action_pressed("caminar_lento"):
+	if Input.is_action_pressed("correr"):
 		vel *= mult_vuelo_rapido
 	velocity = dir.limit_length(1.0) * vel
 	global_position += velocity * delta
@@ -193,8 +251,9 @@ func _mover_suelo(delta: float) -> void:
 
 	var entrada: Vector2 = Input.get_vector("mover_izquierda", "mover_derecha",
 			"mover_adelante", "mover_atras")
+	corriendo = quiere_correr and entrada.y < -0.1 and en_suelo and not agachado and not quiere_sigilo
 	var dir: Vector3 = transform.basis * Vector3(entrada.x, 0.0, entrada.y)
-	var objetivo: Vector3 = dir.normalized() * _velocidad_objetivo() * mult_velocidad_arma
+	var objetivo: Vector3 = dir.normalized() * velocidad_objetivo()
 
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var ritmo: float
@@ -208,16 +267,8 @@ func _mover_suelo(delta: float) -> void:
 	move_and_slide()
 
 
-func _velocidad_objetivo() -> float:
-	if agachado:
-		return vel_agachado
-	if Input.is_action_pressed("caminar_lento"):
-		return vel_caminar
-	return vel_correr
-
-
 func _actualizar_postura() -> void:
-	if Input.is_action_pressed("agacharse"):
+	if quiere_agachar:
 		if not agachado:
 			_aplicar_postura(true)
 	elif agachado and _puede_levantarse():

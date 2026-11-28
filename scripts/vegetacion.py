@@ -4,7 +4,9 @@ Deteccion de copas: nDSM suavizado (gauss sigma 1 px) -> maximos locales en una 
 separacion minima SEP_MIN_M (se conserva el mas alto) -> radio de copa = region conectada alrededor del maximo por
 encima del 50 % de su altura, acotado por una regla altura -> radio y por [1,5; 7] m.
 Descartes (ver Entorno.prohibido_arbol): dentro de edificios (+1 m), sobre caminos, aparcamientos, agua y pistas,
-a < 2 m de pilares o muros/vallas, a < 3 m de un spawn y fuera del muro limite.
+a < 2 m de pilares o muros/vallas, a < 3 m de un spawn, a < 1,3 m del limite o de las barreras de spawn de una zona (data/zonas.json),
+dentro de las barreras, sobre una cobertura (data/props.csv) o dentro de su claro (`claro=R`), y fuera del muro limite.
+Dentro de las zonas, los arboles de >= 12 m tienen el tronco grueso de las coberturas: radio 0,5-0,7 m (ALT_TRONCO_GRANDE_M).
 Geometria (plano local x = este, y = norte, z = arriba; generar_blockout la gira a glTF): tronco = prisma de 8 lados
 de la base (terreno - 0,3 m) al 45 % de la altura; copa = icosfera de 1 nivel escalada entre el 35 % y el 100 %.
 Nodos: `arboles_troncos-col` (con colision, corteza) y `arboles_copas`, `arboles_copas_2`, `arboles_copas_3` (sin
@@ -32,6 +34,16 @@ COLORES_MATERIAL = {"arbol_corteza": (98, 72, 50, 255), "arbol_copa_1": (72, 118
                     "arbol_copa_2": (58, 104, 50, 255), "arbol_copa_3": (92, 132, 62, 255)}
 N_TONOS = 3
 MAX_ARBOLES = 6000
+
+
+ALT_TRONCO_GRANDE_M = 12.0     # en las zonas, los arboles de >= 12 m tienen tronco de 0,5-0,7 m de radio (cobertura)
+R_TRONCO_GRANDE = (0.5, 0.7)
+
+
+def radio_tronco_grande(h):
+    """Radio (m) del tronco grueso de las zonas: 0,5 a 12 m de altura hasta 0,7 con 22 m o mas."""
+    return np.clip(R_TRONCO_GRANDE[0] + (R_TRONCO_GRANDE[1] - R_TRONCO_GRANDE[0]) * (np.asarray(h) - 12.0) / 10.0,
+                   *R_TRONCO_GRANDE)
 
 
 def radio_tronco(h):
@@ -89,7 +101,7 @@ def detectar_copas(ruta, E0, N0, alt_min=ALT_MIN_M, sep_min=SEP_MIN_M):
     return x, y, h, radios
 
 
-def generar_arboles(entorno, ruta_ndsm, E0, N0, rng, alt_min=ALT_MIN_M, sep_min=SEP_MIN_M):
+def generar_arboles(entorno, ruta_ndsm, E0, N0, rng, alt_min=ALT_MIN_M, sep_min=SEP_MIN_M, alt_grande=ALT_TRONCO_GRANDE_M):
     """Detecta y filtra los arboles. Devuelve (lista de dicts {x, y, h, r_copa, r_tronco, base, tono}, stats)."""
     T = entorno.T
     x, y, h, r = detectar_copas(ruta_ndsm, E0, N0, alt_min, sep_min)
@@ -105,10 +117,14 @@ def generar_arboles(entorno, ruta_ndsm, E0, N0, rng, alt_min=ALT_MIN_M, sep_min=
     tono = rng.integers(0, N_TONOS, len(x))
     giro = rng.uniform(0, 2 * np.pi, len(x))
     achat = rng.uniform(0.9, 1.1, len(x))          # el elipsoide no es de revolucion
+    en_zona = entorno.en_zona(x, y)
+    grande = en_zona & (h >= alt_grande)
+    rt = np.where(grande, radio_tronco_grande(h), radio_tronco(h))
     arboles = [{"x": float(x[k]), "y": float(y[k]), "h": float(h[k]), "r_copa": float(r[k]),
-                "r_tronco": float(radio_tronco(h[k])), "base": float(base[k]), "tono": int(tono[k]),
-                "giro": float(giro[k]), "achat": float(achat[k])} for k in range(len(x))]
+                "r_tronco": float(rt[k]), "base": float(base[k]), "tono": int(tono[k]),
+                "giro": float(giro[k]), "achat": float(achat[k]), "zona": bool(en_zona[k])} for k in range(len(x))]
     stats["arboles"] = len(arboles)
+    stats["troncos_grandes"] = int(grande.sum())
     return arboles, stats
 
 

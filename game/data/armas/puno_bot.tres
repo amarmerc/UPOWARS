@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"puno_bot"
+nombre = ""Puño-Bot""
+ranura = 2
+tipo = &"puno"
+sonido = &"puno_disparo"
+apuntable = false
+ruido = 30.0
+cadencia = 1.0
+automatica = false
+tiempo_cambio = 0.5
+dano_base = 46.0
+mult_cabeza = 2.0
+alcance = 22.0
+caida_inicio = 22.0
+caida_factor_min = 1.0
+penetracion_armadura = 0.7
+velocidad_proyectil = 32.0
+gravedad_proyectil = 0.0
+carga_tiempo = 0.8
+carga_minima = 0.35
+retorno_tiempo = 1.5
+empuje = 11.0
+cargador = 0
+reserva = 0
+tiempo_recarga = 0.0
+dispersion_quieto = 0.0
+dispersion_agachado = 0.0
+dispersion_movimiento = 0.5
+dispersion_aire = 1.0
+retroceso_pitch = PackedFloat32Array(0.8)
+retroceso_yaw = PackedFloat32Array(0.0)
+retroceso_recuperacion = 15.0
+retroceso_pausa = 0.2
+velocidad_mov = 1.0

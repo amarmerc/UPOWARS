@@ -1205,10 +1205,330 @@
       }
     }
   },
-  "n_arboles": 1856,
-  "n_coches": 1406,
-  "n_coches_parking": 1391,
-  "n_coches_carretera": 15,
+  "n_arboles": 1832,
+  "n_coches": 1359,
+  "n_coches_parking": 1346,
+  "n_coches_carretera": 13,
+  "n_props": 246,
+  "test_props": [
+    {
+      "tipo": "aula",
+      "desde": [
+        55.2,
+        1.672,
+        -304.0
+      ],
+      "hasta": [
+        52.0,
+        1.672,
+        -304.0
+      ],
+      "descripcion": "aula en (52.0, -304.0): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "murete",
+      "desde": [
+        -6.87,
+        2.171,
+        178.84
+      ],
+      "hasta": [
+        -3.79,
+        2.171,
+        179.71
+      ],
+      "descripcion": "murete en (-3.8, 179.7): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "jardinera",
+      "desde": [
+        -5.51,
+        2.145,
+        188.86
+      ],
+      "hasta": [
+        -7.7,
+        2.145,
+        186.53
+      ],
+      "descripcion": "jardinera en (-7.7, 186.5): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "banco",
+      "desde": [
+        -11.06,
+        2.418,
+        187.04
+      ],
+      "hasta": [
+        -10.98,
+        2.418,
+        183.84
+      ],
+      "descripcion": "banco en (-10.7, 183.8): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "murete",
+      "desde": [
+        -3.89,
+        2.165,
+        176.3
+      ],
+      "hasta": [
+        -1.19,
+        2.165,
+        178.02
+      ],
+      "descripcion": "murete en (-1.2, 178.0): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "contenedor",
+      "desde": [
+        -2.44,
+        2.548,
+        192.49
+      ],
+      "hasta": [
+        -5.63,
+        2.548,
+        192.24
+      ],
+      "descripcion": "contenedor en (-5.6, 192.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "banco",
+      "desde": [
+        -11.08,
+        7.364,
+        264.92
+      ],
+      "hasta": [
+        -10.93,
+        7.364,
+        261.72
+      ],
+      "descripcion": "banco en (-10.7, 261.7): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "contenedor",
+      "desde": [
+        -11.07,
+        7.358,
+        268.22
+      ],
+      "hasta": [
+        -12.38,
+        7.358,
+        265.3
+      ],
+      "descripcion": "contenedor en (-12.4, 265.3): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "aparcabicis",
+      "desde": [
+        41.03,
+        5.721,
+        203.86
+      ],
+      "hasta": [
+        40.36,
+        5.721,
+        206.99
+      ],
+      "descripcion": "aparcabicis en (40.1, 206.3): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "aparcabicis",
+      "desde": [
+        -8.86,
+        4.143,
+        222.02
+      ],
+      "hasta": [
+        -11.97,
+        4.143,
+        221.28
+      ],
+      "descripcion": "aparcabicis en (-11.3, 221.1): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "jardinera",
+      "desde": [
+        -48.35,
+        6.269,
+        249.96
+      ],
+      "hasta": [
+        -50.61,
+        6.269,
+        252.22
+      ],
+      "descripcion": "jardinera en (-50.6, 252.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "pila_sillas",
+      "desde": [
+        -70.47,
+        3.179,
+        174.46
+      ],
+      "hasta": [
+        -67.8,
+        3.179,
+        172.69
+      ],
+      "descripcion": "pila_sillas en (-67.7, 172.9): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "mesa",
+      "desde": [
+        -63.58,
+        6.185,
+        225.8
+      ],
+      "hasta": [
+        -60.38,
+        6.185,
+        225.8
+      ],
+      "descripcion": "mesa en (-60.4, 225.8): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "pila_sillas",
+      "desde": [
+        -19.96,
+        7.617,
+        237.0
+      ],
+      "hasta": [
+        -17.53,
+        7.617,
+        239.09
+      ],
+      "descripcion": "pila_sillas en (-17.7, 239.1): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "mesa",
+      "desde": [
+        133.49,
+        0.406,
+        -262.15
+      ],
+      "hasta": [
+        131.23,
+        0.406,
+        -264.41
+      ],
+      "descripcion": "mesa en (131.2, -264.4): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "marquesina",
+      "desde": [
+        -393.38,
+        -1.937,
+        -137.96
+      ],
+      "hasta": [
+        -390.66,
+        -1.937,
+        -139.65
+      ],
+      "descripcion": "marquesina en (-390.7, -139.7): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "marquesina",
+      "desde": [
+        -489.46,
+        0.511,
+        139.88
+      ],
+      "hasta": [
+        -486.35,
+        0.511,
+        140.64
+      ],
+      "descripcion": "marquesina en (-486.3, 140.6): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "reciclaje_azul",
+      "desde": [
+        -8.22,
+        0.386,
+        -407.85
+      ],
+      "hasta": [
+        -11.41,
+        0.386,
+        -407.64
+      ],
+      "descripcion": "reciclaje_azul en (-11.4, -407.6): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "reciclaje_verde",
+      "desde": [
+        -32.79,
+        -0.701,
+        -102.53
+      ],
+      "hasta": [
+        -30.09,
+        -0.701,
+        -104.24
+      ],
+      "descripcion": "reciclaje_verde en (-30.1, -104.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "reciclaje_azul",
+      "desde": [
+        32.85,
+        8.045,
+        234.88
+      ],
+      "hasta": [
+        32.32,
+        8.045,
+        231.72
+      ],
+      "descripcion": "reciclaje_azul en (32.3, 231.7): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "reciclaje_amarillo",
+      "desde": [
+        32.05,
+        8.032,
+        234.06
+      ],
+      "hasta": [
+        33.9,
+        8.032,
+        231.45
+      ],
+      "descripcion": "reciclaje_amarillo en (33.9, 231.4): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "reciclaje_verde",
+      "desde": [
+        33.63,
+        8.02,
+        233.8
+      ],
+      "hasta": [
+        35.48,
+        8.02,
+        231.19
+      ],
+      "descripcion": "reciclaje_verde en (35.5, 231.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    }
+  ],
+  "aula": {
+    "pos": [
+      52.0,
+      0.261,
+      -304.0
+    ],
+    "yaw_deg": 0.0,
+    "descripcion": "aula al aire libre (centro de la pizarra; las filas quedan detras)"
+  },
   "test_coche": {
     "id": 1336,
     "origen": "parking P4",

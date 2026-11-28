@@ -1097,20 +1097,6 @@
    "plaza": true
   },
   {
-   "id": 78,
-   "pos": [
-    43.785,
-    7.566,
-    241.409
-   ],
-   "yaw_deg": 275.79,
-   "pitch_deg": -0.54,
-   "roll_deg": -0.11,
-   "color": "gris",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
    "id": 79,
    "pos": [
     48.212,
@@ -1153,20 +1139,6 @@
    "plaza": true
   },
   {
-   "id": 82,
-   "pos": [
-    58.551,
-    7.538,
-    220.302
-   ],
-   "yaw_deg": 273.6,
-   "pitch_deg": -1.16,
-   "roll_deg": 1.51,
-   "color": "azul_oscuro",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
    "id": 83,
    "pos": [
     58.964,
@@ -1195,62 +1167,6 @@
    "plaza": true
   },
   {
-   "id": 85,
-   "pos": [
-    59.217,
-    7.729,
-    230.311
-   ],
-   "yaw_deg": 275.05,
-   "pitch_deg": -0.68,
-   "roll_deg": 0.5,
-   "color": "plata",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
-   "id": 86,
-   "pos": [
-    59.341,
-    7.744,
-    232.905
-   ],
-   "yaw_deg": 95.13,
-   "pitch_deg": 0.67,
-   "roll_deg": -0.19,
-   "color": "blanco",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
-   "id": 87,
-   "pos": [
-    59.728,
-    7.755,
-    235.193
-   ],
-   "yaw_deg": 93.33,
-   "pitch_deg": 0.69,
-   "roll_deg": -0.19,
-   "color": "gris",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
-   "id": 88,
-   "pos": [
-    59.577,
-    7.755,
-    237.776
-   ],
-   "yaw_deg": 92.91,
-   "pitch_deg": 0.74,
-   "roll_deg": -0.05,
-   "color": "gris",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
    "id": 89,
    "pos": [
     60.289,
@@ -1261,20 +1177,6 @@
    "pitch_deg": -0.86,
    "roll_deg": 0.23,
    "color": "gris",
-   "origen": "parking P10",
-   "plaza": true
-  },
-  {
-   "id": 90,
-   "pos": [
-    64.116,
-    7.789,
-    230.073
-   ],
-   "yaw_deg": 272.02,
-   "pitch_deg": -0.7,
-   "roll_deg": 0.29,
-   "color": "plata",
    "origen": "parking P10",
    "plaza": true
   },
@@ -3435,20 +3337,6 @@
    "plaza": true
   },
   {
-   "id": 245,
-   "pos": [
-    -25.355,
-    -1.878,
-    -162.199
-   ],
-   "yaw_deg": 210.36,
-   "pitch_deg": 0.4,
-   "roll_deg": -0.06,
-   "color": "gris",
-   "origen": "parking P5",
-   "plaza": true
-  },
-  {
    "id": 246,
    "pos": [
     -21.111,
@@ -3617,48 +3505,6 @@
    "plaza": true
   },
   {
-   "id": 258,
-   "pos": [
-    -28.018,
-    -1.873,
-    -166.556
-   ],
-   "yaw_deg": 212.17,
-   "pitch_deg": -0.33,
-   "roll_deg": 0.04,
-   "color": "blanco",
-   "origen": "parking P5",
-   "plaza": true
-  },
-  {
-   "id": 259,
-   "pos": [
-    -23.795,
-    -1.879,
-    -169.173
-   ],
-   "yaw_deg": 32.18,
-   "pitch_deg": 0.34,
-   "roll_deg": -0.13,
-   "color": "gris",
-   "origen": "parking P5",
-   "plaza": true
-  },
-  {
-   "id": 260,
-   "pos": [
-    -21.513,
-    -1.887,
-    -170.255
-   ],
-   "yaw_deg": 32.03,
-   "pitch_deg": 0.34,
-   "roll_deg": -0.27,
-   "color": "blanco",
-   "origen": "parking P5",
-   "plaza": true
-  },
-  {
    "id": 261,
    "pos": [
     -19.463,
@@ -3809,20 +3655,6 @@
    "pitch_deg": -0.23,
    "roll_deg": 0.22,
    "color": "blanco",
-   "origen": "parking P5",
-   "plaza": true
-  },
-  {
-   "id": 272,
-   "pos": [
-    -22.878,
-    -1.994,
-    -182.275
-   ],
-   "yaw_deg": 29.75,
-   "pitch_deg": 0.23,
-   "roll_deg": -0.41,
-   "color": "gris",
    "origen": "parking P5",
    "plaza": true
   },
@@ -4975,20 +4807,6 @@
    "plaza": true
   },
   {
-   "id": 355,
-   "pos": [
-    -34.166,
-    -1.337,
-    -88.24
-   ],
-   "yaw_deg": 124.11,
-   "pitch_deg": -0.05,
-   "roll_deg": -0.29,
-   "color": "gris",
-   "origen": "parking P6",
-   "plaza": true
-  },
-  {
    "id": 356,
    "pos": [
     -35.166,
@@ -5643,48 +5461,6 @@
    "pitch_deg": 0.24,
    "roll_deg": 0.0,
    "color": "plata",
-   "origen": "parking P7",
-   "plaza": true
-  },
-  {
-   "id": 403,
-   "pos": [
-    46.822,
-    -0.236,
-    31.184
-   ],
-   "yaw_deg": 120.63,
-   "pitch_deg": -0.47,
-   "roll_deg": -1.7,
-   "color": "negro",
-   "origen": "parking P7",
-   "plaza": true
-  },
-  {
-   "id": 404,
-   "pos": [
-    44.236,
-    -0.321,
-    26.612
-   ],
-   "yaw_deg": 120.53,
-   "pitch_deg": -0.32,
-   "roll_deg": -0.46,
-   "color": "gris",
-   "origen": "parking P7",
-   "plaza": true
-  },
-  {
-   "id": 405,
-   "pos": [
-    43.163,
-    -0.343,
-    24.667
-   ],
-   "yaw_deg": 123.28,
-   "pitch_deg": -0.36,
-   "roll_deg": -0.73,
-   "color": "rojo_oscuro",
    "origen": "parking P7",
    "plaza": true
   },
@@ -11257,216 +11033,6 @@
    "pitch_deg": -0.29,
    "roll_deg": 0.49,
    "color": "negro",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 804,
-   "pos": [
-    -100.977,
-    -0.535,
-    56.345
-   ],
-   "yaw_deg": 120.02,
-   "pitch_deg": -0.41,
-   "roll_deg": 0.2,
-   "color": "plata",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 805,
-   "pos": [
-    -95.799,
-    -0.416,
-    64.863
-   ],
-   "yaw_deg": 123.26,
-   "pitch_deg": 0.01,
-   "roll_deg": -0.69,
-   "color": "plata",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 806,
-   "pos": [
-    -94.469,
-    -0.388,
-    66.782
-   ],
-   "yaw_deg": 303.59,
-   "pitch_deg": -0.1,
-   "roll_deg": 0.67,
-   "color": "blanco",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 807,
-   "pos": [
-    -93.026,
-    -0.355,
-    68.871
-   ],
-   "yaw_deg": 120.06,
-   "pitch_deg": 0.01,
-   "roll_deg": -0.91,
-   "color": "plata",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 808,
-   "pos": [
-    -91.749,
-    -0.316,
-    70.987
-   ],
-   "yaw_deg": 123.49,
-   "pitch_deg": 0.28,
-   "roll_deg": -0.83,
-   "color": "plata",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 809,
-   "pos": [
-    -90.451,
-    -0.28,
-    73.418
-   ],
-   "yaw_deg": 121.64,
-   "pitch_deg": 0.12,
-   "roll_deg": -0.98,
-   "color": "blanco",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 810,
-   "pos": [
-    -88.005,
-    -0.194,
-    77.476
-   ],
-   "yaw_deg": 120.07,
-   "pitch_deg": 0.31,
-   "roll_deg": -1.48,
-   "color": "azul_oscuro",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 811,
-   "pos": [
-    -86.559,
-    -0.137,
-    79.67
-   ],
-   "yaw_deg": 302.51,
-   "pitch_deg": -0.27,
-   "roll_deg": 0.87,
-   "color": "plata",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 812,
-   "pos": [
-    -85.169,
-    -0.092,
-    81.79
-   ],
-   "yaw_deg": 303.02,
-   "pitch_deg": -0.13,
-   "roll_deg": 1.25,
-   "color": "blanco",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 813,
-   "pos": [
-    -84.023,
-    -0.041,
-    84.062
-   ],
-   "yaw_deg": 301.45,
-   "pitch_deg": -0.23,
-   "roll_deg": 0.91,
-   "color": "blanco",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 814,
-   "pos": [
-    -82.677,
-    0.01,
-    86.139
-   ],
-   "yaw_deg": 119.92,
-   "pitch_deg": 0.04,
-   "roll_deg": -1.27,
-   "color": "blanco",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 815,
-   "pos": [
-    -79.957,
-    0.117,
-    90.232
-   ],
-   "yaw_deg": 120.43,
-   "pitch_deg": 0.22,
-   "roll_deg": -1.48,
-   "color": "azul_oscuro",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 816,
-   "pos": [
-    -77.268,
-    0.206,
-    94.424
-   ],
-   "yaw_deg": 302.52,
-   "pitch_deg": -0.29,
-   "roll_deg": 0.87,
-   "color": "rojo_oscuro",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 817,
-   "pos": [
-    -74.705,
-    0.262,
-    98.758
-   ],
-   "yaw_deg": 122.16,
-   "pitch_deg": 0.18,
-   "roll_deg": -0.5,
-   "color": "azul_oscuro",
-   "origen": "parking P1",
-   "plaza": true
-  },
-  {
-   "id": 818,
-   "pos": [
-    -72.092,
-    0.328,
-    103.089
-   ],
-   "yaw_deg": 301.91,
-   "pitch_deg": -0.12,
-   "roll_deg": 0.95,
-   "color": "blanco",
    "origen": "parking P1",
    "plaza": true
   },
@@ -18135,132 +17701,6 @@
    "plaza": true
   },
   {
-   "id": 1295,
-   "pos": [
-    -147.622,
-    -0.98,
-    -18.008
-   ],
-   "yaw_deg": 300.17,
-   "pitch_deg": 0.14,
-   "roll_deg": 0.89,
-   "color": "gris",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1296,
-   "pos": [
-    -146.237,
-    -0.938,
-    -15.847
-   ],
-   "yaw_deg": 122.81,
-   "pitch_deg": -0.18,
-   "roll_deg": -0.99,
-   "color": "plata",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1297,
-   "pos": [
-    -143.594,
-    -0.851,
-    -11.561
-   ],
-   "yaw_deg": 300.16,
-   "pitch_deg": 0.24,
-   "roll_deg": 0.86,
-   "color": "plata",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1298,
-   "pos": [
-    -140.921,
-    -0.789,
-    -7.286
-   ],
-   "yaw_deg": 121.66,
-   "pitch_deg": -0.06,
-   "roll_deg": -0.48,
-   "color": "azul_oscuro",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1299,
-   "pos": [
-    -139.582,
-    -0.768,
-    -5.295
-   ],
-   "yaw_deg": 300.95,
-   "pitch_deg": -0.07,
-   "roll_deg": 0.49,
-   "color": "plata",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1300,
-   "pos": [
-    -138.335,
-    -0.749,
-    -3.213
-   ],
-   "yaw_deg": 120.73,
-   "pitch_deg": 0.09,
-   "roll_deg": -0.45,
-   "color": "blanco",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1301,
-   "pos": [
-    -136.934,
-    -0.724,
-    -0.892
-   ],
-   "yaw_deg": 300.01,
-   "pitch_deg": -0.23,
-   "roll_deg": 0.67,
-   "color": "plata",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1302,
-   "pos": [
-    -127.895,
-    -0.61,
-    13.798
-   ],
-   "yaw_deg": 121.96,
-   "pitch_deg": -0.12,
-   "roll_deg": 0.01,
-   "color": "azul_oscuro",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
-   "id": 1303,
-   "pos": [
-    -121.235,
-    -0.588,
-    24.692
-   ],
-   "yaw_deg": 300.33,
-   "pitch_deg": 0.34,
-   "roll_deg": 0.43,
-   "color": "azul_oscuro",
-   "origen": "parking P2",
-   "plaza": true
-  },
-  {
    "id": 1304,
    "pos": [
     -141.942,
@@ -19045,20 +18485,6 @@
    "plaza": true
   },
   {
-   "id": 1360,
-   "pos": [
-    97.851,
-    -0.632,
-    -382.443
-   ],
-   "yaw_deg": 98.19,
-   "pitch_deg": -0.0,
-   "roll_deg": 0.45,
-   "color": "gris",
-   "origen": "parking sin_nombre_1372454310",
-   "plaza": true
-  },
-  {
    "id": 1361,
    "pos": [
     97.501,
@@ -19255,20 +18681,6 @@
    "plaza": true
   },
   {
-   "id": 1375,
-   "pos": [
-    -118.02,
-    -3.602,
-    -211.381
-   ],
-   "yaw_deg": 300.21,
-   "pitch_deg": -0.36,
-   "roll_deg": 0.02,
-   "color": "gris",
-   "origen": "parking P18",
-   "plaza": true
-  },
-  {
    "id": 1376,
    "pos": [
     -119.36,
@@ -19325,20 +18737,6 @@
    "plaza": true
   },
   {
-   "id": 1380,
-   "pos": [
-    -126.19,
-    -3.64,
-    -203.557
-   ],
-   "yaw_deg": 121.96,
-   "pitch_deg": 0.22,
-   "roll_deg": -0.42,
-   "color": "gris",
-   "origen": "parking P18",
-   "plaza": true
-  },
-  {
    "id": 1381,
    "pos": [
     -127.328,
@@ -19377,34 +18775,6 @@
    "pitch_deg": 0.02,
    "roll_deg": 0.39,
    "color": "blanco",
-   "origen": "parking P18",
-   "plaza": true
-  },
-  {
-   "id": 1384,
-   "pos": [
-    -128.882,
-    -3.635,
-    -198.877
-   ],
-   "yaw_deg": 301.0,
-   "pitch_deg": 0.06,
-   "roll_deg": 0.24,
-   "color": "negro",
-   "origen": "parking P18",
-   "plaza": true
-  },
-  {
-   "id": 1385,
-   "pos": [
-    -130.454,
-    -3.646,
-    -200.903
-   ],
-   "yaw_deg": 300.58,
-   "pitch_deg": 0.2,
-   "roll_deg": 0.41,
-   "color": "azul_oscuro",
    "origen": "parking P18",
    "plaza": true
   },
@@ -19481,13 +18851,13 @@
   {
    "id": 1391,
    "pos": [
-    -383.411,
-    -0.376,
-    172.551
+    -608.717,
+    -3.398,
+    129.219
    ],
-   "yaw_deg": 256.65,
-   "pitch_deg": -0.58,
-   "roll_deg": 2.22,
+   "yaw_deg": 256.26,
+   "pitch_deg": -0.5,
+   "roll_deg": -0.0,
    "color": "plata",
    "origen": "carretera (parado en tertiary)",
    "plaza": false
@@ -19495,27 +18865,27 @@
   {
    "id": 1392,
    "pos": [
-    -624.903,
-    -3.611,
-    113.779
+    -520.017,
+    -2.403,
+    139.51
    ],
-   "yaw_deg": 256.28,
-   "pitch_deg": -0.4,
-   "roll_deg": 0.49,
-   "color": "gris",
+   "yaw_deg": 256.16,
+   "pitch_deg": -1.04,
+   "roll_deg": -0.21,
+   "color": "rojo_oscuro",
    "origen": "carretera (parado en tertiary)",
    "plaza": false
   },
   {
    "id": 1393,
    "pos": [
-    152.745,
-    -1.103,
-    -33.808
+    -118.249,
+    -0.114,
+    -371.827
    ],
-   "yaw_deg": 273.08,
-   "pitch_deg": -0.11,
-   "roll_deg": 1.18,
+   "yaw_deg": 4.88,
+   "pitch_deg": 0.86,
+   "roll_deg": 1.33,
    "color": "plata",
    "origen": "carretera",
    "plaza": false
@@ -19523,27 +18893,13 @@
   {
    "id": 1394,
    "pos": [
-    17.204,
-    -2.419,
-    -156.304
+    360.957,
+    1.104,
+    -267.537
    ],
-   "yaw_deg": 212.74,
-   "pitch_deg": -0.47,
-   "roll_deg": 0.73,
-   "color": "gris",
-   "origen": "carretera",
-   "plaza": false
-  },
-  {
-   "id": 1395,
-   "pos": [
-    57.134,
-    -1.027,
-    -219.271
-   ],
-   "yaw_deg": 185.08,
-   "pitch_deg": 0.74,
-   "roll_deg": 0.45,
+   "yaw_deg": 185.27,
+   "pitch_deg": 0.5,
+   "roll_deg": -0.61,
    "color": "gris",
    "origen": "carretera",
    "plaza": false
@@ -19551,41 +18907,27 @@
   {
    "id": 1396,
    "pos": [
-    97.874,
-    -1.357,
-    -92.077
+    -160.074,
+    -3.05,
+    -248.791
    ],
-   "yaw_deg": 210.67,
-   "pitch_deg": -0.89,
-   "roll_deg": 1.44,
-   "color": "blanco",
-   "origen": "carretera",
-   "plaza": false
-  },
-  {
-   "id": 1397,
-   "pos": [
-    206.412,
-    3.77,
-    221.037
-   ],
-   "yaw_deg": 167.04,
-   "pitch_deg": -1.38,
-   "roll_deg": -0.16,
-   "color": "gris",
+   "yaw_deg": 31.83,
+   "pitch_deg": -1.62,
+   "roll_deg": 0.28,
+   "color": "azul_oscuro",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1398,
    "pos": [
-    216.782,
-    -1.139,
-    -157.113
+    153.497,
+    6.441,
+    411.437
    ],
-   "yaw_deg": 275.2,
-   "pitch_deg": -0.7,
-   "roll_deg": 0.22,
+   "yaw_deg": 137.22,
+   "pitch_deg": 1.69,
+   "roll_deg": -0.76,
    "color": "gris",
    "origen": "carretera",
    "plaza": false
@@ -19593,27 +18935,27 @@
   {
    "id": 1399,
    "pos": [
-    -616.425,
-    -5.133,
-    9.049
+    -158.707,
+    0.731,
+    123.917
    ],
-   "yaw_deg": 121.9,
-   "pitch_deg": -0.15,
-   "roll_deg": -0.11,
-   "color": "rojo_oscuro",
+   "yaw_deg": 210.93,
+   "pitch_deg": -1.02,
+   "roll_deg": -0.29,
+   "color": "plata",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1400,
    "pos": [
-    -223.344,
-    -3.22,
-    -228.67
+    -52.781,
+    3.754,
+    395.428
    ],
-   "yaw_deg": 301.67,
-   "pitch_deg": -0.27,
-   "roll_deg": 0.64,
+   "yaw_deg": 257.09,
+   "pitch_deg": 0.21,
+   "roll_deg": 0.03,
    "color": "gris",
    "origen": "carretera",
    "plaza": false
@@ -19621,70 +18963,70 @@
   {
    "id": 1401,
    "pos": [
-    53.342,
-    4.146,
-    415.834
+    332.304,
+    0.465,
+    -167.634
    ],
-   "yaw_deg": 77.1,
-   "pitch_deg": 1.48,
-   "roll_deg": -0.91,
-   "color": "azul_oscuro",
+   "yaw_deg": 275.2,
+   "pitch_deg": -0.95,
+   "roll_deg": 1.66,
+   "color": "plata",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1402,
    "pos": [
-    38.624,
-    -0.821,
-    -371.695
+    113.211,
+    -1.858,
+    -147.681
    ],
-   "yaw_deg": 113.14,
-   "pitch_deg": 0.3,
-   "roll_deg": 9.59,
-   "color": "blanco",
+   "yaw_deg": 275.2,
+   "pitch_deg": -0.28,
+   "roll_deg": 1.53,
+   "color": "gris",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1403,
    "pos": [
-    308.403,
-    0.098,
-    -165.457
+    358.946,
+    1.002,
+    -331.613
    ],
-   "yaw_deg": 275.2,
-   "pitch_deg": -0.81,
-   "roll_deg": 0.8,
-   "color": "blanco",
+   "yaw_deg": 4.95,
+   "pitch_deg": 0.42,
+   "roll_deg": 0.58,
+   "color": "gris",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1404,
    "pos": [
-    -155.274,
-    -3.435,
-    -237.646
+    -133.846,
+    2.248,
+    189.427
    ],
-   "yaw_deg": 211.83,
-   "pitch_deg": 2.12,
-   "roll_deg": -0.06,
-   "color": "azul_oscuro",
+   "yaw_deg": 330.91,
+   "pitch_deg": 0.35,
+   "roll_deg": 2.92,
+   "color": "blanco",
    "origen": "carretera",
    "plaza": false
   },
   {
    "id": 1405,
    "pos": [
-    3.51,
-    -0.356,
-    -269.289
+    -135.68,
+    -1.017,
+    -480.252
    ],
-   "yaw_deg": 74.87,
-   "pitch_deg": 0.19,
-   "roll_deg": 0.57,
-   "color": "rojo_oscuro",
+   "yaw_deg": 183.05,
+   "pitch_deg": 0.05,
+   "roll_deg": -0.37,
+   "color": "gris",
    "origen": "carretera",
    "plaza": false
   }

@@ -46,6 +46,7 @@ from shapely.ops import nearest_points, polylabel, unary_union
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import coches as coc  # noqa: E402
 import generar_blockout as gb  # noqa: E402
+import props as prp  # noqa: E402
 import terreno as ter  # noqa: E402
 
 Y_SPAWN = 0.1
@@ -144,7 +145,7 @@ class Props:
         self.arboles = props["arboles"]
         self.troncos = shapely.points([(t["x"], t["y"]) for t in self.arboles]) if self.arboles else np.zeros(0, object)
         self.r_troncos = np.array([t["r_tronco"] for t in self.arboles])
-        self.rects = [coc.rect_coche(c) for c in props["coches"]]
+        self.rects = [coc.rect_coche(c) for c in props["coches"]] + list(props.get("huellas_props", []))   # coches y coberturas
         self.arbol_coches = shapely.STRtree(self.rects) if self.rects else None
         self.arbol_troncos = shapely.STRtree(self.troncos) if self.arboles else None
 
@@ -223,6 +224,57 @@ def test_arbol(ctx, props, T):
             "pos": g((t["x"], t["y"]), yc), "altura_m": round(t["h"], 2), "r_copa_m": round(t["r_copa"], 2),
             "rayo_tronco": {"desde": g(ini, yc + 1.0), "hasta": g((t["x"], t["y"]), yc + 1.0)},
             "rayo_copa": {"desde": g((ax_, ay_), yk), "hasta": g((bx_, by_), yk)}}
+
+
+def test_props(ctx, obstaculos, props, T, max_por_tipo=2):
+    """Para cada tipo de cobertura de data/props.csv, hasta `max_por_tipo` rayos horizontales hacia un punto solido del prop (el
+    centro de su caja mayor), desde 2-3 m, sin nada mas en medio (edificios, troncos, coches, otros props, muros). El test de
+    Godot comprueba que el primer choque es un nodo `props_*`."""
+    filas = props.get("props", [])
+    out = []
+    por_tipo = {}
+    otros_g = shapely.STRtree(obstaculos.rects) if obstaculos.rects else None
+    for i, p in enumerate(filas):
+        if por_tipo.get(p["tipo"], 0) >= max_por_tipo:
+            continue
+        a, f, y = prp.punto_solido(p["tipo"], p["escala"], p["notas"])
+        ea, en = prp._rot(a, f, p["yaw"])
+        cxp, cnp = p["x"] + ea, -p["z"] + en
+        lo, hi = prp.desnivel(p, T)
+        yc = lo + y
+        mejor = None
+        for k in range(8):
+            ang = math.radians(k * 45 + p["yaw"])
+            d_ini = 3.2
+            ini = (cxp + d_ini * math.cos(ang), cnp + d_ini * math.sin(ang))
+            ln = LineString([ini, (cxp, cnp)])
+            if not ctx.zona_valida.contains(Point(ini)):
+                continue
+            if ctx.huellas.distance(ln) < 0.8 or (ctx.barreras is not None and ctx.barreras.distance(ln) < 0.8):
+                continue
+            if ctx.pilares is not None and ctx.pilares.distance(ln) < 0.8:
+                continue
+            if obstaculos.arbol_troncos is not None:
+                if any(obstaculos.troncos[j].distance(ln) < obstaculos.r_troncos[j] + 0.5 for j in obstaculos.arbol_troncos.query(ln.buffer(2.0))):
+                    continue
+            propio = prp.huella(p)
+            otros = [obstaculos.rects[j] for j in otros_g.query(ln.buffer(0.5))] if otros_g is not None else []
+            if any(r.distance(ln) < 0.2 and r.distance(propio) > 0.05 for r in otros):
+                continue
+            # terreno entre el punto de partida y el prop: el rayo va a yc, 0,4 m sobre el terreno como minimo
+            xs = np.linspace(ini[0], cxp, 8)
+            ns = np.linspace(ini[1], cnp, 8)
+            if float((np.asarray(T.h(xs, ns)) + 0.35).max()) > yc:
+                continue
+            mejor = ini
+            break
+        if mejor is None:
+            continue
+        g = lambda q, yy: [round(q[0], 2), round(yy, 3), round(-q[1], 2)]
+        out.append({"tipo": p["tipo"], "desde": g(mejor, yc), "hasta": g((cxp, cnp), yc),
+                    "descripcion": f"{p['tipo']} en ({p['x']:.1f}, {p['z']:.1f}): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"})
+        por_tipo[p["tipo"]] = por_tipo.get(p["tipo"], 0) + 1
+    return out
 
 
 def spawn_edificio(ctx, edif):
@@ -903,6 +955,11 @@ def main():
     print("test_coche:", json.dumps(tc, ensure_ascii=False))
     ta = test_arbol(ctx, obstaculos, T) if props["arboles"] else None
     print("test_arbol:", json.dumps(ta, ensure_ascii=False))
+    aula = next((p for p in props["props"] if p["tipo"] == "aula"), None)
+    aula_json = None if aula is None else {"pos": [aula["x"], round(float(T.altura(aula["x"], aula["z"])), 3), aula["z"]],
+                                           "yaw_deg": aula["yaw"], "descripcion": "aula al aire libre (centro de la pizarra; las filas quedan detras)"}
+    tpr = test_props(ctx, obstaculos, props, T)
+    print(f"test_props: {len(tpr)} rayos en {len({t['tipo'] for t in tpr})} tipos de {len(props['props'])} props")
     salida.write_text(json.dumps({"ejes": meta["ejes_gltf"], "origen": meta["origen"], "spawns": spawns,
                                   "test_pasillo": tp, "test_paso_22_24": tp2,
                                   "test_pasillo_pilares": tp3, "test_tunel_37": tp4, "test_marquesinas": tm,
@@ -911,6 +968,7 @@ def main():
                                   "n_arboles": len(props["arboles"]), "n_coches": len(props["coches"]),
                                   "n_coches_parking": props["stats"].get("coches_parking", 0),
                                   "n_coches_carretera": props["stats"].get("coches_carretera", 0),
+                                  "n_props": len(props["props"]), "test_props": tpr, "aula": aula_json,
                                   "test_coche": tc, "test_arbol": ta},
                                  indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Escrito {salida}")

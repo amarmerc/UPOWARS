@@ -1,0 +1,56 @@
+{
+ "version": 1,
+ "ejes": "x=este, z=-norte (coordenadas de juego, metros); yaw_deg = rotacion Y de Godot (0 = mirando a -Z = norte; positivo = giro antihorario)",
+ "zonas": [
+  {"id": "plaza_america", "nombre": "Plaza América",
+   "descripcion": "Rectorado 31/32 (con la plaza norte entre el 1 y el 32 y la plaza sur con el pasillo cubierto), torre 35 y la cubierta en V.",
+   "limite": [[-105,155], [-60,150], [-27,150], [-24,159], [-13.6,163], [24,139.5], [62,150], [62,235], [30,246], [19.4,277], [29,285], [28,300], [8,324], [-102,298], [-106,230]],
+   "sites": {"A": {"nombre": "Plaza norte", "centro": [-5,184], "radio": 10}, "B": {"nombre": "Plaza sur", "centro": [-5,262], "radio": 10}},
+   "spawn_atacantes": {"posiciones": [[-98.4,219.9,265], [-90.7,219.9,265], [-98.4,210,265], [-94,210,265], [-90.7,210,265]],
+     "barrera": [[-100.5,222], [-89.5,222], [-89.5,208], [-100.5,208]]},
+   "spawn_defensores": {"posiciones": [[48.6,218.9,99], [56.3,218.9,99], [48.6,209,99], [53,209,99], [56.3,209,99]],
+     "barrera": [[46.5,221], [57.5,221], [57.5,207], [46.5,207]]},
+   "camara_lobby": {"pos": [-100, 120], "altura": 60, "mira": [-30, 230], "mira_altura": 0, "fov": 60}},
+
+  {"id": "biblioteca_24", "nombre": "Biblioteca-24",
+   "descripcion": "Patio entre la Biblioteca 25 y el Edificio 24: arcada, pasarela 555538618, patio hundido y la plaza de la rotonda al oeste.",
+   "limite": [[36,-290], [78,-292.4], [140,-298], [185,-302], [185,-233], [140,-229], [69,-223], [70,-210], [94,-211], [96,-180], [60,-172], [42,-185], [32,-215], [26,-250]],
+   "sites": {"A": {"nombre": "Arcada", "centro": [96,-244], "radio": 10}, "B": {"nombre": "Pasarela", "centro": [92,-274], "radio": 10}},
+   "spawn_atacantes": {"posiciones": [[170.6,-263.1,96], [178.3,-263.1,96], [170.6,-273,96], [175,-273,96], [178.3,-273,96]],
+     "barrera": [[168.5,-261], [179.5,-261], [179.5,-275], [168.5,-275]]},
+   "spawn_defensores": {"posiciones": [[44.6,-259.1,264], [52.3,-259.1,264], [44.6,-269,264], [49,-269,264], [52.3,-269,264]],
+     "barrera": [[42.5,-257], [53.5,-257], [53.5,-271], [42.5,-271]]},
+   "camara_lobby": {"pos": [20, -200], "altura": 45, "mira": [105, -265], "mira_altura": 0, "fov": 60}},
+
+  {"id": "detras_22", "nombre": "Detrás del 22",
+   "descripcion": "Bosque al oeste del Edificio 22 (aula al aire libre), franja 22-24 y patio del 23 con su estanque.",
+   "limite": [[-32,-330], [2,-350], [40,-368], [62,-378], [88,-382], [111,-380], [114,-359], [150,-360], [150,-321], [117,-321], [117.5,-308], [93,-306], [77,-304.1], [72,-304.5], [70,-275], [62,-270], [20,-266], [-20,-270], [-32,-290]],
+   "sites": {"A": {"nombre": "Aula al aire libre", "centro": [51,-306], "radio": 10}, "B": {"nombre": "Bosque norte", "centro": [45,-349], "radio": 10}},
+   "spawn_atacantes": {"posiciones": [[134.6,-335.1,98], [142.3,-335.1,98], [134.6,-345,98], [139,-345,98], [142.3,-345,98]],
+     "barrera": [[132.5,-333], [143.5,-333], [143.5,-347], [132.5,-347]]},
+   "spawn_defensores": {"posiciones": [[-20.4,-300.1,289], [-12.7,-300.1,289], [-20.4,-310,289], [-16,-310,289], [-12.7,-310,289]],
+     "barrera": [[-22.5,-298], [-11.5,-298], [-11.5,-312], [-22.5,-312]]},
+   "camara_lobby": {"pos": [-70, -250], "altura": 75, "mira": [55, -325], "mira_altura": 0, "fov": 60}},
+
+  {"id": "el_eje", "nombre": "El Eje",
+   "descripcion": "Pasillo central cubierto entre los edificios 5-6-7-8-9-10-12 con los patios laterales.",
+   "limite": [[-88.5,-54], [-28.9,-90.7], [16.6,-16.7], [62.1,57.3], [2.5,94], [-57.1,130.7], [-102.6,56.7], [-148.1,-17.3]],
+   "sites": {"A": {"nombre": "Patio oeste", "centro": [-38,26], "radio": 10}, "B": {"nombre": "Patio este", "centro": [14,2], "radio": 10}},
+   "spawn_atacantes": {"posiciones": [[-82.7,-39.8,231], [-89.3,-46.4,231], [-78.3,-44.2,231], [-87.1,-48.6,231], [-84.9,-50.8,231]],
+     "barrera": [[-82.6,-37.3], [-76.2,-45], [-85.4,-52.7], [-91.8,-45]]},
+   "spawn_defensores": {"posiciones": [[-8.6,83.2,4], [-4.2,82.1,4], [-2,79.9,4], [-11.9,75.5,4], [-6.4,72.2,4]],
+     "barrera": [[-8.3,85.7], [0.3,80.7], [-5.7,70.3], [-14.3,75.3]]},
+   "camara_lobby": {"pos": [-125, -80], "altura": 100, "mira": [-15, 22], "mira_altura": 0, "fov": 60}},
+
+  {"id": "el_puente", "nombre": "El Puente",
+   "descripcion": "Final del pasillo central junto al 18, escalera de bajada, la marquesina-puente en rampa 553042591, el valle arbolado y el aparcamiento.",
+   "limite": [[-160,-138], [-152,-170], [-125,-205], [-100,-235], [-60,-270], [-10,-268], [5,-250], [5,-220], [-20,-185], [-35,-135], [-75,-112], [-118,-108], [-150,-122]],
+   "sites": {"A": {"nombre": "Cruce del cauce", "centro": [-88,-217], "radio": 10}, "B": {"nombre": "Aparcamiento", "centro": [-45,-185], "radio": 10}},
+   "spawn_atacantes": {"posiciones": [[-135.4,-124.6,318], [-129.9,-124.6,318], [-135.4,-132.3,318], [-132.1,-131.2,318], [-129.9,-132.3,318]],
+     "barrera": [[-137.5,-122.5], [-128.5,-122.5], [-128.5,-133.5], [-137.5,-133.5]]},
+   "spawn_defensores": {"posiciones": [[-21.9,-249.8,139], [-24.1,-252,139], [-19.7,-250.9,139], [-19.7,-256.4,139], [-17.5,-254.2,139]],
+     "barrera": [[-15.4,-254.2], [-20.8,-258.7], [-26.6,-251.8], [-21.2,-247.3]]},
+   "camara_lobby": {"pos": [20, -120], "altura": 60, "mira": [-70, -200], "mira_altura": 0, "fov": 60}}
+
+ ]
+}

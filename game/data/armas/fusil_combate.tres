@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ArmaDatos" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/combate/arma_datos.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"fusil_combate"
+nombre = "Fusil de combate 7,62"
+ranura = 1
+tipo = &"hitscan"
+sonido = &"disparo_combate"
+ruido = 95.0
+cadencia = 6.5
+automatica = true
+tiempo_cambio = 0.85
+dano_base = 44.0
+mult_cabeza = 4.0
+alcance = 160.0
+caida_inicio = 35.0
+caida_factor_min = 0.55
+penetracion_armadura = 0.85
+cargador = 20
+reserva = 60
+tiempo_recarga = 2.8
+dispersion_quieto = 0.2
+dispersion_agachado = 0.1
+dispersion_movimiento = 3.0
+dispersion_aire = 5.0
+zoom = 1.35
+retroceso_pitch = PackedFloat32Array(1.1, 1.1, 1.0, 0.9, 0.8, 0.7, 0.6)
+retroceso_yaw = PackedFloat32Array(0.0, 0.2, -0.3, 0.3, -0.2, 0.3, -0.3)
+retroceso_recuperacion = 11.0
+retroceso_pausa = 0.15
+velocidad_mov = 0.88

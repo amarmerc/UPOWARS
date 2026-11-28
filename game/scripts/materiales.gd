@@ -30,6 +30,11 @@ const AJUSTES := {
 	"arbol_corteza": [1.0, 0.0], "arbol_copa_1": [0.95, 0.0], "arbol_copa_2": [0.95, 0.0], "arbol_copa_3": [0.95, 0.0],
 	"coche_cristal": [0.08, 0.3], "coche_goma": [0.95, 0.0],
 	"valla_metal": [0.45, 0.6], "vallas": [0.8, 0.0],
+	# coberturas (props de data/props.csv): conservan su color del glb
+	"prop_hormigon": [0.92, 0.0], "prop_madera": [0.8, 0.0], "prop_metal": [0.5, 0.55], "prop_basura": [0.7, 0.05],
+	"prop_reciclaje_azul": [0.6, 0.05], "prop_reciclaje_amarillo": [0.6, 0.05], "prop_reciclaje_verde": [0.6, 0.05],
+	"prop_expendedora": [0.4, 0.2], "prop_cristal_oscuro": [0.12, 0.3], "prop_pizarra": [0.85, 0.0],
+	"prop_silla": [0.55, 0.0], "prop_arbusto": [0.95, 0.0],
 }
 const AJUSTE_COCHE := [0.3, 0.45]   # el resto de coche_* (carrocerias)
 

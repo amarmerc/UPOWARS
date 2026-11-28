@@ -196,13 +196,130 @@ horizonte del cielo (y el suelo del cielo del mismo color); `far` de la cámara 
 **Capturas** (necesitan GPU, no `--headless`): `Godot_v4.7.2-stable_win64_console.exe --path game --script res://tests/captura.gd`
 guarda PNG en `export/capturas/` (spawns, aparcamiento, fachada, bordes con valla y vista aérea).
 
+## Zonas y coberturas (paquete P1)
+
+Base del modo competitivo (ver `docs/DISENO_COMPETITIVO.md`, secciones 8 y 9): 5 zonas del campus cerradas con un muro translúcido de
+runtime y coberturas con colisión dentro del `.glb`. Todo es dato editable. Orden de regeneración: `generar_props.py` (solo la 1.ª vez, o
+`--completar`) -> `generar_blockout.py` -> `generar_spawns.py` -> `generar_zonas.py` -> import de Godot.
+
+```
+data/zonas.json          fuente editable de las zonas (coordenadas de juego: x = este, z = -norte; yaw = rotación Y de Godot)
+data/props.csv           coberturas: tipo, x, z, yaw, escala, notas (se edita a mano; ver más abajo)
+scripts/generar_zonas.py valida, completa y exporta a game/data/zonas.json (y dibuja export/zonas/<id>.png)
+scripts/generar_props.py propone data/props.csv (no lo pisa sin --forzar; --completar solo añade lo que falte)
+scripts/props.py         geometría low-poly de cada tipo de cobertura; scripts/zonas_nav.py rejilla de navegación para estimar tiempos
+game/scripts/zonas/zona_activa.gd   ZonaActiva: muro, barreras y marcadores en runtime; game/shaders/muro_zona.gdshader
+game/tests/test_zonas.gd            tests z0-z6; test_mapa.gd (bloque p) comprueba los props; tests/captura_zonas.gd las capturas
+```
+
+### data/zonas.json
+
+Por zona: `id`, `nombre`, `limite` (8-20 vértices `[x, z]`), `sites` `A` y `B` (`{centro, radio}` con radio 8-12 m, o `{poligono}`),
+`spawn_atacantes` / `spawn_defensores` (`posiciones`: 5 x `[x, z, yaw]`, y `barrera`: polígono que encierra el spawn) y `camara_lobby`
+(`pos` `[x, z]` + `altura` sobre el terreno, `mira` `[x, z]`, `fov`). `generar_zonas.py` lo lee y:
+
+- **Valida** (un error da código de salida 1): vértices, límite dentro del área jugable, sites de 8-12 m dentro del límite y fuera de
+  edificios cerrados (las huellas descuentan los pasos peatonales abiertos), 5 spawns por equipo dentro de su barrera y libres de troncos / coches /
+  props / edificios, barreras fuera de edificios, y que el límite y las barreras no corten troncos ni coches (`construir_props` los excluye:
+  `entorno.py` aparta árboles y coches de los límites, de las barreras de spawn y de las coberturas). Avisa, sin fallar, del tamaño (~120-200 m),
+  de los metros de límite que pasan por dentro de un edificio (el muro queda oculto en él) y de lo que no cumpla los objetivos de abajo.
+- **Estima los tiempos** (`scripts/zonas_nav.py`): rejilla de 0,5 m dentro del límite; una celda es transitable si no toca ningún obstáculo
+  engrosado 0,4 m (edificios macizos, pilares, muros y vallas, troncos, coches, coberturas) y la pendiente entre celdas vecinas es <= 42 grados;
+  Dijkstra con 8 vecinos y tiempo = longitud / 5 m/s (la velocidad de correr). Para cada spawn da el tiempo al centro de cada site; la ventaja de
+  los defensores es la media de los 5 atacantes menos la de los 5 defensores (objetivo 5-8 s). Cuenta las **rutas distintas** de los atacantes a cada
+  site (tras cada ruta se bloquea una banda de 3 m a cada lado de su tramo central y se busca la siguiente, hasta 2,2 veces la más corta) y el mayor
+  **tramo abierto** de las rutas (sin cobertura de > 0,8 m a menos de 3 m; no se exige dentro de la barrera de spawn + 4 m).
+- **Exporta** `game/data/zonas.json` con la y del terreno: `limite`, `limite_denso` (puntos cada <= 4 m, para el muro), sites, spawns (y + 0,1),
+  `barrera` / `barrera_densa`, cámara del lobby y la estimación. `--depurar` pinta en rojo las celdas no transitables de la preview.
+
+Las 5 zonas (`export/zonas/<id>.png`: límite en rojo, sites, spawns y barreras por equipo, edificios, árboles, coches, coberturas, rutas de
+spawn a site, curvas de nivel cada 0,5 m y una x magenta donde quedaría un tramo abierto). Tiempos medidos por el test z4 con `NavigationServer3D`
+(a 5 m/s, media de los 5 spawns, atacantes / defensores y ventaja); la estimación de Python coincide a +-1 s:
+
+| Zona | Tamaño | Site A | Site B | Qué contiene |
+|---|---|---|---|---|
+| `plaza_america` Plaza América | 185 x 168 m | Plaza norte: 21,6 / 16,7 s (+4,9) | Plaza sur: 21,2 / 15,7 s (+5,5) | Rectorado 31/32 (cada equipo lo rodea por un lado), torre 35, cubierta en V; 4-6 rutas a cada site |
+| `biblioteca_24` Biblioteca-24 | 163 x 120 m | Arcada: 16,9 / 10,7 s (+6,2) | Pasarela: 16,8 / 9,3 s (+7,5) | Patio entre el 25 y el 24, arcada, pasarela 555538618, plaza de la rotonda; 6 rutas |
+| `detras_22` Detrás del 22 | 194 x 98 m | Aula al aire libre: 19,9 / 13,7 s (+6,2) | Bosque norte: 21,7 / 15,6 s (+6,1) | Bosque con troncos gruesos, franja 22-24 de 5 m, patio del 23 con el estanque; 3 rutas |
+| `el_eje` El Eje | 174 x 140 m | Eje central: 17,1 / 12,3 s (+4,9) | Patio este: 25,0 / 18,6 s (+6,4) | Pasillo cubierto con muros laterales y los patios entre los edificios 5-12; 3 rutas |
+| `el_puente` El Puente | 201 x 114 m | Valle del cauce: 22,5 / 15,8 s (+6,6) | Aparcamiento: 21,7 / 16,2 s (+5,5) | Final del pasillo central, escalera, marquesina-puente 553042591 en rampa, valle arbolado; 3-4 rutas |
+
+### Muro, barreras y marcadores (`ZonaActiva`)
+
+`ZonaActiva` (`class_name`, `Node3D`) carga una zona y construye **en runtime** (el `.glb` no cambia; fuera del modo competitivo no se instancia nada):
+
+```gdscript
+var zona := ZonaActiva.crear("plaza_america")      # null si el id no existe (ZonaActiva.ids_disponibles() los lista)
+add_child(zona)
+zona.activar_barreras(true)                         # fase de compra: barreras de los dos equipos con colisión; false las quita
+var sp: Dictionary = zona.punto_spawn("atacantes", 0)   # {"pos": Vector3, "yaw_deg": float}; i = 0-4; "defensores" igual
+zona.site_en(jugador.global_position)               # "A", "B" o ""
+zona.limites()                                      # {poligono: PackedVector2Array (x, z), min, max, centro, alto_muro}
+```
+
+- **Muro perimetral**: 8 m sobre el terreno (y 2 m enterrado), malla `Muro/Malla` con `muro_zona.gdshader` y `Muro/Cuerpo` (StaticBody3D en la
+  capa 1 `mundo`: una caja por tramo de `limite_denso`, así que bloquea al jugador y a los disparos). **Barreras de compra** (`Barrera_atacantes`,
+  `Barrera_defensores`, 4 m): igual pero con el color del equipo (naranja / azul); `activar_barreras(false)` las oculta y pone su capa a 0
+  (por defecto, tras `cargar`, están desactivadas).
+- **`muro_zona.gdshader`**: hexágonos de 1,5 m en coordenadas de la propia pared (UV = metros a lo largo y sobre el terreno). Relleno casi
+  transparente (alfa 0,035) y aristas que pasan de 0,34 de alfa (lejos; se engrosan con la distancia para no desaparecer) a 0,6 junto a la
+  cámara (`CAMERA_POSITION_WORLD`); el alfa nunca supera `alpha_max` (0,75). Base y corona algo más marcadas, pulso suave, sin sombra.
+- **Marcadores**: `Label3D` con la letra del site flotando a 5,5 m (billboard) y un `Decal` con un aro en el suelo del radio del site.
+- `camara_lobby()` devuelve `{pos, mira, fov}` de la vista previa del lobby.
+
+### Coberturas (`data/props.csv` y `props.py`)
+
+Tipos: `banco`, `murete` (4 m x `escala`, o `largo=6` en `notas`; 1,0 m de alto), `jardinera` (con arbusto), `contenedor` (basura, grande),
+`reciclaje_azul` / `reciclaje_amarillo` / `reciclaje_verde`, `aparcabicis`, `marquesina` (autobús; una en cada `highway=bus_stop` de OSM, de cara a
+la carretera), `expendedora` (junto a fachadas), `pila_sillas`, `mesa` (`volcada` en `notas` para usarla de cobertura) y `aula` (el aula al aire
+libre: 4 filas de 4 asientos con respaldo mirando a una pizarra sobre patas; `claro=9` en `notas` quita los troncos a 9 m).
+`x`, `z` son de juego; `yaw` es la rotación Y de Godot (el *frente* del prop mira a -Z con yaw 0); una fila con `#` en `tipo` se ignora.
+
+Cada prop son cajas cerradas (watertight) apoyadas en el terreno (las del suelo bajan hasta el punto más alto de la huella y el desnivel bajo ella
+debe ser <= 0,45 m), un nodo por material: `props_hormigon-col`, `props_madera-col`, `props_metal-col`, `props_basura-col`,
+`props_reciclaje_azul/amarillo/verde-col`, `props_expendedora-col`, `props_cristal_oscuro-col`, `props_pizarra-col`, `props_silla-col` y
+`props_arbusto` (sin colisión). Los materiales conservan su color del `.glb` (`materiales.gd` solo ajusta rugosidad y metal). Árboles grandes: dentro
+de las zonas, los árboles de >= 12 m tienen tronco de 0,5-0,7 m de radio (`--altura-tronco-grande`); son unos 135 con la semilla 1.
+
+`generar_props.py` propone: el aula (en el bosque de `detras_22`, junto al 24), 5 coberturas alrededor de cada site, grupos de mobiliario junto a
+las fachadas (reciclaje, expendedoras, aparcabicis), una cobertura cada vez que quedaría un tramo abierto de > 22 m en alguna ruta, las 6
+marquesinas y unos pocos bancos / contenedores fuera de las zonas. Nunca pone nada sobre edificios, troncos, coches, pilares, muros, escaleras,
+pasos peatonales, agua ni las barreras de spawn; deja libre el eje de los suelos de pasillo (los tests de recorrido pasan por él) y los puntos de
+`test_suelos`. Tras editar el CSV a mano, `generar_zonas.py` lo revalida (solapes, suelos reservados, desnivel) y `generar_props.py --completar` añade
+lo que falte sin tocar tus filas. Con las posiciones actuales hay unos 246 props (banco 95, murete 40, jardinera 36, contenedor 24, aparcabicis 15,
+pila_sillas 11, mesa 10, marquesina 6, reciclaje 6, expendedora 2, aula 1) y unos 19 000 triángulos.
+
+Opciones nuevas, comunes a `generar_blockout.py` y `generar_spawns.py` (usa las mismas en los dos): `--zonas data/zonas.json`,
+`--props data/props.csv`, `--altura-tronco-grande 12`. `generar_spawns.py` escribe además `n_props`, `test_props` (un rayo horizontal por tipo hacia
+el centro de su caja mayor) y `aula` en `spawns.json`, y no coloca spawns sobre coberturas.
+
+### Tests y capturas
+
+```
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --import
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://tests/test_mapa.gd     # incluye p1-p4: props existen, colisión, rayos, aula
+Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://tests/test_zonas.gd    # opcional: -- <id> para una sola zona
+Godot_v4.7.2-stable_win64_console.exe --path game --script res://tests/captura_zonas.gd            # con GPU: solo las capturas de zonas
+```
+
+`test_zonas.gd`, por zona: **z1** el muro existe, su StaticBody3D está en la capa mundo y el shader es `muro_zona` con `alpha_max` < 1; **z2** los 10
+spawns tienen la cápsula del jugador libre, suelo debajo y están dentro del límite; **z3** los sites (y 16 puntos de su perímetro) están dentro del
+límite; **z4** con una `NavigationMesh` horneada de la zona (`NavigationServer3D`, colisiones del mapa + muro) desde cada spawn se llega a A y B, y
+registra los tiempos a 5 m/s (la tabla de arriba); **z5** rayos de dentro hacia fuera por el medio de cada tramo del límite chocan con el muro (>= 60 %;
+el resto queda tapado por un edificio) y un rayo a 7 m de altura también; **z6** 8 `CharacterBody3D` con la cápsula del jugador corren 2,5 s desde el
+spawn: con `activar_barreras(true)` ninguno sale del polígono de la barrera y con `false` salen. Además **z0**: la escena principal no instancia
+ninguna zona, un id desconocido devuelve null y están las 5 zonas. Las capturas (`export/capturas/`) son `zona_<id>.png` (desde el spawn de
+defensores con las barreras activas), `zona_<id>_muro.png` (el muro de 8 m visto desde dentro), `zona_<id>_lobby.png` y `aula_aire_libre.png`;
+`captura.gd` las incluye al final de su ejecución.
+
 ## Jugar (Godot 4.7.2)
 
 Abrir el proyecto `game/` con `D:\Juegos\godot\Godot_v4.7.2-stable_win64.exe` (importador de proyectos, o
-`Godot_v4.7.2-stable_win64.exe --path game`) y pulsar F5. Al arrancar aparece el selector de punto de aparición.
+`Godot_v4.7.2-stable_win64.exe --path game`) y pulsar F5. Al arrancar aparece el **lobby** (ver "Partida (paquete P4)"); la escena
+principal es `scenes/juego.tscn`. `scenes/main.tscn` es el mundo (campus, jugador, HUD de combate) que usan juego y tests.
 
-Controles: WASD mover, ratón mirar, Espacio saltar, Shift caminar lento, Ctrl agacharse, Esc liberar/capturar
-el ratón, M reabrir el selector de spawn, F1 modo vuelo/noclip (20 m/s, x3 con Shift; Espacio/Ctrl suben/bajan).
+Controles de movimiento (los de combate están en las secciones de armas): WASD mover, ratón mirar, Espacio saltar, Shift correr, Alt caminar lento, Ctrl agacharse,
+F2 liberar/capturar el ratón (Esc ahora es el menú), M reabrir el selector de spawn (modo libre), F1 modo vuelo/noclip (20 m/s, x3 con Shift; Espacio/Ctrl suben/bajan).
 Combate: clic izquierdo disparar (mantenido = ráfaga si el arma es automática), clic derecho ataque fuerte con la navaja,
 R recargar, 1 fusil, 2 pistola, 3 navaja, rueda del ratón siguiente/anterior arma, Q última arma, F3 mostrar/ocultar los
 datos de depuración, K suicidio (pruebas). Las acciones están en el Input Map de `game/project.godot`. Colisión: los nodos
@@ -275,5 +392,177 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://test
 dispersión, muerte y reaparición de dianas y jugador (usa las dianas reales del campo de práctica). Las capturas
 (`tests/captura.gd`, con GPU) incluyen `combate_campo_fusil`, `combate_hud`, `combate_campo_vista`, `combate_pistola` y
 `combate_navaja`.
+
+## Arsenal, utilidades y controles (paquete P2)
+
+Diseño en [docs/DISENO_COMPETITIVO.md](docs/DISENO_COMPETITIVO.md). Catálogo (ids, categorías, precios): `game/data/catalogo.gd`;
+números de cada arma: `game/data/armas/*.tres` (campo `tipo`: hitscan, perdigones, proyectil, cohete, cuerpo, sable, puno o utilidad).
+Código nuevo en `game/scripts/combate/`: `inventario.gd` (huecos, límites, munición, serializar), `proyectil.gd` (gravedad, rayo por tick,
+sin RigidBody), `lanzable.gd`, `nube_vision.gd`, `altavoz.gd`, `utilidades.gd` (`linea_de_vision`, `marcados_para`), `estado_ceguera.gd`,
+`arma_suelo.gd` (+ `scenes/arma_suelo.tscn`, `limpiar_armas_suelo()`), `armero.gd` (F6), `senales_combate.gd` (bus `ruido` y `baja`).
+Todo el daño pasa por `Balistica` (RNG inyectable). Escudo 0-50 en `Salud` (equipo, `Salud.fuego_amigo` = false por defecto, autodaño explosivo).
+
+**Controles**: WASD, Espacio salta, **Shift correr** (6,5 m/s, no se dispara corriendo y hay 0,25 s de demora), **Alt sigilo**, **Ctrl agacharse**,
+**clic derecho apunta** (FOV menor, menos dispersión, más lento, arma centrada; mira de zoom en el fusil de precisión y el tirador; con el
+sable bloquea, con la navaja golpe fuerte), clic izquierdo dispara (arco y Puño-Bot: mantener para cargar), R recargar, 1 principal, 2 secundaria,
+3 cuerpo a cuerpo, 4 utilidades (de nuevo 4 cicla), rueda cicla, Q última, **E recoger**, **G tirar el arma**, **F6 armero de pruebas**, F1 vuelo, M selector, F3 depuración, K suicidio.
+
+| Arma | Categoría | Precio | Daño torso | Cadencia | Cargador | Contrapartida |
+|---|---|---|---|---|---|---|
+| Pistola 9 mm | secundaria | 0 | 28 | 6/s semi | 12/48 | - |
+| Pistola automática 9 mm | secundaria | 500 | 19 | ráfagas de 3 | 21/63 | imprecisa |
+| Pistola pesada .50 | secundaria | 800 | 54 | 2,4/s | 7/28 | lenta, poca munición |
+| Revólver .357 | secundaria | 700 | 76 | 1,7/s | 6/24 | recarga 3,4 s |
+| Escopeta recortada | secundaria | 600 | 8 x 11 | 2,5/s | 2/10 | cae enseguida |
+| Subfusil compacto | secundaria | 900 | 15 | 15/s | 25/100 | imprecisa lejos |
+| Subfusil 9 mm | principal | 1500 | 21 | 12,5/s | 30/120 | poco daño |
+| Subfusil pesado .45 | principal | 1900 | 28 | 9/s | 25/75 | menos cadencia |
+| Escopeta de corredera | principal | 1800 | 9 x 14 | 1,15/s | 6/24 | solo cerca |
+| Escopeta automática | principal | 2600 | 7 x 9,5 | 4,2/s | 8/32 | poco daño por perdigón |
+| Carabina 5,56 | principal | 2500 | 29 | 10,5/s | 30/90 | menos daño que el fusil |
+| Fusil de asalto 5,56 | principal | 2900 | 33 | 10/s | 30/90 | base |
+| Fusil de combate 7,62 | principal | 3200 | 44 (cabeza mata) | 6,5/s | 20/60 | lento, pesado |
+| Fusil tirador semiautomático | principal | 3500 | 58 | 3,3/s | 10/40 | impreciso sin apuntar |
+| Fusil de precisión de cerrojo | principal | 4700 | 115 | 0,85/s | 5/20 | muy lento, impreciso sin apuntar |
+| Ametralladora ligera | principal | 3300 | 26 | 11/s | 100/100 | recarga 5,8 s, vel. 0,7 |
+| Arco "Olivo" | especial | 2200 | 78 (cabeza 273) | carga 1 s | 10/20 | recuperación lenta |
+| Tirachinas "Gomero" | especial | 400 | 20 | 2/s | 12/48 | poco daño |
+| Lanzacohetes "Traca" | especial | 4000 | 125 área, 6 m | 0,8/s | 1/1 | 2 cohetes, autodaño, recarga 4,8 s |
+| "Sable de Plasma" | especial | 3000 | 68 arco | 1,5/s | - | bloqueo con calor, 4 s sobrecalentado |
+| "Puño-Bot" | especial (secundaria) | 600 | 46 + empuje | carga 0,8 s | - | vuelve a los 1,5 s |
+| Navaja | cuerpo a cuerpo | 0 | 40 / 65 | 2/s | - | siempre |
+
+Utilidades (máx. 2 de cada tipo, 4 en total; clic izquierdo fuerte, derecho flojo): humo 300 (5 m, 15 s), cegadora 250 (mecha 1,5 s),
+explosiva 400 (mecha 2 s, 110 en 5,5 m), bote de pintura 300 (marca 5 s en 4 m), extintor 350 (nube 3 s que empuja), altavoz señuelo 200 (6 s).
+Escudo: ligero 25 por 400, pesado 50 por 1000.
+
+Tests: `test_arsenal.gd` (70 comprobaciones a1-a12) y `test_combate.gd`, ambos con `--headless --script`. Capturas del arsenal
+(`captura.gd`, con GPU; pasar una carpeta de salida): `arsenal_mosaico`, `arsenal_precision_apuntando`, `arsenal_humo`, `arsenal_explosion`,
+`arsenal_sable_bloqueo`, `arsenal_arco_carga`, `arsenal_armas_suelo`, `arsenal_hud`, `arsenal_ceguera`. Sirena de alarma de la Cachimba:
+`game/assets/sonidos/sirena_alarma.wav` (la usará P4).
+
+## Bots (paquete P3)
+
+Bots jugables que usan los mismos componentes de combate que el jugador (`Salud`, `Hitboxes`, `Inventario`, `Balistica`, `Utilidades`, `SenalesCombate`,
+`EstadoCeguera`, `ArmaSuelo`). Todo en `game/scripts/bots/`; el `Bot` es `scenes/bot.tscn` (CharacterBody3D, capa 3 `cuerpo`, mascara 1; hitboxes en la capa 2).
+
+```
+bot.gd            Bot: cuerpo, vida/escudo, muerte (suelta armas), reaparicion, comprar_kit(); ojos a 1,6 m
+cerebro_bot.gd    CerebroBot: percepcion (vision con linea_de_vision: paredes y humo; ceguera; ruido y bajas) + maquina de estados + roles
+comandos.gd       Comandos: contrato de acciones (mover_hacia, mirar_punto, disparar, recargar, cambiar_arma, lanzar_utilidad, comprar,
+                  montar_cachimba, apagar_cachimba, recoger_arma, tirar_arma). comandos_bot.gd lo implementa para el Bot
+armas_bot.gd      ArmasBot: cadencia, cargador, recarga, cambio; TODO el dano sale de Balistica; ruido por SenalesCombate
+director_bots.gd  DirectorBots: roles, site de ataque, portador de la Cachimba, apagador, rotaciones, grupo flexible, informacion compartida
+compra_bot.gd     CompraBot.comprar(dinero, inventario, rol, catalogo, rng) -> Array[StringName]: funcion PURA
+dificultad_bot.gd perfiles facil / normal / dificil (reaccion, error de punteria, spray, giro, cabeza, rafagas, utilidades)
+nav_bots.gd       NavBots: hornea la NavigationMesh en runtime (por zona o campus); puntos_tacticos.gd: puntos detras de coberturas
+api_partida.gd    ApiPartida: interfaz que P4 debe ofrecer (comprar, montar/apagar Cachimba, cachimba(), modo(), zona(), dinero_de())
+partida_prueba.gd + cachimba.gd   Partida MINIMA para probar sin P4 (sin rondas ni economia); la Cachimba (4 s / 40 s / 7 s) es provisional
+prueba_bots.gd    escena de prueba (scenes/prueba_bots.tscn)
+```
+
+**Comandos comunes (sin tocar `player.gd`)**: refactorizar `Jugador`/`GestorArmas` era arriesgado (el gestor esta atado a la camara y la entrada), asi que `ArmasBot` reutiliza
+`Inventario`/`Balistica` y se define el contrato `Comandos` + `ApiPartida`. P4 solo debe implementar `ApiPartida` y, si quiere, un `ComandosJugador` sobre `GestorArmas`.
+`kit_reaparicion` y la logica de rondas/economia no se han tocado.
+
+**Navegacion**: `NavBots.hornear_zona(raiz, zona)` hornea solo dentro del limite de la `ZonaActiva` (celdas 0,25 m: 0,2-0,4 s y 2 200-5 400 poligonos por zona);
+`NavBots.hornear_campus(raiz)` hornea todo el campus con celdas de 0,5 m (~5 s, ~37 000 poligonos; no hace falta cachear a disco) y `hornear_radio` limita a un cuadrado.
+Tras hornear: `await NavBots.esperar_listo(raiz, punto)`. Los bots piden rutas con `NavigationServer3D.map_get_path` (sin NavigationAgent3D) y detectan atascos
+(nueva ruta -> paso lateral -> recolocarse en la malla; `comandos.atascos` / `rescates`). En el test los bots llegan a A y B desde todos los spawns en ~0,9x del tiempo
+de la ruta (5 m/s). Las coberturas salen de `game/data/props_cobertura.json` (`uv run python scripts/exportar_props_bots.py` lo regenera desde `data/props.csv`).
+
+**Comportamiento**: atacante (va en grupo flexible al site elegido; el portador monta la Cachimba quieto 4 s y los demas escoltan detras de coberturas, luego defienden),
+defensor (reparte 3/2 los sites, defiende detras de una cobertura, el volante rota ante ruido o enemigo visto en el otro site, y al oir o ver la Cachimba el mas cercano la apaga 7 s
+y los demas cubren), cazador (eliminacion: patrulla hacia el enemigo, sigue ruidos y avisos; a los 40 s sin bajas va al spawn enemigo), libre (deambula y combate, reaparece solo).
+Todos: no ven a traves de humo/paredes, se ciegan con la cegadora (no ven, disparan a ciegas con mas dispersion), recogen armas mejores del suelo, usan granadas de vez en cuando
+(explosiva / cegadora al enemigo visto o recien visto, humo al site los atacantes). Los bots no usan el Sable de Plasma ni el Puño-Bot (CompraBot no los compra); el arco dispara a carga completa.
+Dificultad (`DificultadBot.PERFILES`, todo numerico): tiempo de reaccion, error de punteria inicial que decae, spray creciente, velocidad de giro, probabilidad de apuntar a la cabeza,
+rafagas, uso de utilidades, memoria, vision. Determinista: `Bot.rng` se siembra (`Bot.crear(..., semilla)`) y `CompraBot.comprar` acepta un `rng` inyectable (sin rng no hay azar).
+
+**Compra** (`CompraBot`): escudo (pesado si sobra, ligero si no; solo si despues llega a una principal) > principal segun dinero (pesos por rol) > hasta 3 utilidades > mejora de secundaria. Sin principal y sin llegar
+a 1500 ahorra, salvo la ronda de pistolas (>= 800: la mitad de las veces escudo ligero + utilidad). Armas especiales ~7 % (tirachinas, arco, lanzacohetes).
+
+**Probarlo** (con GPU; el jugador entra como un atacante o defensor mas):
+
+```
+Godot_console.exe --path game res://scenes/prueba_bots.tscn -- zona=el_eje modo=cachimba n=5 dificultad=normal equipo=defensores
+   zona = plaza_america | biblioteca_24 | detras_22 | el_eje | el_puente | libre (campus entero)   modo = cachimba (Cachimba Wars) | eliminacion (Modo pleno)   jugador=0 para observar en vuelo libre
+   teclas: F9 reinicia, F10 siguiente zona, F11 cambia la dificultad, F6 armero, K suicidio
+Godot_console.exe --headless --path game --script res://tests/test_bots.gd [-- rapido]       # b1-b6: compra, comandos, combate, navegacion, apagar la Cachimba, 5v5 a x8
+Godot_console.exe --path game --script res://tests/captura_bots.gd -- zona=plaza_america      # capturas en export/capturas_p3/
+```
+
+## Partida (paquete P4)
+
+La escena principal (`game/scenes/juego.tscn`, script `scripts/juego.gd`) arranca en el **lobby** sobre una vista previa de la zona. Capas (arquitectura del documento
+de diseño): la entrada y el render (`juego.gd`, `scripts/ui/*`) leen la `Partida` y mandan comandos; la `Partida` es la única que cambia el estado.
+
+```
+scripts/partida/partida.gd           Partida (extiende ApiPartida): fases, equipos, economia, tienda (comprar/vender), Cachimba, portador y fin de partida
+scripts/partida/config_partida.gd    ConfigPartida: lo del lobby + tiempos (25 / 100 / 5 s) + economia (800, 9000, +200, +3000, 1900 +500 hasta 2900, +300) + reglas
+scripts/partida/comandos_jugador.gd  ComandosJugador: la misma API de Comandos que los bots, sobre Jugador/GestorArmas (comprar, vender, montar, apagar, cambiar, recoger...)
+scripts/partida/cachimba_suelo.gd    La Cachimba caida al morir el portador (se recoge acercandose)
+scripts/ui/lobby_ui.gd tienda_ui.gd menu_pausa_ui.gd hud_partida.gd estilo_ui.gd icono_escudo.gd    lobby, tienda, pausa, HUD de partida y estilo comun
+scripts/personajes/ + data/personajes/   personajes (catalogo, modelo, retratos) y scripts/partida/perfil_jugador.gd (perfil local)
+scripts/juego.gd                     flujo: lobby -> montar (zona, navegacion, Partida, Director, bots) -> jugar -> volver al lobby; camara, espectador, teclas
+tests/test_partida.gd                p1 economia, p2 tienda, p3 inventario, p4 fases, p5 victorias, p6 lados y fin, p7 partida completa con bots
+tests/test_juego.gd                  humo del flujo: lobby (huecos, intercambio con bots, perfil, Listo), tienda (tarjetas, compra, venta), compra automatica, B, Esc, espectador, libre, volver al lobby
+tests/generar_iconos.gd              genera game/assets/iconos/*.png desde los modelos del viewmodel (con GPU)
+tests/montaje_partida.gd             ayuda de los tests: monta zona + navegacion + Partida + Director + bots
+tests/sim_partida.gd                 simulacion acelerada de rondas con bots: tasas de victoria por bando (`-- zonas=el_eje rondas=12 dificultad=normal escala=12`)
+tests/captura_p4.gd                  capturas del lobby, tienda, HUD, tabla y alarma en export/capturas_p4/ (con GPU, sin --headless)
+```
+
+**Lobby** (rehecho): a la izquierda un panel por equipo (nombre editable, por defecto EPS, que empieza atacando, y CEUPO) con los huecos del equipo como tarjetas con retrato; los huecos que no
+son humanos son bots (tarjeta "BOT"). El jugador local aparece resaltado; **un clic sobre una tarjeta de bot (de cualquier equipo) intercambia al jugador con ese bot** (así se cambia de equipo o de hueco).
+A la derecha: **Modo** (un solo desplegable: **Modo libre**, **Cachimba Wars** = competitivo con Cachimba, **Modo pleno** = competitivo por eliminación), Zona (las 5), Tamaño equipos (1-5 huecos por equipo,
+los vacíos son siempre bots), Dificultad bots y Rondas (7: partida a 12 rondas con cambio de lado tras la 6; con 6-6 se juega a ganar por 2); debajo la tarjeta "tú" (nombre, por defecto "Jugador", y
+personaje con flechas `<` `>`, guardados en `user://perfil.cfg`) y el botón **Listo** con el contador listos/humanos ("1/1"); con todos listos arranca la partida. En Modo libre los paneles de equipo se sustituyen
+por un panel de modo libre con "Bots en el campus" (0-10). Los identificadores internos no cambian (`ConfigPartida.modo` libre/competitivo y `submodo` cachimba/eliminacion; `ConfigPartida.MODOS`,
+`aplicar_modo()` y `nombre_modo()` traducen a los nombres visibles).
+Modelo de datos (preparado para red): `LobbyUI.equipos[g]` y `ConfigPartida.huecos[g]` son listas de huecos `{tipo: humano|bot, nombre, personaje, listo, local}`; hoy solo el humano local, mañana los jugadores de la red
+serán huecos `humano` no locales y la partida arrancará cuando todos los humanos estén listos. `ConfigPartida.huecos_efectivos()` completa los personajes de los bots al azar con la semilla de la partida.
+
+**Personajes**: `game/data/personajes/catalogo_personajes.gd` (`CatalogoPersonajes`) lista los 12 personajes del pack Quaternius "Ultimate Modular Men" (Caballo, Ejecutivo, Granjero, Soldado, Mochilero, Astronauta, Estudiante, Rey, Obrero, Punk, Playero, Becario), cada uno como combinación de piezas (cabeza/cuerpo/piernas/pies) de `humans_master.fbx`, con su aspecto original. El cuerpo (bots en partida) y los retratos del lobby se
+construyen con `game/scripts/personajes/modelo_personaje.gd` (`ModeloPersonaje.crear`): **punto único donde cambiar el modelo** (fallback al blockout de cajas si falta el fbx). Color de equipo = brazalete en cada brazo. El fbx trae esqueleto de 79 huesos y 24 animaciones: se usan Idle_Gun, Walk, Run, Idle_Gun_Shoot y Death (`actualizar`, `disparar`, `morir`) con un `AnimationPlayer`; el arma
+se cuelga de un `BoneAttachment3D` en la muñeca derecha (`poner_arma`). Retratos: `retratos_personajes.gd`. Perfil local: `scripts/partida/perfil_jugador.gd`.
+
+**Modelos externos** (créditos y licencias en `CREDITOS.md`, visibles en el lobby con el botón *Créditos*; copias de trabajo en `game/assets/externos/{armas,personajes,coches}`, el original sin tocar en `data/raw/modelos/`):
+- *Armas*: `game/scripts/combate/modelos_armas.gd` (`ModelosArmas`) normaliza cada modelo (canon hacia -Z, origen en la empunadura, largo real, punto de boca para fogonazo/trazadora); la tabla `CONFIG` asigna un fbx distinto a cada arma; si falta el fichero se usa el modelo procedural. Se importan los FBX directamente (Godot 4.7 los lee con ufbx; no hace falta convertirlos). Posición en primera persona: `AJUSTE_EXT` en `viewmodel_capa.gd`; en mano de los bots: `ModeloPersonaje.AJUSTE_MANO`. El sable usa `light-saber.glb` con hoja emisiva y encendido animado por código (la animación del glb dura 27 s y no se usa); el arco usa `Bow_Evil` con la cuerda dibujada por código y `Arrow` como flecha. Sin modelo (siguen procedurales): tirachinas, lanzacohetes, puño-bot, navaja y utilidades. Iconos de la tienda: `tests/generar_iconos.gd` (sin `--headless`; luz reforzada, sin manos), luego `--import`.
+- *Coches*: `game/scripts/coches_externos.gd` sustituye el blockout (cuya colisión se mantiene) por los 10 modelos del pack, con modelo y pintura deterministas por coche (`MultiMesh` por celda de 80 m y modelo, versión de cajas a más de 120 m). Aparcamiento, mismo equipo: blockout 262 fps vs pack 165 fps (vista a pie), 240 vs 143 (vista aérea).
+- Capturas: `game/tests/captura_modelos.gd`, `captura_personajes.gd`, `captura_lobby.gd` y `captura_bots.gd` (salida en `export/capturas_modelos/`).
+
+**Cachimba Wars y Modo pleno** (competitivos): cada ronda empieza con la **fase de compra** (25 s, barreras de spawn activas, bots quietos, tienda abierta sola; **B** la reabre), luego la **ronda** (1:40).
+- Cachimba Wars: el atacante que la **lleva** (uno al azar por ronda, se indica en el HUD y en el minimapa) la monta manteniendo **E** quieto dentro de un site (4 s, +300 créditos); montada hay 40 s
+  (el reloj de la ronda se detiene). Un defensor la apaga manteniendo **E** quieto a su lado 7 s. Si se agota el temporizador **no explota**: suena la alarma de incendios y el HUD avisa de que se
+  desaloja la UPO (ganan los atacantes, +300 a cada atacante). Si muere el portador, la Cachimba cae al suelo y hay que **recogerla** acercándose (un bot atacante va a por ella).
+  Ganan los defensores si apagan la Cachimba, eliminan a todos los atacantes sin que esté montada o se acaba el tiempo sin montarla; los atacantes si suena la alarma o eliminan a todos los defensores
+  (con la Cachimba montada y los atacantes muertos la ronda sigue: hay que apagarla).
+- Modo pleno (eliminación): gana quien elimina al otro equipo; si se acaba el tiempo, los defensores.
+- Economía: 800 al empezar, máximo 9000, +200 por baja, +3000 por ganar la ronda, 1900 por perderla (+500 por cada derrota consecutiva, tope 2900), +300 montar y +300 a cada atacante con la alarma. Todo en
+  `ConfigPartida`. Si mueres pierdes lo comprado (vuelves con pistola 9 mm y navaja; la principal queda en el suelo hasta que acabe la ronda); si sobrevives conservas armas, munición, utilidades y el escudo
+  restante. En el competitivo `kit_reaparicion` está vacío. Al cambiar de lado la economía y los inventarios se reinician (800).
+- **Esc** abre solo la pausa (Reanudar / Volver al lobby / Salir del juego); la tienda solo con B en la fase de compra.
+- Tienda (B), estilo Valorant, a pantalla completa: columnas Pequeñas | Grandes (subfusiles y escopetas / fusiles, precisión y ametralladora) | Especiales | Escudos y utilidades; cada artículo es una tarjeta con icono,
+  nombre y precio. Al pasar el ratón sale un panel con barras de daño cabeza / cuerpo / piernas, cadencia, cargador, recarga, movilidad y precio. **Clic izquierdo compra, clic derecho devuelve** lo comprado en esta
+  fase (reembolso completo; comprar otra del mismo hueco devuelve la anterior sola). Lo no asequible se atenúa, lo equipado y lo comprado se marcan. Arriba: dinero y fase / tiempo; en Modo libre (Esc) además
+  Reanudar / Volver al lobby / Salir. Iconos: `game/assets/iconos/<id>.png`, generados desde los modelos del viewmodel con
+  `Godot_console.exe --path game --script res://tests/generar_iconos.gd` (con GPU; **volver a ejecutarlo cuando cambien los modelos de las armas**) y luego `--headless --path game --import`. Los escudos dibujan su icono (`scripts/ui/icono_escudo.gd`).
+- HUD: marcador de rondas y equipos, temporizador, dinero, **Tab** tabla de puntuación (bajas / muertes / dinero propio), killfeed (HUD de combate), minimapa de la zona (límite, sites A/B, aliados, Cachimba),
+  aviso de Cachimba montada / caída / alarma, resultado de la ronda y de la partida. Al morir espectas a un aliado vivo (**clic** cambia de aliado) hasta la siguiente ronda.
+
+**Modo libre**: todo el campus, eliges el punto de aparición (M para cambiar), reapareces al morir, bots opcionales que deambulan, dinero infinito. **Esc** abre la tienda con Reanudar / Volver al lobby / Salir.
+
+**Teclas de partida**: B tienda (fase de compra), Tab marcador, E mantenido montar / apagar la Cachimba (con un arma del suelo en el punto de mira, E la recoge), Esc pausa, F2 liberar el ratón.
+
+**Equilibrio de los bots (P4)**: medido con `tests/sim_partida.gd` (5v5 normal, Cachimba, 3 semillas x 24 rondas por zona, sin cambio de lado): atacantes 54 % / defensores 46 % en total
+(plaza América 53/47, biblioteca-24 50/50, detrás del 22 54/46, el Eje 58/42, el Puente 57/43; eliminación 38/62). Antes de ajustar ganaban casi siempre los defensores (30 % ataque) y casi no
+se usaban granadas (0-0,4 por ronda). Ajustes en `scripts/bots/`: los atacantes usan más humo y cegadoras (humo de cobertura al ver enemigos a >= 18 m, humo y cegadora al entrar al site; máx. un humo por
+equipo cada 14 s), los defensores no inician duelos a más de `DirectorBots.VISION_DEFENSOR_M` (70 m; ajustes por zona en `VISION_DEFENSOR_ZONA` / `VISION_ATACANTE_ZONA`) y el portador sigue montando
+mientras dispara si ya está en el site. Granadas por ronda: atacantes 1,6-3,4; defensores ~0. **Límite conocido**: la Cachimba solo se monta en ~6 % de las rondas (22 % en plaza América, ~0 % en las zonas
+abiertas): los atacantes suelen ganar eliminando a los defensores antes de llegar al site; empujar más (avanzar disparando a > 40 m) los hace morir en campo abierto y desequilibra (13 % de victorias).
+
+**Pruebas**: `Godot_console.exe --headless --path game --script res://tests/test_partida.gd [-- rapido]` (con `rapido` se salta la partida completa acelerada);
+`Godot_console.exe --headless --path game --script res://tests/sim_partida.gd -- zonas=el_eje rondas=12 escala=12` mide la tasa de victoria por bando. `tests/test_bots.gd` sigue usando `PartidaPrueba`.
 
 Diseño y plan del proyecto: [docs/PROYECTO.md](docs/PROYECTO.md).

@@ -69,12 +69,28 @@
     "muros-col": 31,
     "vallas-col": 1,
     "pistas_padel": 2,
+    "props": 246,
+    "props_banco": 95,
+    "props_murete": 40,
+    "props_jardinera": 36,
+    "props_contenedor": 24,
+    "props_reciclaje_azul": 2,
+    "props_reciclaje_amarillo": 1,
+    "props_reciclaje_verde": 3,
+    "props_aparcabicis": 15,
+    "props_marquesina": 6,
+    "props_expendedora": 2,
+    "props_pila_sillas": 11,
+    "props_mesa": 10,
+    "props_aula": 1,
     "arboles_copas_detectadas": 3920,
-    "arboles_descartados": 2064,
-    "arboles_arboles": 1856,
-    "coches": 1406,
-    "coches_parking": 1391,
-    "coches_carretera": 15
+    "arboles_descartados": 2088,
+    "arboles_arboles": 1832,
+    "arboles_troncos_grandes": 135,
+    "coches": 1359,
+    "coches_parking": 1346,
+    "coches_carretera": 13,
+    "coches_zona_excluidos": 47
   },
   "props": {
     "semilla": 1,
@@ -82,9 +98,9 @@
     "coches_carretera": 15,
     "sin_arboles": false,
     "sin_coches": false,
-    "huella": "429426c0d8b807d0",
-    "arboles": 1856,
-    "coches": 1406,
+    "huella": "3e8a9fd344c75ef4",
+    "arboles": 1832,
+    "coches": 1359,
     "por_parking": {
       "P3": {
         "plazas": 136,
@@ -161,8 +177,8 @@
     }
   },
   "verificacion": {
-    "nodos": 131,
-    "triangulos": 1189283,
+    "nodos": 143,
+    "triangulos": 1198255,
     "bounds": [
       [
         -2768.0,
@@ -178,7 +194,7 @@
     "edificios": 92,
     "no_watertight": [],
     "triangulos_terreno": 416406,
-    "triangulos_arboles": 193024,
-    "triangulos_coches": 230584
+    "triangulos_arboles": 190528,
+    "triangulos_coches": 222876
   }
 }
