@@ -55,6 +55,10 @@ var rng := RandomNumberGenerator.new()
 ## Apuntar (clic derecho con armas de fuego): `aim_t` va de 0 a 1.
 var apuntando: bool = false
 var aim_t: float = 0.0
+## Nivel de aumento elegido (indice de `ArmaDatos.zoom_niveles`) y aumento mostrado ahora (suavizado entre niveles).
+var nivel_zoom: int = 0
+var zoom_vis: float = 1.0
+var _t_alt_suelta: float = -10.0
 ## Carga del arco / puño-bot (0..1) mientras se mantiene el clic izquierdo.
 var cargando: bool = false
 var carga: float = 0.0
@@ -112,6 +116,12 @@ func _ready() -> void:
 	armero.vincular(self, _jugador)
 	_asegurar_indice()
 	_aplicar_arma()
+
+
+## Pinta las manos del viewmodel con la piel / manga del personaje `id` (`CatalogoPersonajes`).
+func poner_personaje(id: StringName) -> void:
+	if _vm != null:
+		_vm.poner_personaje(id)
 
 
 ## Muestra u oculta el arma en primera persona (lobby, espectador).
@@ -209,6 +219,24 @@ func utilidades_info() -> Array[Dictionary]:
 	return out
 
 
+## Aumentos del nivel de zoom elegido del arma actual.
+func zoom_actual() -> float:
+	var a: ArmaDatos = actual()
+	if a.zoom_niveles.size() > 0:
+		return a.zoom_niveles[clampi(nivel_zoom, 0, a.zoom_niveles.size() - 1)]
+	return a.zoom
+
+
+## Cambia de nivel de aumento (rueda o segundo clic derecho) si el arma tiene varios. Devuelve verdadero si lo cambio.
+func ciclar_zoom(paso: int = 1) -> bool:
+	var a: ArmaDatos = actual()
+	var n: int = a.zoom_niveles.size()
+	if n < 2:
+		return false
+	nivel_zoom = posmod(nivel_zoom + paso, n)
+	return true
+
+
 ## Semiangulo (grados) del cono de dispersion en este instante: velocidad, suelo, postura, apuntar y ceguera.
 func dispersion_actual() -> float:
 	var a: ArmaDatos = actual()
@@ -245,9 +273,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("arma_ultima"):
 		cambiar_arma(indice_previo)
 	elif event.is_action_pressed("arma_siguiente"):
-		_ciclar(1)
+		if not (apuntando and ciclar_zoom(1)):
+			_ciclar(1)
 	elif event.is_action_pressed("arma_anterior"):
-		_ciclar(-1)
+		if not (apuntando and ciclar_zoom(-1)):
+			_ciclar(-1)
 	elif event.is_action_pressed("recargar"):
 		recargar()
 	elif event.is_action_pressed("recoger"):
@@ -351,7 +381,13 @@ func _actualizar_estados(a: ArmaDatos, delta: float) -> void:
 	elif not bloqueando:
 		var enf: float = a.enfriamiento if a.tipo == ArmaDatos.T_SABLE else 12.0
 		calor = maxf(calor - enf * delta, 0.0)
-	_jugador.fijar_apuntado(aim_t, a.zoom)
+	if gatillo_alt and not _alt_prev and _t - _t_alt_suelta < 0.45 and aim_t > 0.0:
+		ciclar_zoom(1)                       # segundo clic derecho rapido: siguiente nivel de aumento
+	if _alt_prev and not gatillo_alt:
+		_t_alt_suelta = _t
+	var z_obj: float = zoom_actual()
+	zoom_vis = z_obj if zoom_vis < 1.0 else lerpf(zoom_vis, z_obj, 1.0 - exp(-14.0 * delta))
+	_jugador.fijar_apuntado(aim_t, zoom_vis)
 	var m: float = lerpf(1.0, a.velocidad_apuntando, aim_t)
 	if bloqueando:
 		m *= a.velocidad_bloqueando
@@ -672,6 +708,7 @@ func _forzar_arma(i: int) -> void:
 	if i != indice:
 		indice_previo = indice
 	indice = i
+	nivel_zoom = 0
 	_aplicar_arma()
 	_sonar("cambio_arma", _p_aux)
 
@@ -887,6 +924,8 @@ func _resetear_estados() -> void:
 	bloqueando = false
 	aim_t = 0.0
 	apuntando = false
+	nivel_zoom = 0
+	zoom_vis = 1.0
 	if puno_en_vuelo:
 		_recoger_puno()
 	_proximo = _t

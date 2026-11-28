@@ -69,28 +69,37 @@
     "muros-col": 31,
     "vallas-col": 1,
     "pistas_padel": 2,
-    "props": 246,
-    "props_banco": 95,
-    "props_murete": 40,
-    "props_jardinera": 36,
-    "props_contenedor": 24,
+    "props": 476,
+    "props_banco": 112,
+    "props_murete": 55,
+    "props_jardinera": 68,
+    "props_contenedor": 27,
     "props_reciclaje_azul": 2,
     "props_reciclaje_amarillo": 1,
     "props_reciclaje_verde": 3,
-    "props_aparcabicis": 15,
+    "props_aparcabicis": 17,
     "props_marquesina": 6,
-    "props_expendedora": 2,
+    "props_expendedora": 3,
     "props_pila_sillas": 11,
     "props_mesa": 10,
     "props_aula": 1,
+    "props_muro_obra": 25,
+    "props_valla_obra": 14,
+    "props_palets": 34,
+    "props_sacos": 10,
+    "props_bigbag": 18,
+    "props_cuba": 15,
+    "props_caseta": 5,
+    "props_bobina": 13,
+    "props_bloques": 26,
     "arboles_copas_detectadas": 3920,
-    "arboles_descartados": 2088,
-    "arboles_arboles": 1832,
-    "arboles_troncos_grandes": 135,
-    "coches": 1359,
+    "arboles_descartados": 2089,
+    "arboles_arboles": 1831,
+    "arboles_troncos_grandes": 280,
+    "coches": 1361,
     "coches_parking": 1346,
-    "coches_carretera": 13,
-    "coches_zona_excluidos": 47
+    "coches_carretera": 15,
+    "coches_zona_excluidos": 45
   },
   "props": {
     "semilla": 1,
@@ -98,9 +107,9 @@
     "coches_carretera": 15,
     "sin_arboles": false,
     "sin_coches": false,
-    "huella": "3e8a9fd344c75ef4",
-    "arboles": 1832,
-    "coches": 1359,
+    "huella": "37f3b60fda674da3",
+    "arboles": 1831,
+    "coches": 1361,
     "por_parking": {
       "P3": {
         "plazas": 136,
@@ -177,8 +186,8 @@
     }
   },
   "verificacion": {
-    "nodos": 143,
-    "triangulos": 1198255,
+    "nodos": 147,
+    "triangulos": 1230679,
     "bounds": [
       [
         -2768.0,
@@ -194,7 +203,7 @@
     "edificios": 92,
     "no_watertight": [],
     "triangulos_terreno": 416406,
-    "triangulos_arboles": 190528,
-    "triangulos_coches": 222876
+    "triangulos_arboles": 190424,
+    "triangulos_coches": 223204
   }
 }

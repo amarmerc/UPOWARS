@@ -215,6 +215,8 @@ func _nombre_bot(i: int) -> String:
 func _crear_combatientes(origen: Vector3) -> void:
 	var dif: StringName = cfg.dificultad
 	var n_bot: int = 0
+	var pj: StringName = cfg.personaje_jugador if CatalogoPersonajes.existe(cfg.personaje_jugador) else StringName(PerfilJugador.cargar()["personaje"])
+	jugador.gestor.poner_personaje(pj)
 	var nombre_local: String = cfg.nombre_jugador if cfg.nombre_jugador.strip_edges() != "" else "Tú"
 	if cfg.es_libre():
 		partida.registrar(jugador, 0, nombre_local)

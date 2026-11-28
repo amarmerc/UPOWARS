@@ -33,7 +33,7 @@ Uso: uv run python scripts/generar_blockout.py [--entrada data/raw/osm_upo.json]
      [--no-copiar-godot]   (por defecto copia el .glb a game/assets/mapa/)
      [--sin-arboles] [--sin-coches] [--ocupacion 0.55] [--coches-carretera 15] [--semilla 1]
      [--altura-min-arbol 3] [--sep-arboles 3] [--zonas data/zonas.json] [--props data/props.csv]
-     [--altura-tronco-grande 12]
+     [--altura-tronco-grande 6]
 
 Vegetacion y coches (scripts/vegetacion.py, coches.py, entorno.py): arboles low-poly desde el nDSM de vegetacion LiDAR
 (`arboles_troncos-col` con colision y `arboles_copas*` sin ella, uno por tono de verde) y coches estaticos
@@ -1737,7 +1737,7 @@ def anadir_argumentos_props(ap):
                     "excluyen arboles y coches; dentro, los arboles altos tienen tronco grueso")
     ap.add_argument("--props", default=dz.PROPS_CSV, help="coberturas (data/props.csv); vacio o inexistente = ninguna")
     ap.add_argument("--altura-tronco-grande", type=float, default=veg.ALT_TRONCO_GRANDE_M,
-                    help="en las zonas, altura (m) desde la que un arbol tiene tronco de 0,5-0,7 m de radio (12)")
+                    help="en las zonas, altura (m) desde la que un arbol tiene tronco de 0,45-0,7 m de radio (6)")
 
 
 def construir_props(mapa, geo, a, spawns_json=SPAWNS_JSON, spawns=None):

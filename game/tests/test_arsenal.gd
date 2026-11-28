@@ -194,7 +194,7 @@ func _test_catalogo() -> void:
 		"pistola_9mm": 0, "pistola_auto": 500, "pistola_pesada": 800, "revolver_357": 700, "escopeta_recortada": 600,
 		"subfusil_compacto": 900, "subfusil_9mm": 1500, "subfusil_45": 1900, "escopeta_corredera": 1800,
 		"escopeta_auto": 2600, "carabina_556": 2500, "fusil_asalto": 2900, "fusil_combate": 3200, "fusil_tirador": 3500,
-		"fusil_precision": 4700, "ametralladora": 3300, "arco_olivo": 2200, "tirachinas": 400, "lanzacohetes": 4000,
+		"fusil_precision": 4700, "ametralladora": 3300, "arco_olivo": 2200, "tirachinas": 400, "lanzacohetes": 4500,
 		"sable_plasma": 3000, "puno_bot": 600, "navaja": 0, "granada_humo": 300, "granada_cegadora": 250,
 		"granada_explosiva": 400, "bote_pintura": 300, "extintor": 350, "altavoz": 200, "escudo_ligero": 400,
 		"escudo_pesado": 1000}
@@ -437,8 +437,8 @@ func _test_explosion() -> void:
 	while p.estado == Proyectil.Estado.VOLANDO and pasos < 600:
 		p.avanzar(DT)
 		pasos += 1
-	comprobar("a5d) el cohete (Traca) explota en el impacto y mata a la diana; solo 2 cohetes en total",
-			not d10.salud.vivo and traca.cargador + traca.reserva == 2, "vida=%.1f pasos=%d" % [d10.salud.vida, pasos])
+	comprobar("a5d) el cohete (Traca) explota en el impacto y mata a la diana; 9 cohetes en total (3 + 6)",
+			not d10.salud.vivo and traca.cargador == 3 and traca.reserva == 6, "vida=%.1f pasos=%d" % [d10.salud.vida, pasos])
 	_restaurar(d10)
 	muro.queue_free()
 	limpiar_extra()
@@ -746,6 +746,19 @@ func _test_apuntar_correr() -> void:
 			suelo_sin > 3.0 and suelo_apuntando < 0.1 and apuntando < sin_apuntar * 0.05 and jugador.camara.fov < 25.0
 			and pr.mira_zoom and pr.zoom >= 4.0,
 			"suelo %.2f -> %.3f  (en el aire %.2f -> %.3f) fov=%.1f" % [suelo_sin, suelo_apuntando, sin_apuntar, apuntando, jugador.camara.fov])
+	var fov4: float = jugador.camara.fov
+	var sens4: float = tan(deg_to_rad(fov4) * 0.5) / tan(deg_to_rad(jugador.fov_base) * 0.5)
+	var cambio: bool = gestor.ciclar_zoom(1)          # 4x -> 8x
+	avanzar_gestor(gestor, 0.8)
+	var fov8: float = jugador.camara.fov
+	var tir: ArmaDatos = Catalogo.arma(&"fusil_tirador")
+	var fa: ArmaDatos = Catalogo.arma(&"fusil_asalto")
+	var pi9: ArmaDatos = Catalogo.arma(&"pistola_9mm")
+	comprobar("a11c2) zoom del fusil de precision 4x y 8x (rueda / segundo clic derecho); tirador 4x; fusil 1,8-2x; pistola 1,3-1,5x; sensibilidad baja con el zoom",
+			cambio and pr.zoom_niveles.size() == 2 and cerca(pr.zoom_niveles[0], 4.0, 0.01) and cerca(pr.zoom_niveles[1], 8.0, 0.01)
+			and fov8 < fov4 * 0.55 and fov8 < 12.5 and cerca(tir.zoom, 4.0, 0.01) and fa.zoom >= 1.8 and fa.zoom <= 2.0
+			and pi9.zoom >= 1.3 and pi9.zoom <= 1.5 and sens4 < 0.3,
+			"fov4=%.1f fov8=%.1f sens4=%.2f" % [fov4, fov8, sens4])
 	gestor.gatillo_alt = false
 	avanzar_gestor(gestor, 0.8)
 	gestor.reiniciar()
@@ -783,8 +796,8 @@ func _test_apuntar_correr() -> void:
 	var agachado: float = jugador.velocidad_objetivo()
 	jugador.agachado = false
 	var m: float = jugador.mult_velocidad_arma
-	comprobar("a11e) correr (6,5 m/s) es mas rapido que andar (5); sigilo (Alt) 2,6 y agachado (Ctrl) 1,7",
-			correr > andar and cerca(correr / m, 6.5, 0.01) and cerca(andar / m, 5.0, 0.01) and cerca(sigilo / m, 2.6, 0.01)
+	comprobar("a11e) correr (7,8 m/s) es mas rapido que andar (5); sigilo (Alt) 2,6 y agachado (Ctrl) 1,7",
+			correr > andar and cerca(correr / m, 7.8, 0.01) and cerca(andar / m, 5.0, 0.01) and cerca(sigilo / m, 2.6, 0.01)
 			and cerca(agachado / m, 1.7, 0.01), "andar=%.2f correr=%.2f sigilo=%.2f agachado=%.2f" % [andar, correr, sigilo, agachado])
 	# una ametralladora ligera se mueve mas lento que un fusil
 	var am: ArmaDatos = Catalogo.arma(&"ametralladora")

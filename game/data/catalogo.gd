@@ -26,7 +26,7 @@ const ITEMS: Array = [
 	[&"ametralladora", "Ametralladora ligera", "principal", &"principal", 3300, "Cargador grande; muy lenta de recargar y mover"],
 	[&"arco_olivo", "Arco \"Olivo\"", "especial", &"principal", 2200, "Carga mantenida, flecha con caída; silencioso; recuperación lenta"],
 	[&"tirachinas", "Tirachinas \"Gomero\"", "especial", &"principal", 400, "Proyectil con caída, silencioso y barato; poco daño"],
-	[&"lanzacohetes", "Lanzacohetes \"Traca\"", "especial", &"principal", 4000, "2 cohetes; autodaño y empuje; recarga muy lenta"],
+	[&"lanzacohetes", "Lanzacohetes \"Traca\"", "especial", &"principal", 4500, "3 cohetes en el cargador, 6 de reserva; autodaño y empuje; recarga lenta"],
 	[&"sable_plasma", "\"Sable de Plasma\"", "especial", &"principal", 3000, "Bloquea disparos (clic derecho); se sobrecalienta"],
 	[&"puno_bot", "\"Puño-Bot\"", "especial", &"secundaria", 600, "Puño proyectil cargable; tarda 1,5 s en volver"],
 	[&"navaja", "Navaja", "cuerpo", &"cuerpo", 0, "Siempre; clic derecho = golpe fuerte"],

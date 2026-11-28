@@ -1205,11 +1205,11 @@
       }
     }
   },
-  "n_arboles": 1832,
-  "n_coches": 1359,
+  "n_arboles": 1831,
+  "n_coches": 1361,
   "n_coches_parking": 1346,
-  "n_coches_carretera": 13,
-  "n_props": 246,
+  "n_coches_carretera": 15,
+  "n_props": 476,
   "test_props": [
     {
       "tipo": "aula",
@@ -1518,6 +1518,230 @@
         231.19
       ],
       "descripcion": "reciclaje_verde en (35.5, 231.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bigbag",
+      "desde": [
+        -10.19,
+        2.255,
+        189.77
+      ],
+      "hasta": [
+        -12.18,
+        2.255,
+        187.27
+      ],
+      "descripcion": "bigbag en (-11.5, 188.1): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bigbag",
+      "desde": [
+        3.1,
+        2.303,
+        189.31
+      ],
+      "hasta": [
+        0.85,
+        2.303,
+        191.59
+      ],
+      "descripcion": "bigbag en (1.6, 190.8): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bloques",
+      "desde": [
+        4.8,
+        2.159,
+        183.11
+      ],
+      "hasta": [
+        3.98,
+        2.159,
+        186.2
+      ],
+      "descripcion": "bloques en (4.0, 186.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "palets",
+      "desde": [
+        -1.83,
+        7.888,
+        252.43
+      ],
+      "hasta": [
+        0.66,
+        7.888,
+        254.44
+      ],
+      "descripcion": "palets en (0.1, 254.0): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bloques",
+      "desde": [
+        1.98,
+        7.677,
+        261.56
+      ],
+      "hasta": [
+        0.98,
+        7.677,
+        264.6
+      ],
+      "descripcion": "bloques en (1.0, 264.6): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "muro_obra",
+      "desde": [
+        -100.54,
+        5.78,
+        229.77
+      ],
+      "hasta": [
+        -101.51,
+        5.78,
+        232.82
+      ],
+      "descripcion": "muro_obra en (-101.0, 231.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "palets",
+      "desde": [
+        37.82,
+        2.492,
+        158.39
+      ],
+      "hasta": [
+        36.16,
+        2.492,
+        155.65
+      ],
+      "descripcion": "palets en (36.5, 156.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "caseta",
+      "desde": [
+        -46.66,
+        7.703,
+        290.7
+      ],
+      "hasta": [
+        -43.5,
+        7.703,
+        291.21
+      ],
+      "descripcion": "caseta en (-43.5, 291.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "cuba",
+      "desde": [
+        -101.28,
+        6.09,
+        249.62
+      ],
+      "hasta": [
+        -98.5,
+        6.09,
+        251.21
+      ],
+      "descripcion": "cuba en (-98.5, 251.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bobina",
+      "desde": [
+        -29.08,
+        7.055,
+        287.08
+      ],
+      "hasta": [
+        -26.0,
+        7.055,
+        286.21
+      ],
+      "descripcion": "bobina en (-26.0, 286.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "muro_obra",
+      "desde": [
+        -53.48,
+        7.089,
+        275.47
+      ],
+      "hasta": [
+        -53.56,
+        7.089,
+        278.67
+      ],
+      "descripcion": "muro_obra en (-53.5, 276.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "cuba",
+      "desde": [
+        -89.16,
+        6.113,
+        225.69
+      ],
+      "hasta": [
+        -86.0,
+        6.113,
+        226.21
+      ],
+      "descripcion": "cuba en (-86.0, 226.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "caseta",
+      "desde": [
+        -56.11,
+        8.584,
+        293.01
+      ],
+      "hasta": [
+        -56.0,
+        8.584,
+        296.21
+      ],
+      "descripcion": "caseta en (-56.0, 296.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "bobina",
+      "desde": [
+        36.28,
+        2.306,
+        173.46
+      ],
+      "hasta": [
+        34.0,
+        2.306,
+        171.21
+      ],
+      "descripcion": "bobina en (34.0, 171.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "valla_obra",
+      "desde": [
+        25.16,
+        2.779,
+        152.31
+      ],
+      "hasta": [
+        22.84,
+        2.779,
+        150.11
+      ],
+      "descripcion": "valla_obra en (24.0, 151.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
+    },
+    {
+      "tipo": "valla_obra",
+      "desde": [
+        -65.47,
+        3.45,
+        174.57
+      ],
+      "hasta": [
+        -64.91,
+        3.45,
+        177.73
+      ],
+      "descripcion": "valla_obra en (-65.2, 176.2): rayo horizontal al centro de su caja mayor (debe chocar con props_*)"
     }
   ],
   "aula": {

@@ -26,7 +26,7 @@ PENDIENTE_MAX = 0.9           # ~42 grados (el jugador sube hasta 45)
 MARGEN_LIMITE = 0.5
 COBERTURA_ALTA_M = 0.8        # un obstaculo cuenta como cobertura si supera esta altura
 DIST_COBERTURA_M = 3.0
-TRAMO_ABIERTO_MAX_M = 25.0
+TRAMO_ABIERTO_MAX_M = 14.0
 
 
 def edificios_cerrados(geo):

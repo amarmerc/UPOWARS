@@ -36,9 +36,27 @@ import generar_zonas as gz  # noqa: E402
 import props as prp  # noqa: E402
 import zonas_nav as nav  # noqa: E402
 
-TRAMO_MAX = 22.0            # se propone un prop cuando el tramo abierto de una ruta supera esto (el limite es ~25 m)
+TRAMO_MAX = 12.0            # se propone un prop cuando el tramo abierto de una ruta supera esto (el limite de generar_zonas es 14 m)
+DIST_MAX_COBERTURA = 10.0   # el relleno de espacios abiertos busca que ningun punto de la zona quede a mas de esto de una cobertura
+SEP_OBRA = 2.0              # separacion minima entre coberturas grandes (deja pasar a un jugador entre dos)
+OBJ_SITE = 11               # coberturas altas (>= 0,8 m) a menos de 10 m del centro de cada site
 MARGEN_RUTA = 1.1           # un prop queda como minimo a 1,1 m de cualquier ruta
-CICLO_ABIERTO = ["murete", "banco", "jardinera", "murete", "contenedor", "banco", "murete", "mesa", "jardinera", "pila_sillas"]
+CICLO_ABIERTO = ["muro_obra", "palets", "cuba", "valla_obra", "bigbag", "muro_obra", "sacos", "bloques", "caseta", "bobina",
+                 "muro_obra", "palets", "murete", "bigbag", "jardinera", "valla_obra", "bloques", "cuba", "bobina", "sacos"]
+# variantes bajas (1-1,2 m: agacharse) y altas (2 m o mas: cubren de pie) de cada tipo de obra; (notas, ancho_aprox_m)
+OBRA = {
+    "muro_obra": ["alto=2.2;largo=4.5", "alto=2.4;largo=5.5;ladrillo", "alto=2.0;largo=3.4;l", "alto=2.3;largo=4.2;ladrillo;l", "alto=2.5;largo=6.0",
+                  "alto=2.1;largo=3.2;ladrillo"],
+    "valla_obra": ["largo=3.2", "largo=4.8", "largo=3.2"],
+    "palets": ["n=7", "n=14", "n=8", "n=15"],
+    "sacos": ["n=6", "n=5", "n=6"],
+    "bigbag": ["alto=1", "alto=2", "alto=1"],
+    "cuba": [""],
+    "caseta": [""],
+    "bobina": ["n=1", "n=2"],
+    "bloques": ["n=2", "n=4", "n=3;ladrillo", "n=2;ladrillo"],
+}
+GRANDES = ("muro_obra", "caseta", "cuba", "valla_obra", "bigbag", "palets", "bloques", "bobina", "sacos")
 CICLO_FACHADA = ["contenedor", "expendedora", "reciclaje", "aparcabicis", "expendedora", "contenedor"]
 ESCALA_MURETE = (1.0, 1.25)
 
@@ -159,6 +177,26 @@ class Colocador:
                 "escala": escala, "notas": notas}
 
 
+def fila_abierta(col, tipo, q, te, tn, texto, k=0):
+    """Fila de props.csv de una cobertura de espacio abierto en q. (te, tn) = direccion que sigue su eje largo (los muros y vallas se
+    ponen de traves a la ruta). Los tipos de obra eligen una variante baja o alta segun k."""
+    rng = col.rng
+    esc = 1.0
+    if tipo in OBRA:
+        var = OBRA[tipo]
+        notas = var[int(rng.integers(0, len(var))) if k % 2 else k % len(var)]
+        if tipo == "muro_obra":     # largo 3-6 m
+            partes = notas.split(";")
+            largo = round(float(rng.uniform(3.0, 6.0)), 1)
+            notas = ";".join(x if not x.startswith("largo=") else f"largo={largo}" for x in partes)
+        yaw = yaw_largo(te, tn) + float(rng.uniform(-18, 18)) if tipo in ("muro_obra", "valla_obra", "palets", "sacos", "bigbag", "bloques")             else float(rng.uniform(0, 360))
+        return col.fila(tipo, q[0], q[1], yaw % 360, 1.0, f"{notas}; {texto}" if notas else texto)
+    if tipo == "murete":
+        esc = round(float(rng.uniform(*ESCALA_MURETE)), 2)
+    yaw = yaw_largo(te, tn) if tipo in ("murete", "banco", "jardinera", "mesa") else float(rng.uniform(0, 360))
+    return col.fila(tipo, q[0], q[1], yaw, esc, texto + ("; volcada" if tipo == "mesa" else ""))
+
+
 def punto_y_normal(pts, s):
     a = np.array(pts)
     seg = np.hypot(*np.diff(a, axis=0).T)
@@ -198,14 +236,10 @@ def candidatos_tramo(col, pts, s0, s1, nombre, n_alta, rng):
                         c = np.array([qb.x + fe * d_f, qb.y + fn * d_f])
                         out.append(col.fila(tipo, c[0], c[1], yaw_hacia(fe, fn), 1.0, f"{nombre}: mobiliario junto a la fachada"))
                 else:
-                    tipos = [CICLO_ABIERTO[n_alta % len(CICLO_ABIERTO)], "banco", "jardinera", "murete"]
+                    tipos = [CICLO_ABIERTO[n_alta % len(CICLO_ABIERTO)], CICLO_ABIERTO[(n_alta + 3) % len(CICLO_ABIERTO)],
+                             "palets", "muro_obra", "bigbag", "banco", "murete"]
                     for ti, tipo in enumerate(tipos):
-                        esc = round(float(rng.uniform(*ESCALA_MURETE)), 2) if tipo == "murete" else 1.0
-                        if tipo == "murete" and ti == 3:
-                            esc = 0.6
-                        yaw = yaw_largo(-t[1], t[0]) if tipo in ("murete", "banco", "jardinera", "mesa") else float(rng.uniform(0, 360))
-                        notas = f"{nombre}: cobertura de ruta" + ("; volcada" if tipo == "mesa" else "")
-                        out.append(col.fila(tipo, q[0], q[1], yaw, esc, notas))
+                        out.append(fila_abierta(col, tipo, q, -t[1], t[0], f"{nombre}: cobertura de ruta", n_alta + ti))
     return out
 
 
@@ -256,32 +290,81 @@ def cubrir_rutas(col, z, zl, caminos, nombre, ignorar=None):
     return n_alta
 
 
-def cubrir_sites(col, z, zl, nombre):
-    """5-6 coberturas a 3-9 m del centro de cada site, orientadas hacia el lado por donde llegan los atacantes."""
+def cubrir_sites(col, z, zl, nombre, objetivo=OBJ_SITE):
+    """Coberturas altas (>= 0,8 m) a 3-10 m del centro de cada site hasta tener `objetivo` (cuenta las ya existentes), la mitad de
+    obra grande (altas de 2 m o mas y bajas de 1-1,2 m) y orientadas hacia el lado por donde llegan los atacantes."""
     rng, ctx = col.rng, col.ctx
     atac = np.mean([dz.a_local(p[0], p[1]) for p in z["spawn_atacantes"]["posiciones"]], axis=0)
     n_total = 0
+    tipos = ["muro_obra", "palets", "murete", "bigbag", "cuba", "jardinera", "valla_obra", "bloques", "banco", "sacos", "caseta",
+             "muro_obra", "bobina", "contenedor", "pila_sillas"]
     for k, s in zl["sites"].items():
         c = np.array([s.centroid.x, s.centroid.y])
         dir_att = atac - c
         base = math.atan2(dir_att[1], dir_att[0])
+        zona_site = Point(c).buffer(10.0)
+        ya = sum(1 for h, p in zip(col.huellas, list(ctx.props["props"]) + col.puestos) if zona_site.intersects(h) and prp.alto(p["tipo"], p["escala"], p["notas"]) >= nav.COBERTURA_ALTA_M)
         puestos = 0
-        tipos = ["murete", "jardinera", "banco", "murete", "contenedor", "banco", "pila_sillas"]
         intentos = 0
-        while puestos < 5 and intentos < 300:
+        while ya + puestos < objetivo and intentos < 500:
             intentos += 1
-            ang = base + math.radians(rng.uniform(-150, 150)) if puestos < 3 else rng.uniform(0, 2 * math.pi)
-            r = rng.uniform(3.2, 8.5)
+            ang = base + math.radians(rng.uniform(-150, 150)) if puestos < 5 else rng.uniform(0, 2 * math.pi)
+            r = rng.uniform(3.4, 9.5)
             q = c + r * np.array([math.cos(ang), math.sin(ang)])
-            tipo = tipos[puestos % len(tipos)]
-            esc = float(rng.uniform(*ESCALA_MURETE)) if tipo == "murete" else 1.0
-            # de traves a la direccion radial (cubre de cara al centro del site)
-            yaw = yaw_largo(-math.sin(ang), math.cos(ang))
-            fila = col.fila(tipo, q[0], q[1], yaw, round(esc, 2), f"{nombre}: cobertura del site {k}")
-            if col.poner(fila, en_zona=zl["limite"], respetar_rutas=True):
+            tipo = tipos[(puestos + int(rng.integers(0, 3))) % len(tipos)]
+            fila = fila_abierta(col, tipo, q, -math.sin(ang), math.cos(ang), f"{nombre}: cobertura del site {k}", puestos)
+            if col.poner(fila, en_zona=zl["limite"], respetar_rutas=True, sep=SEP_OBRA if tipo in GRANDES else 1.0):
                 puestos += 1
         n_total += puestos
     return n_total
+
+
+def rellenar_abiertos(col, z, zl, nombre, max_props=60):
+    """Rellena los espacios abiertos de la zona: mientras algun punto libre quede a mas de DIST_MAX_COBERTURA m de toda cobertura
+    (edificios, troncos gruesos, coches, props altos), pone una cobertura grande en el punto mas alejado. Fuera de las barreras de spawn."""
+    rng = col.rng
+    lim = zl["limite"].buffer(-2.5)
+    x0, y0, x1, y1 = lim.bounds
+    gx, gy = np.meshgrid(np.arange(x0, x1, 2.5), np.arange(y0, y1, 2.5))
+    px, py = gx.ravel(), gy.ravel()
+    ok = shapely.contains_xy(lim, px, py) & ~shapely.contains_xy(col.bloq, px, py)
+    for b in zl["barreras"]:
+        ok &= ~shapely.contains_xy(b.buffer(4.0), px, py)
+    px, py = px[ok], py[ok]
+    if len(px) == 0:
+        return 0
+    sites = [np.array([s.centroid.x, s.centroid.y]) for s in zl["sites"].values()]
+    n = 0
+    fallidos = np.zeros(len(px), bool)
+    for _ in range(max_props * 3):
+        if n >= max_props:
+            break
+        pts = shapely.points(px, py)
+        d = shapely.distance(pts, col.cobertura)
+        d[fallidos] = 0
+        i = int(np.argmax(d))
+        if d[i] <= DIST_MAX_COBERTURA:
+            break
+        q = np.array([px[i], py[i]])
+        cerca = min(sites, key=lambda c: float(np.hypot(*(c - q))))
+        dx, dy = cerca - q
+        L = math.hypot(dx, dy) or 1.0
+        te, tn = -dy / L, dx / L              # de traves a la direccion del site mas cercano
+        puesto = False
+        orden = [CICLO_ABIERTO[(n * 7 + k) % len(CICLO_ABIERTO)] for k in range(8)]
+        for tipo in orden:
+            for dq in ((0, 0), (1.5, 0), (-1.5, 0), (0, 1.5), (0, -1.5), (2.5, 2.5), (-2.5, -2.5)):
+                f = fila_abierta(col, tipo, q + np.array(dq), te, tn, f"{nombre}: cobertura de espacio abierto", n)
+                if col.poner(f, en_zona=zl["limite"], respetar_rutas=True, sep=SEP_OBRA if tipo in GRANDES else 1.0):
+                    puesto = True
+                    break
+            if puesto:
+                break
+        if puesto:
+            n += 1
+        else:
+            fallidos[i] = True
+    return n
 
 
 def mobiliario_fachada(col, z, zl, caminos, nombre, n=4):
@@ -483,6 +566,8 @@ def main():
     ap.add_argument("--semilla-props", type=int, default=3)
     ap.add_argument("--completar", action="store_true",
                     help="conserva el CSV actual (con tus ediciones) y solo anade props donde queden tramos abiertos de las rutas")
+    ap.add_argument("--densificar", action="store_true",
+                    help="(con --completar) ademas refuerza los sites (obra grande) y rellena los espacios abiertos de cada zona; no toca tus filas")
     a = ap.parse_args()
     ruta = Path(a.salida)
     if a.completar:
@@ -519,11 +604,12 @@ def main():
         caminos = [p for k in z["sites"] for p in (est["caminos"][k] + est["caminos"][f"{k}_atacantes"] + est["caminos"][f"{k}_defensores"])]
         col.poner_rutas([p for k in z["sites"] for eq in ("atacantes", "defensores") for p in est["caminos"][f"{k}_{eq}"]])   # solo las rutas principales quedan libres
         n0 = len(col.puestos)
-        ns = 0 if a.completar else cubrir_sites(col, z, zl, z["id"])
+        ns = cubrir_sites(col, z, zl, z["id"]) if (a.densificar or not a.completar) else 0
         nf = 0 if a.completar else mobiliario_fachada(col, z, zl, caminos, z["id"])
+        na = rellenar_abiertos(col, z, zl, z["id"]) if (a.densificar or not a.completar) else 0
         nr = cubrir_rutas(col, z, zl, caminos, z["id"], ignorar=unary_union([b.buffer(4.0) for b in zl["barreras"]]))
         # un segundo repaso de los sites (los props de ruta pueden haberse colocado antes que los del site)
-        print(f"{z['id']}: {len(col.puestos) - n0} props (site {ns}, fachada {nf}, rutas {nr})")
+        print(f"{z['id']}: {len(col.puestos) - n0} props (site {ns}, fachada {nf}, abiertos {na}, rutas {nr})")
     # 3. marquesinas y exterior
     if not a.completar:
         mq = marquesinas(col, mapa)

@@ -72,7 +72,7 @@ func _process(delta: float) -> void:
 		"prompt": ("E para recoger %s" % mirada.nombre_arma()) if mirada != null else ""})
 	_combate.call("poner_marcas", _marcas(), _jugador.ceguera.nivel() if _jugador.ceguera != null else 0.0)
 	var scope: bool = a.mira_zoom and g.aim_t > 0.8
-	_mira.call("poner_zoom", scope)
+	_mira.call("poner_zoom", scope, g.zoom_actual() if scope else 0.0)
 	_mira.call("poner_apertura", _apertura_px(g))
 
 
@@ -87,8 +87,7 @@ func _marcas() -> Array[Dictionary]:
 		var p: Vector3 = duenio.global_position + Vector3(0.0, 2.1, 0.0)
 		if cam.is_position_behind(p):
 			continue
-		out.append({"pos": cam.unproject_position(p), "texto": "%s  %d m" % [
-				sm.nombre_visible(), int(p.distance_to(cam.global_position))]})
+		out.append({"pos": cam.unproject_position(p), "texto": "%d m" % int(p.distance_to(cam.global_position))})   # sin nombre del enemigo
 	return out
 
 
