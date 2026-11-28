@@ -3,3 +3,6 @@ __pycache__/
 data/raw/
 .godot/
 export/*.tmp
+
+export/red_logs/
+export/web/

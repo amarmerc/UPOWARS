@@ -580,3 +580,87 @@ abiertas): los atacantes suelen ganar eliminando a los defensores antes de llega
 - Capturas: `tests/captura_mejoras.gd` (sin `--headless`; `-- <carpeta> [zonas|arbol|zoom|contorno|manos]`) escribe en `export/capturas_mejoras/`.
 
 Diseño y plan del proyecto: [docs/PROYECTO.md](docs/PROYECTO.md).
+
+## Red: multijugador con servidor autoritativo (N1)
+
+Varias instancias (mismo PC o LAN) juegan juntas Cachimba Wars, Modo pleno o Modo libre, con bots rellenando huecos. El servidor ejecuta
+`Partida`, bots, proyectiles, dano (`Balistica`), economia y rondas; los clientes solo mandan ENTRADAS y comandos. El modo un jugador no cambia.
+
+```
+game/scripts/red/
+  red.gd             Red: ENet (UDP, 7777 por defecto) + todos los RPC (c_* cliente->servidor, s_* servidor->cliente) + simulacion de lag/perdida
+  servidor_red.gd    ServidorRed: lobby, montaje de la partida, avatares de los humanos, entradas, disparo con compensacion de latencia, snapshots
+  cliente_red.gd     ClienteRed: lobby, prediccion + reconciliacion del movimiento, interpolacion de los demas, eventos del servidor
+  movimiento_jugador.gd  paso de movimiento COMPARTIDO por servidor y cliente (mismas constantes que Jugador)
+  protocolo_red.gd / entrada_red.gd   formato binario compacto de snapshots (12 bytes por participante) y entradas (16 bytes)
+  proxy_red.gd       modelo de otro participante en el cliente;  partida_cliente.gd  espejo de la Partida para HUD y tienda
+  arranque_red.gd    argumentos de linea de comandos y servidor dedicado;  cliente_sim.gd  cliente automatico para pruebas de carga
+game/scripts/ui/chat_red.gd    chat (T)
+```
+
+### Hospedar y unirse (con ventana)
+
+- **Crear partida local**: en el lobby, boton "Crear partida local". Este proceso hace de servidor y el jugador local es un participante sin
+  latencia. Muestra las IP de la LAN. Abre el puerto **UDP 7777** (en Windows, permitir Godot en el cortafuegos).
+- **Unirse**: escribir `IP:puerto` (por defecto `127.0.0.1:7777`) y "Unirse". Los humanos ocupan huecos de equipo (se cambia de equipo o hueco
+  pinchando una tarjeta BOT), eligen nombre y personaje y pulsan LISTO (contador X/Y). La partida arranca cuando todos estan listos o cuando
+  el anfitrion (el primero en entrar) pulsa "Forzar inicio". Solo el anfitrion cambia modo, zona, tamano, dificultad y rondas.
+- Se entra solo desde el lobby: no hay union a partida en curso. Si un humano se desconecta en partida, su hueco pasa a un bot.
+- `T` abre el chat; el killfeed, el marcador (Tab) y la tienda funcionan igual que en local (la tienda solo en la fase de compra).
+
+### Servidor dedicado (headless)
+
+```
+Godot --headless --path game -- --servidor [puerto=7777] [max=10] [modo=cachimba_wars|pleno|libre] [zona=el_eje] [tam=5] [rondas=7] [t_compra=25] [dificultad=normal] [--lag=80 --perdida=2]
+```
+
+No carga UI, viewmodels ni audio (solo el mapa con su colision). Imprime `SERVIDOR LISTO udp/7777 ...`. Puerto: **UDP** (el mismo en el cliente).
+Cliente automatico de pruebas: `-- --cliente-sim=127.0.0.1:7777 nombre=Sim1`.
+
+**Docker / Oracle Cloud (linux/arm64)**: `cd servidor && docker compose up -d --build`; guia completa paso a paso (VM, firewall, actualizacion, mediciones) en [servidor/README.md](servidor/README.md).
+
+### Como funciona (resumen)
+
+- **Tick**: fisica a 60 Hz; snapshots a 20 Hz (`TICK_SNAPSHOT = 3`); entradas del cliente a 60 Hz (cada paquete lleva las 4 ultimas).
+- **Movimiento**: el cliente predice con `MovimientoJugador` y guarda las entradas no reconocidas; cada snapshot trae `ack` y la posicion/velocidad
+  exactas, el cliente las aplica y re-simula lo pendiente. Error < 2 m: desplazamiento visual que se desvanece; mayor, o teletransporte
+  (reaparicion), correccion inmediata. El cliente nunca envia su posicion; el servidor limita las entradas procesadas al tiempo real (no hay
+  speed-hack ni teletransporte posibles).
+- **Otros jugadores y bots**: interpolacion a 100 ms.
+- **Disparo**: el cliente muestra efectos al instante y manda la entrada con la hora de servidor que VE; el servidor rebobina los hitboxes de los
+  demas a esa hora (limite 300 ms = 100 de interpolacion + 200 de latencia), resuelve con `Balistica` y devuelve hitmarker, dano y killfeed.
+  Cadencia, municion, recarga y dispersion las impone el servidor (`ArmasBot`).
+- **Anti-trampas basico**: el servidor valida precios/dinero/fase de compra (`Partida`), distancia de recogida, cadencia, municion y velocidad;
+  comandos desconocidos o mal formados se rechazan y se cuentan (`stats.rechazos`). Al cliente solo se le manda SU dinero e inventario (el
+  marcador oculta el dinero rival). No hay (todavia) ocultacion de posiciones tras paredes ni deteccion de aimbot/sin retroceso.
+- **Chat**: 120 caracteres, 1 mensaje cada 0,5 s.
+
+### Pruebas y mediciones
+
+```
+Godot --headless --path game --script res://tests/test_red.gd          # ~3,5 min; servidor + 2 clientes en un proceso con ENet real
+powershell -File scripts/probar_red.ps1 [-Segundos 40 -Lag 80 -Perdida 2 -Clientes 2 -Tam 5]   # servidor + clientes automaticos en procesos distintos
+```
+
+`test_red.gd`: conexion y rechazo de version, lobby (unirse, hueco, nombre, personaje, listo, config del anfitrion), arranque, sincronizacion
+de posiciones, disparo que mata, compensacion de latencia (con 100 ms de RTT: 8/8 impactos con rebobinado, 2/8 sin el), compra y venta,
+comandos invalidos (sin dinero, sin municion, teletransporte, cadencia, inundacion de entradas), chat, desconexion a bot, vuelta al lobby y
+ancho de banda con 10 participantes. Mediciones de referencia (PC de desarrollo, loopback):
+
+| Medida | Valor |
+|---|---|
+| Snapshot con 10 participantes | 197 bytes, 20/s -> ~3,9 KB/s de bajada por cliente (~4,6 KB/s en el cable) |
+| Entradas del cliente | 60 paquetes/s, ~3,5 KB/s (~5,7 KB/s en el cable) |
+| Servidor dedicado, 2 humanos simulados + 8 bots | ~12 % de un nucleo (con los 2 clientes y el sistema en el mismo PC), 350 MB de memoria |
+| Prediccion vs servidor corriendo | diferencia maxima 0,08 m |
+
+Referencia Ampere A1 (2 OCPU): un nucleo ARM es varias veces mas lento que el del PC de desarrollo; aun asi 12 % de un nucleo x3-4 deja margen para
+2-3 partidas por servidor (a medir en el despliegue, N2).
+
+### Limitaciones y pendiente
+
+- Humanos remotos: no soportan Sable de Plasma, Puno-Bot ni el golpe fuerte de la navaja (el servidor usa `ArmasBot`; la tienda los rechaza para ellos).
+  El arco dispara al completar la carga. En el modo libre en red el humano remoto aparece junto al primer spawn (sin selector M).
+- Sin union a partida en curso ni reconexion; sin interest management (todos ven todas las posiciones); marcas de pintura y altavoz senuelo no se
+  replican al cliente; el cliente no valida su propio modelo de colision con otros jugadores.
+- N2 hecho: servidor dedicado en Docker linux/arm64 (Oracle Cloud): ver [servidor/README.md](servidor/README.md).

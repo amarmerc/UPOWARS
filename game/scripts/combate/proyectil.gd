@@ -21,6 +21,8 @@ var recorrido: float = 0.0
 var mult: float = 1.0
 var t: float = 0.0
 var ultimo_impacto: Dictionary = {}
+## Red (cliente): copia solo visual de un proyectil del servidor (no hace dano ni explota con dano).
+var solo_visual: bool = false
 
 var _excluidos: Array[RID] = []
 var _t_clavado: float = 0.0
@@ -89,8 +91,13 @@ func _impacto(res: Dictionary) -> void:
 	match arma.tipo:
 		ArmaDatos.T_COHETE:
 			var n: Vector3 = res["normal"]
-			Utilidades.explosion(self, (res["punto"] as Vector3) + n * 0.15, arma, _lanzador_valido())
+			if solo_visual:
+				Utilidades.explosion_visual(self, (res["punto"] as Vector3) + n * 0.15, arma)
+			else:
+				Utilidades.explosion(self, (res["punto"] as Vector3) + n * 0.15, arma, _lanzador_valido())
 			_acabar()
+		ArmaDatos.T_PUNO when solo_visual:
+			estado = Estado.VOLVIENDO
 		ArmaDatos.T_PUNO:
 			Balistica.aplicar(res, arma, _lanzador_valido())
 			var s: Salud = res["salud"] as Salud
@@ -98,7 +105,8 @@ func _impacto(res: Dictionary) -> void:
 				Balistica.empujar(s, vel.normalized() * arma.empuje * mult + Vector3.UP * 1.5 * mult)
 			estado = Estado.VOLVIENDO
 		_:
-			Balistica.aplicar(res, arma, _lanzador_valido())
+			if not solo_visual:
+				Balistica.aplicar(res, arma, _lanzador_valido())
 			if res["salud"] != null:
 				_acabar()
 			else:

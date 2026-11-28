@@ -16,6 +16,8 @@ var t: float = 0.0
 var rebotes: int = 0
 var activada: bool = false
 var en_reposo: bool = false
+## Red (cliente): copia solo visual de una granada del servidor.
+var solo_visual: bool = false
 
 
 static func crear(ctx: Node, a: ArmaDatos, pos: Vector3, velocidad: Vector3, quien: Node) -> Lanzable:
@@ -98,5 +100,8 @@ func activar() -> void:
 	if activada:
 		return
 	activada = true
-	Utilidades.activar(self, arma, global_position, lanzador)
+	if solo_visual:
+		Utilidades.activar_visual(self, arma, global_position)
+	else:
+		Utilidades.activar(self, arma, global_position, lanzador)
 	queue_free()

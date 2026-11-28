@@ -20,6 +20,8 @@ signal sable_sobrecalentado
 signal inventario_cambiado
 signal arma_soltada(id: StringName)
 signal arma_recogida(id: StringName)
+## Red (cliente): ordenes que se mandan al servidor (cambiar, recargar, recoger, tirar, lanzar).
+signal peticion_red(nombre: StringName, a: Variant, b: Variant)
 
 const NOMBRES_SONIDOS: Array[String] = [
 	"disparo_fusil", "disparo_pistola", "disparo_subfusil", "disparo_pesada", "disparo_combate", "disparo_precision",
@@ -42,6 +44,9 @@ var entrada_manual: bool = false
 var gatillo: bool = false
 var gatillo_alt: bool = false
 
+## Red (cliente): el gestor solo PREDICE efectos (disparo, retroceso, cargador, sonidos); el dano, los proyectiles, las granadas y las armas
+## del suelo los crea y resuelve el servidor.
+var red: bool = false
 var inventario := Inventario.new()
 ## Hueco activo: 0 principal, 1 secundaria, 2 cuerpo a cuerpo, 3 utilidades.
 var indice: int = 0
@@ -461,7 +466,8 @@ func _procesar_sable(a: ArmaDatos) -> void:
 	if gatillo and not _gatillo_prev and not gatillo_alt:
 		var cam: Camera3D = _jugador.camara
 		var res: Dictionary = Balistica.resolver_arco(cam.global_position, cam.global_transform.basis, a, _jugador, rng)
-		Balistica.aplicar_multiple(res, a, _jugador)
+		if not red:
+			Balistica.aplicar_multiple(res, a, _jugador)
 		disparos_totales += 1
 		_proximo = _t + a.intervalo()
 		_sonar(String(a.sonido), _p_disparo)
@@ -518,7 +524,11 @@ func _lanzar_utilidad(a: ArmaDatos, fuerte: bool) -> Lanzable:
 	var dir: Vector3 = -b.z
 	var v: Vector3 = (dir + b.y * 0.18).normalized() * (a.velocidad_lanzamiento if fuerte else a.velocidad_lanzamiento_flojo)
 	v += _jugador.velocity * 0.4
-	var l: Lanzable = Utilidades.lanzar(self, a, cam.global_position + dir * 0.35 - b.y * 0.1, v, _jugador)
+	var l: Lanzable = null
+	if red:
+		peticion_red.emit(&"lanzar", String(id), fuerte)
+	else:
+		l = Utilidades.lanzar(self, a, cam.global_position + dir * 0.35 - b.y * 0.1, v, _jugador)
 	_proximo = _t + 0.9
 	_sonar("lanzar", _p_disparo)
 	ataque_cuerpo.emit(not fuerte)
@@ -540,14 +550,17 @@ func _disparar(a: ArmaDatos) -> void:
 	match a.tipo:
 		ArmaDatos.T_PERDIGONES:
 			res = Balistica.resolver_perdigones(origen, dir, a, _jugador, rng, disp)
-			Balistica.aplicar_multiple(res, a, _jugador)
+			if not red:
+				Balistica.aplicar_multiple(res, a, _jugador)
 		ArmaDatos.T_PROYECTIL, ArmaDatos.T_COHETE:
 			var d: Vector3 = Balistica.aplicar_dispersion(dir, disp, rng)
-			Proyectil.lanzar(self, a, origen, d * a.velocidad_proyectil, _jugador)
+			if not red:
+				Proyectil.lanzar(self, a, origen, d * a.velocidad_proyectil, _jugador)
 			res = _res_proyectil(origen, d)
 		_:
 			res = Balistica.resolver_disparo(origen, dir, a, _jugador, rng, disp)
-			Balistica.aplicar(res, a, _jugador)
+			if not red:
+				Balistica.aplicar(res, a, _jugador)
 	_tras_disparo(a, res)
 
 
@@ -576,7 +589,7 @@ func _soltar_carga(a: ArmaDatos, mult: float) -> void:
 	var cam: Camera3D = _jugador.camara
 	var origen: Vector3 = cam.global_position
 	var d: Vector3 = Balistica.aplicar_dispersion(-cam.global_transform.basis.z, dispersion_actual(), rng)
-	var p: Proyectil = Proyectil.lanzar(self, a, origen, d * a.velocidad_proyectil * mult, _jugador, mult)
+	var p: Proyectil = null if red else Proyectil.lanzar(self, a, origen, d * a.velocidad_proyectil * mult, _jugador, mult)
 	var res: Dictionary = _res_proyectil(origen, d)
 	if a.tipo == ArmaDatos.T_PUNO:
 		puno_en_vuelo = true
@@ -606,7 +619,8 @@ func _atacar(a: ArmaDatos, fuerte: bool) -> void:
 	var origen: Vector3 = cam.global_position
 	var dir: Vector3 = -cam.global_transform.basis.z
 	var res: Dictionary = Balistica.resolver_disparo(origen, dir, a, _jugador, rng, 0.0, fuerte)
-	Balistica.aplicar(res, a, _jugador)
+	if not red:
+		Balistica.aplicar(res, a, _jugador)
 	disparos_totales += 1
 	_proximo = _t + (a.intervalo_fuerte if fuerte else a.intervalo())
 	_sonar(String(a.sonido), _p_disparo)
@@ -658,6 +672,8 @@ func recargar() -> void:
 	var id: StringName = id_actual()
 	if inventario.cargador(id) >= a.cargador or inventario.reserva(id) <= 0:
 		return
+	if red:
+		peticion_red.emit(&"recargar", null, null)
 	cargando = false
 	carga = 0.0
 	recargando = true
@@ -697,6 +713,8 @@ func cambiar_arma(i: int) -> void:
 		return
 	if i == indice:
 		return
+	if red and i < 3:
+		peticion_red.emit(&"cambiar", i, null)
 	_forzar_arma(i)
 
 
@@ -791,6 +809,8 @@ func _delante() -> Vector3:
 
 
 func _soltar_al_suelo(d: Dictionary, vel: Vector3, pos: Vector3) -> ArmaSuelo:
+	if red:
+		return null        # las armas del suelo las crea el servidor y las replica
 	var a: ArmaSuelo = ArmaSuelo.crear(self, StringName(d["id"]), int(d["cargador"]), int(d["reserva"]), pos, vel)
 	arma_soltada.emit(StringName(d["id"]))
 	return a
@@ -800,6 +820,9 @@ func _soltar_al_suelo(d: Dictionary, vel: Vector3, pos: Vector3) -> ArmaSuelo:
 func tirar_arma() -> bool:
 	if _jugador == null or _jugador.muerto:
 		return false
+	if red:
+		peticion_red.emit(&"tirar", null, null)
+		return true
 	var hueco: StringName = &""
 	if indice == 0:
 		hueco = Inventario.PRINCIPAL
@@ -847,6 +870,10 @@ func recoger(objetivo: ArmaSuelo = null) -> bool:
 		return false
 	var a: ArmaSuelo = objetivo if objetivo != null else arma_mirada()
 	if a == null or not is_instance_valid(a):
+		return false
+	if red:
+		if a.has_meta("id_red"):
+			peticion_red.emit(&"recoger", int(a.get_meta("id_red")), null)
 		return false
 	var id: StringName = a.arma_id
 	var r: Dictionary = inventario.equipar(id, a.cargador, a.reserva)

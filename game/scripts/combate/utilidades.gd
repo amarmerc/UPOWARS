@@ -79,6 +79,27 @@ static func activar(ctx: Node3D, arma: ArmaDatos, pos: Vector3, lanzador: Node) 
 			Altavoz.crear(ctx, pos, arma, lanzador)
 
 
+## Solo el efecto visual de una utilidad (cliente de red): el dano, la ceguera y las nubes los resuelve el servidor.
+static func activar_visual(ctx: Node3D, arma: ArmaDatos, pos: Vector3) -> void:
+	var ef: EfectosCombate = efectos(ctx)
+	if ef == null:
+		return
+	match arma.tipo:
+		T_CEGADORA:
+			ef.destello(pos)
+			ef.sonido_en(pos, &"cegadora")
+		T_EXPLOSIVA:
+			ef.explosion(pos, arma.radio_explosion)
+		T_PINTURA:
+			ef.salpicadura(pos, arma.radio_efecto)
+
+
+static func explosion_visual(ctx: Node3D, pos: Vector3, arma: ArmaDatos) -> void:
+	var ef: EfectosCombate = efectos(ctx)
+	if ef != null:
+		ef.explosion(pos, arma.radio_explosion)
+
+
 ## Explosion con dano (cohete o granada explosiva) mas efectos visuales y sonido.
 static func explosion(ctx: Node3D, pos: Vector3, arma: ArmaDatos, lanzador: Node) -> Array[Dictionary]:
 	var r: Array[Dictionary] = Balistica.aplicar_explosion(pos, arma, lanzador, ctx)

@@ -125,7 +125,9 @@ func registrar(c: Node, grupo: int, nombre: String) -> DatosJugador:
 		s.nombre = nombre
 		s.muerto.connect(_on_muerto.bind(c))
 	if cfg.es_libre():
-		if c is Bot:
+		if c is Bot and (c as Bot).humano_red:
+			(c as Bot).reaparicion_auto = false      # el humano remoto reaparece cuando el servidor lo decide y compra el: sin kit automatico
+		elif c is Bot:
 			(c as Bot).reaparicion_auto = true
 			(c as Bot).reaparecido.connect(func(b: Bot) -> void: b.comprar_kit())
 	else:
@@ -555,7 +557,7 @@ func _empezar_ronda() -> void:
 	if director != null:
 		director.preparar()
 	for c: Node in jugadores:
-		if c is Bot:
+		if c is Bot and not (c as Bot).humano_red:      # los humanos remotos compran ellos (tienda por red)
 			(c as Bot).comprar_kit()
 	ronda_iniciada.emit(ronda)
 	fase_cambiada.emit(fase)

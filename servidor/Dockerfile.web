@@ -1,0 +1,86 @@
+# syntax=docker/dockerfile:1
+#
+# Exportacion WEB de UPOWARS (HTML5 + WebAssembly, sin hilos: no exige cabeceras COOP/COEP). Genera SOLO los ficheros estaticos
+# (index.html, .js, .wasm, .pck...) que sirve el nginx del host. No es una imagen que se ejecute: se construye con
+#   docker build -f servidor/Dockerfile.web --target web --output type=local,dest=export/web .
+# (lo hace servidor/exportar_web.sh, que ademas copia el resultado a /var/www/upowars). Contexto = raiz del repo.
+# Hace falta BuildKit (docker buildx; viene con Docker moderno). Las plantillas de exportacion pesan ~1 GB: se descargan en el build
+# (y quedan en cache de capas; la siguiente vez solo se repite la exportacion si cambia game/).
+
+ARG DEBIAN_TAG=bookworm-slim
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Etapa 1: descargar y verificar el editor de Godot y las plantillas de exportacion (SHA512-SUMS.txt oficial de la release)
+# ---------------------------------------------------------------------------------------------------------------------------
+FROM debian:${DEBIAN_TAG} AS descarga
+
+ARG TARGETARCH
+ARG GODOT_VERSION=4.7.2-stable
+ARG GODOT_VERSION_DIR=4.7.2.stable
+ARG GODOT_BASE_URL=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}
+ARG GODOT_SUMS=SHA512-SUMS.txt
+ARG TPZ=Godot_v${GODOT_VERSION}_export_templates.tpz
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /descarga
+RUN set -eux; \
+    case "${TARGETARCH:-arm64}" in \
+        arm64) GODOT_ARCH=arm64 ;; \
+        amd64) GODOT_ARCH=x86_64 ;; \
+        *) echo "Arquitectura no soportada: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    ZIP="Godot_v${GODOT_VERSION}_linux.${GODOT_ARCH}.zip"; \
+    curl -fsSL --retry 5 --retry-delay 3 -o "${GODOT_SUMS}" "${GODOT_BASE_URL}/${GODOT_SUMS}"; \
+    curl -fsSL --retry 5 --retry-delay 3 -o "${ZIP}" "${GODOT_BASE_URL}/${ZIP}"; \
+    curl -fsSL --retry 5 --retry-delay 3 -o "${TPZ}" "${GODOT_BASE_URL}/${TPZ}"; \
+    # una linea "<sha512>  <nombre>" por asset: se comprueban las dos descargas (falla si alguna no aparece o no coincide)
+    grep -F " ${ZIP}" "${GODOT_SUMS}" > sumas.txt; \
+    grep -F " ${TPZ}" "${GODOT_SUMS}" >> sumas.txt; \
+    test "$(wc -l < sumas.txt)" -eq 2; \
+    sha512sum -c sumas.txt; \
+    unzip -q "${ZIP}"; \
+    mv "Godot_v${GODOT_VERSION}_linux.${GODOT_ARCH}" /godot; \
+    chmod 0755 /godot; \
+    # del .tpz (~1 GB, todas las plataformas) solo hacen falta las plantillas web sin hilos y version.txt
+    mkdir -p "/plantillas/${GODOT_VERSION_DIR}"; \
+    unzip -q -j "${TPZ}" 'templates/web_nothreads_*.zip' 'templates/version.txt' -d "/plantillas/${GODOT_VERSION_DIR}"; \
+    ls -l "/plantillas/${GODOT_VERSION_DIR}"; \
+    test -f "/plantillas/${GODOT_VERSION_DIR}/web_nothreads_release.zip"; \
+    rm -f "${TPZ}"
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Etapa 2: importar el proyecto y exportar el preset "Web" (game/export_presets.cfg)
+# ---------------------------------------------------------------------------------------------------------------------------
+FROM debian:${DEBIAN_TAG} AS exportar
+
+ARG GODOT_VERSION_DIR=4.7.2.stable
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates libstdc++6 libfontconfig1 \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV HOME=/root
+COPY --from=descarga /godot /opt/godot/godot
+# Godot busca las plantillas en $HOME/.local/share/godot/export_templates/<version>/ (XDG_DATA_HOME)
+COPY --from=descarga /plantillas/${GODOT_VERSION_DIR}/ /root/.local/share/godot/export_templates/${GODOT_VERSION_DIR}/
+
+COPY game/ /proyecto/game/
+WORKDIR /proyecto/game
+RUN set -eux; \
+    /opt/godot/godot --headless --audio-driver Dummy --path /proyecto/game --import || true; \
+    test -f .godot/global_script_class_cache.cfg; \
+    mkdir -p /salida; \
+    /opt/godot/godot --headless --audio-driver Dummy --path /proyecto/game --export-release "Web" /salida/index.html; \
+    test -f /salida/index.html; \
+    test -f /salida/index.wasm; \
+    test -f /salida/index.pck; \
+    ls -l /salida
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Etapa 3: solo los ficheros estaticos (para `--output type=local`)
+# ---------------------------------------------------------------------------------------------------------------------------
+FROM scratch AS web
+COPY --from=exportar /salida/ /

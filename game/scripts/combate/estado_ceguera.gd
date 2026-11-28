@@ -4,6 +4,9 @@ extends Node
 ## `nivel()` va de 0 a 1: total durante la primera parte y luego se desvanece. Los bots lo usan para perder punteria
 ## (`error_punteria()` = grados extra de dispersion) y el HUD del jugador para el destello blanco.
 
+## Se emite al cegar (la red lo reenvia al cliente humano).
+signal cegado(nivel_nuevo: float, segundos: float)
+
 var nivel_max: float = 0.0
 var restante: float = 0.0
 var total: float = 0.0
@@ -29,6 +32,7 @@ func cegar(nivel_nuevo: float, segundos: float) -> void:
 		nivel_max = clampf(nivel_nuevo, 0.0, 1.0)
 		total = maxf(segundos, 0.01)
 		restante = total
+		cegado.emit(nivel_max, total)
 
 
 func nivel() -> float:

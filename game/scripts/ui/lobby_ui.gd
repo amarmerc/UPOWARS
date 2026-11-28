@@ -12,6 +12,10 @@ extends CanvasLayer
 signal iniciar(config: ConfigPartida)
 signal salir_juego
 signal zona_elegida(zona_id: String)
+## Red: botones del panel de red.
+signal crear_local_pedido(puerto: int)
+signal unirse_pedido(ip: String, puerto: int)
+signal desconectar_pedido
 
 const MAX_EQUIPO: int = 5
 const COLORES_EQUIPO: Array[Color] = [Color(0.16, 0.2, 0.72), Color(0.86, 0.45, 0.05)]
@@ -40,6 +44,19 @@ var _boton_listo: Button
 var _descripcion: Label
 var _ids_zona: PackedStringArray = PackedStringArray()
 var _creditos: Control
+## Red: cuando es true el lobby es una VISTA del lobby del servidor (huecos, opciones y "listo" viven alli) y las acciones se mandan por
+## `red_enviar` (Callable(accion, a, b)). `mi_peer` identifica la tarjeta propia; solo el anfitrion cambia las opciones.
+var red_activa: bool = false
+var red_enviar: Callable = Callable()
+var mi_peer: int = 0
+var es_anfitrion: bool = false
+var _ignorar: bool = false
+var _ip: LineEdit
+var _estado_red: Label
+var _boton_desconectar: Button
+var _boton_forzar: Button
+var _boton_crear: Button
+var _boton_unirse: Button
 
 
 func _init() -> void:
@@ -87,6 +104,7 @@ func _construir() -> void:
 	der.add_theme_constant_override("separation", 12)
 	fila.add_child(der)
 	der.add_child(_panel_opciones())
+	der.add_child(_panel_red())
 	der.add_child(_panel_tu())
 	_boton_listo = EstiloUI.boton("LISTO", 30)
 	_boton_listo.custom_minimum_size = Vector2(0, 84)
@@ -100,6 +118,7 @@ func _construir() -> void:
 	pie.add_child(ayuda)
 	var salir: Button = EstiloUI.boton("Salir", 14)
 	salir.pressed.connect(func() -> void: salir_juego.emit())
+	salir.visible = not OS.has_feature("web")      # en el navegador no se puede "cerrar" el juego
 	pie.add_child(salir)
 	var cred: Button = EstiloUI.boton("Créditos", 14)
 	cred.pressed.connect(_mostrar_creditos)
@@ -107,6 +126,166 @@ func _construir() -> void:
 	pie.move_child(cred, pie.get_child_count() - 2)
 	_actualizar_modo()
 	_al_elegir_zona(0)
+	_modo.item_selected.connect(func(_i: int) -> void: _enviar_config())
+	_zona.item_selected.connect(func(_i: int) -> void: _enviar_config())
+	_tam.value_changed.connect(func(_n: float) -> void: _enviar_config())
+	_dificultad.item_selected.connect(func(_i: int) -> void: _enviar_config())
+	_rondas.value_changed.connect(func(_n: float) -> void: _enviar_config())
+	_bots_libres.value_changed.connect(func(_n: float) -> void: _enviar_config())
+	for le: LineEdit in _nombres_equipo:
+		le.text_submitted.connect(func(_t: String) -> void: _enviar_config())
+		le.focus_exited.connect(_enviar_config)
+
+
+## Panel de red: crear una partida local (este proceso hace de servidor) o unirse a la de otro por IP:puerto (ENet) o por URL
+## ws:// / wss:// (WebSocket). En la version web no hay "Crear partida local" (el navegador no puede abrir un servidor) y el campo
+## viene con la direccion del servidor web del propio sitio (wss://<host de la pagina>/ws).
+func _panel_red() -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", EstiloUI.caja(EstiloUI.PANEL, EstiloUI.ACENTO2, 2, 10, 10))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	panel.add_child(v)
+	v.add_child(EstiloUI.etiqueta("RED (multijugador)", 17, EstiloUI.ACENTO2))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	v.add_child(h)
+	_boton_crear = EstiloUI.boton("Crear partida local", 15)
+	_boton_crear.pressed.connect(func() -> void: crear_local_pedido.emit(_puerto_ip()))
+	_boton_crear.visible = not OS.has_feature("web")
+	h.add_child(_boton_crear)
+	_ip = LineEdit.new()
+	_ip.text = _destino_por_defecto()
+	_ip.placeholder_text = "IP:puerto o ws://host/ws"
+	_ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(_ip)
+	_boton_unirse = EstiloUI.boton("Unirse", 15)
+	_boton_unirse.pressed.connect(_pulsar_unirse)
+	h.add_child(_boton_unirse)
+	var h2 := HBoxContainer.new()
+	v.add_child(h2)
+	_estado_red = EstiloUI.etiqueta("Sin conexion: modo un jugador", 13, EstiloUI.TEXTO_SUAVE)
+	_estado_red.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h2.add_child(_estado_red)
+	_boton_forzar = EstiloUI.boton("Forzar inicio", 13)
+	_boton_forzar.visible = false
+	_boton_forzar.pressed.connect(func() -> void: _red_cmd(&"forzar", null, null))
+	h2.add_child(_boton_forzar)
+	_boton_desconectar = EstiloUI.boton("Desconectar", 13)
+	_boton_desconectar.visible = false
+	_boton_desconectar.pressed.connect(func() -> void: desconectar_pedido.emit())
+	h2.add_child(_boton_desconectar)
+	return panel
+
+
+## Valor inicial del campo de union: en la exportacion web, el servidor del propio sitio; en escritorio, el servidor local.
+func _destino_por_defecto() -> String:
+	if OS.has_feature("web"):
+		var esquema: String = str(JavaScriptBridge.eval("location.protocol === 'https:' ? 'wss://' : 'ws://'", true))
+		var host: String = str(JavaScriptBridge.eval("location.host", true))
+		if host != "" and host != "null":
+			return "%s%s/ws" % [esquema, host]
+	return "127.0.0.1:%d" % ProtoRed.PUERTO_DEFECTO
+
+
+## `ws://...` / `wss://...` se manda tal cual (puerto 0 = el de la URL); lo demas es IP[:puerto] de ENet.
+func _pulsar_unirse() -> void:
+	var t: String = _ip.text.strip_edges()
+	if Red.es_url_ws(t):
+		unirse_pedido.emit(t, 0)
+	else:
+		unirse_pedido.emit(t.get_slice(":", 0).strip_edges(), _puerto_ip())
+
+
+func _puerto_ip() -> int:
+	var t: String = _ip.text.strip_edges()
+	return int(t.get_slice(":", 1)) if t.contains(":") and int(t.get_slice(":", 1)) > 0 else ProtoRed.PUERTO_DEFECTO
+
+
+func _red_cmd(accion: StringName, a: Variant, b: Variant) -> void:
+	if red_enviar.is_valid():
+		red_enviar.call(accion, a, b)
+
+
+func poner_estado_red(texto: String) -> void:
+	if _estado_red != null:
+		_estado_red.text = texto
+
+
+## Vuelve al lobby de un jugador (cierra la vista de red).
+func salir_red() -> void:
+	red_activa = false
+	red_enviar = Callable()
+	es_anfitrion = false
+	_boton_desconectar.visible = false
+	_boton_forzar.visible = false
+	_boton_crear.disabled = false
+	_boton_unirse.disabled = false
+	_estado_red.text = "Sin conexion: modo un jugador"
+	_fijar_opciones_activas(true)
+	_iniciar_huecos(MAX_EQUIPO)
+
+
+func _fijar_opciones_activas(on: bool) -> void:
+	_modo.disabled = not on
+	_zona.disabled = not on
+	_tam.editable = on
+	_dificultad.disabled = not on
+	_rondas.editable = on
+	_bots_libres.editable = on
+	for le: LineEdit in _nombres_equipo:
+		le.editable = on
+
+
+## Aplica el estado del lobby que manda el servidor (`ServidorRed.estado_lobby`).
+func aplicar_estado_red(e: Dictionary, mi_id: int) -> void:
+	red_activa = true
+	mi_peer = mi_id
+	es_anfitrion = int(e["anfitrion"]) == mi_id
+	_ignorar = true
+	for i in ConfigPartida.MODOS.size():
+		if String(ConfigPartida.MODOS[i][0]) == str(e["modo"]):
+			_modo.select(i)
+	var zi: int = _ids_zona.find(str(e["zona"]))
+	if zi >= 0:
+		_zona.select(zi)
+	_tam.value = int(e["tam"])
+	var di: int = DificultadBot.TODAS.find(StringName(str(e["dificultad"])))
+	if di >= 0:
+		_dificultad.select(di)
+	_rondas.value = int(e["rondas"])
+	_bots_libres.value = int(e["bots_libres"])
+	for g in 2:
+		if not _nombres_equipo[g].has_focus():
+			_nombres_equipo[g].text = str((e["nombres"] as Array)[g])
+	_ignorar = false
+	equipos = [[], []]
+	for g in 2:
+		for h: Dictionary in e["huecos"][g]:
+			var humano: bool = str(h["tipo"]) == "humano"
+			var pers: StringName = StringName(str(h["personaje"]))
+			equipos[g].append(ConfigPartida.hueco(ConfigPartida.TIPO_HUMANO if humano else ConfigPartida.TIPO_BOT, str(h["nombre"]), pers,
+					bool(h["listo"]), humano and int(h["peer"]) == mi_id))
+	var yo: Vector2i = pos_local()
+	if yo.x >= 0:
+		perfil["personaje"] = (equipos[yo.x][yo.y] as Dictionary)["personaje"]
+	_fijar_opciones_activas(es_anfitrion)
+	_boton_forzar.visible = es_anfitrion
+	_boton_desconectar.visible = true
+	_boton_crear.disabled = true
+	_boton_unirse.disabled = true
+	_actualizar_modo()
+	_refrescar()
+
+
+func _enviar_config() -> void:
+	if not red_activa or not es_anfitrion or _ignorar:
+		return
+	var a: String = _nombres_equipo[0].text.strip_edges()
+	var d: String = _nombres_equipo[1].text.strip_edges()
+	_red_cmd(&"config", {"modo": String(modo_id()), "zona": _ids_zona[_zona.selected] if not _ids_zona.is_empty() else "",
+			"tam": int(_tam.value), "dificultad": String(DificultadBot.TODAS[_dificultad.selected]), "rondas": int(_rondas.value),
+			"bots_libres": int(_bots_libres.value), "nombres": [a if a != "" else "EPS", d if d != "" else "CEUPO"]}, null)
 
 
 ## Ventana con los créditos de los recursos externos (`res://data/creditos.md`, copia de CREDITOS.md).
@@ -358,6 +537,8 @@ func poner_tam(n: int) -> void:
 
 
 func _ajustar_tam(n: int) -> void:
+	if red_activa:
+		return
 	for g in 2:
 		var lista: Array = equipos[g]
 		while lista.size() > n:
@@ -372,6 +553,9 @@ func _ajustar_tam(n: int) -> void:
 
 ## Clic en el hueco (g, i): si es un bot, el jugador se intercambia con el.
 func clic_hueco(g: int, i: int) -> void:
+	if red_activa:
+		_red_cmd(&"hueco", g, i)
+		return
 	var yo: Vector2i = pos_local()
 	if yo.x < 0 or g < 0 or g > 1 or i < 0 or i >= (equipos[g] as Array).size():
 		return
@@ -394,6 +578,11 @@ func poner_nombre(texto: String) -> void:
 
 func cambiar_personaje(dir: int) -> void:
 	perfil["personaje"] = CatalogoPersonajes.vecino(perfil["personaje"], dir)
+	if red_activa:
+		_red_cmd(&"personaje", String(perfil["personaje"]), null)
+		_guardar_perfil()
+		_refrescar()
+		return
 	var yo: Vector2i = pos_local()
 	if yo.x >= 0:
 		(equipos[yo.x][yo.y] as Dictionary)["personaje"] = perfil["personaje"]
@@ -403,6 +592,10 @@ func cambiar_personaje(dir: int) -> void:
 
 func _al_cambiar_nombre() -> void:
 	perfil["nombre"] = _nombre.text
+	if red_activa:
+		_red_cmd(&"nombre", _nombre.text, null)
+		_guardar_perfil()
+		return
 	_guardar_perfil()
 	_refrescar()
 
@@ -433,6 +626,9 @@ func contador_listos() -> Vector2i:
 func pulsar_listo() -> void:
 	var yo: Vector2i = pos_local()
 	if yo.x < 0:
+		return
+	if red_activa:
+		_red_cmd(&"listo", not bool((equipos[yo.x][yo.y] as Dictionary)["listo"]), null)
 		return
 	var h: Dictionary = equipos[yo.x][yo.y]
 	h["listo"] = not bool(h["listo"])
